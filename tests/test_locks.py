@@ -16,18 +16,13 @@ import json
 from thread import allocate_lock as _allocate_lock
 
 import requests
-
 from mo_collections.queue import Queue
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from mo_threads import Lock, THREAD_STOP
-from mo_threads import Signal
-from mo_threads import Thread, ThreadedQueue
-from mo_threads import Till
-from mo_threads.busy_lock import BusyLock
 from mo_times.timer import Timer
 
-
+from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
+from mo_threads.busy_lock import BusyLock
 
 ACTIVEDATA_URL = "https://activedata.allizom.org/query"
 

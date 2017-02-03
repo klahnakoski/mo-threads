@@ -17,12 +17,13 @@ from unittest import skipIf
 
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
+from mo_times.dates import Date
+from mo_times.durations import SECOND
+
 from mo_threads import Lock, Thread
 from mo_threads import Process
 from mo_threads import Signal
 from mo_threads import Till
-from mo_times.dates import Date
-from mo_times.durations import SECOND
 
 
 class TestThreads(FuzzyTestCase):
