@@ -24,7 +24,7 @@ from mo_threads.threads import Thread, THREAD_STOP
 
 DEBUG = True
 
-string2quote = get_module("mo_json")
+string2quote = get_module("mo_json").quote
 
 class Process(object):
     def __init__(self, name, params, cwd=None, env=None, debug=False, shell=False, bufsize=-1):
