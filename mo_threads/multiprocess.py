@@ -12,8 +12,9 @@ from __future__ import unicode_literals
 
 import os
 import subprocess
+from types import NoneType
 
-from mo_dots import set_default, unwrap, get_module
+from mo_dots import set_default, unwrap, get_module, NullType
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
 
@@ -42,7 +43,7 @@ class Process(object):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 bufsize=bufsize,
-                cwd=cwd if isinstance(cwd, basestring) else cwd.abspath,
+                cwd=cwd if isinstance(cwd, (basestring, NullType, NoneType)) else cwd.abspath,
                 env=unwrap(set_default(env, os.environ)),
                 shell=shell
             )
