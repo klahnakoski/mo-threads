@@ -18,15 +18,16 @@ from __future__ import unicode_literals
 
 import types
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import datetime
 from time import time
 
 from mo_dots import coalesce, Null
+# from mo_times.durations import SECOND
+
 from mo_threads.lock import Lock
 from mo_threads.signal import Signal
 from mo_threads.threads import Thread, THREAD_STOP, THREAD_TIMEOUT
 from mo_threads.till import Till
-from mo_times.durations import SECOND
 
 _convert = None
 _Except = None
@@ -293,7 +294,7 @@ class ThreadedQueue(Queue):
 
         batch_size = coalesce(batch_size, int(max_size / 2) if max_size else None, 900)
         max_size = coalesce(max_size, batch_size * 2)  # REASONABLE DEFAULT
-        period = coalesce(period, SECOND).seconds
+        period = coalesce(period, 1)  # SECONDS
 
         Queue.__init__(self, name=name, max=max_size, silent=silent)
 

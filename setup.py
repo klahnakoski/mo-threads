@@ -44,7 +44,7 @@ def find_packages(where='.', lib_prefix='', exclude=()):
 
 setup(
     name='mo-threads',
-    version="1.1.17040",
+    version="1.2.17040",
     description='More Threads! Simpler and faster threading.',
     long_description=long_desc,
     author='Kyle Lahnakoski',
