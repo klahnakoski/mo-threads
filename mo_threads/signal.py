@@ -171,6 +171,9 @@ class Signal(object):
     def __str__(self):
         return self.name.decode(unicode)
 
+    def __repr__(self):
+        return repr(self._go)
+
     def __or__(self, other):
         if other == None:
             return self
