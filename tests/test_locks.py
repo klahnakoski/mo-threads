@@ -122,7 +122,7 @@ class TestLocks(FuzzyTestCase):
         Thread.run("loop", loop, please_stop=please_stop)
         Till(seconds=1).wait()
         with please_stop.lock:
-            self.assertLessEqual(len(please_stop.job_queue), 0, "Expecting only one pending job on go")
+            self.assertLessEqual(len(please_stop.job_queue), 1, "Expecting only one pending job on go")
         please_stop.go()
 
     def test_consistency(self):
