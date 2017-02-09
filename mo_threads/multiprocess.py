@@ -23,9 +23,9 @@ from mo_threads.queues import Queue
 from mo_threads.signal import Signal
 from mo_threads.threads import Thread, THREAD_STOP
 
-DEBUG = True
-
 string2quote = get_module("mo_json").quote
+DEBUG = False
+
 
 class Process(object):
     def __init__(self, name, params, cwd=None, env=None, debug=False, shell=False, bufsize=-1):
