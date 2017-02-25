@@ -27,7 +27,6 @@ from mo_threads.lock import Lock
 from mo_threads.signal import AndSignals, Signal
 from mo_threads.till import Till
 
-_convert = None
 _Except = None
 _CProfiler = None
 _Log = None
@@ -42,7 +41,6 @@ datetime.strptime('2012-01-01', '%Y-%m-%d')  # http://bugs.python.org/issue7980
 
 
 def _late_import():
-    global _convert
     global _Except
     global _CProfiler
     global _Log
@@ -51,7 +49,6 @@ def _late_import():
     from mo_logs.profiles import CProfiler as _CProfiler
     from mo_logs import Log as _Log
 
-    _ = _convert
     _ = _Except
     _ = _CProfiler
     _ = _Log
@@ -244,8 +241,9 @@ class Thread(object):
                     with self.synch_lock:
                         self.end_of_thread = Null
             except Exception, e:
+                e = _Except.wrap(e)
                 with self.synch_lock:
-                    self.end_of_thread = Data(exception=_Except.wrap(e))
+                    self.end_of_thread = Data(exception=e)
                 if self not in self.parent.children:
                     # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
                     try:
