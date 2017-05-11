@@ -14,6 +14,7 @@ from __future__ import unicode_literals
 
 import json
 from thread import allocate_lock as _allocate_lock
+from time import time
 
 import requests
 from mo_collections.queue import Queue
@@ -108,6 +109,21 @@ class TestLocks(FuzzyTestCase):
 
         self.assertTrue(bool(thread_a.stopped), "Thread should be done by now")
         self.assertTrue(bool(thread_b.stopped), "Thread should be done by now")
+
+    def test_till_create_speed(self):
+        tills = []
+        done = time() + 1
+
+        def loop(please_stop):
+            while not please_stop:
+                tills.append(Till(till=done))
+
+        ps = Till(till=done)
+        thread = Thread.run("test", loop, please_stop=ps)
+        thread.stopped.wait()
+
+        self.assertGreater(len(tills), 60000, "Till objects must be created faster: " + unicode(len(tills)) + " per second is too slow")
+        Log.note("{{num}} new Tills in one second", num=len(tills))
 
     def test_till_in_loop(self):
 

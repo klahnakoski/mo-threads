@@ -20,10 +20,8 @@ from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.dates import Date
 from mo_times.durations import SECOND
 
-from mo_threads import Lock, Thread
+from mo_threads import Lock, Thread, Signal, Till, till
 from mo_threads import Process
-from mo_threads import Signal
-from mo_threads import Till
 
 
 class TestThreads(FuzzyTestCase):
@@ -189,5 +187,5 @@ class TestThreads(FuzzyTestCase):
 
     def test_disabled_till(self):
         Till.enabled = False
-        t = Till(seconds=10000000) # ONCE THE Till DAEMON IS DOWN, ALL TIMING SIGNALS ARE A go()!
+        t = Till(seconds=10000000)  # ONCE THE Till DAEMON IS DOWN, ALL TIMING SIGNALS ARE A go()!
         t.wait()
