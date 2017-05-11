@@ -21,11 +21,9 @@ from copy import copy
 from datetime import datetime, timedelta
 from time import sleep
 
-from mo_logs.profiles import CProfiler
-
-from mo_logs import Log, Except
-
 from mo_dots import Data, unwraplist, Null
+from mo_logs import Log, Except
+from mo_logs.profiles import CProfiler
 
 from mo_threads.lock import Lock
 from mo_threads.signal import AndSignals, Signal
