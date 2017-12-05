@@ -1,10 +1,8 @@
 
-More Threads!
-=============
+# More Threads!
 
 
-Module `threads`
-----------------
+## Module `threads`
 
 The main distinction between this library and Python's is:
 
@@ -16,7 +14,7 @@ not changed, which is not ominous demand.
 2. **Shutdown order is deterministic and explicit** - Python's threading 
 library is missing strict conventions for controlled and orderly shutdown. 
 These conventions eliminate the need for `interrupt()` and `abort()`, both of 
-which are unstable idioms when using resources.   Each thread can shutdown on 
+which are unstable idioms when using resources. Each thread can shutdown on 
 its own terms, but is expected to do so expediently.
   * All threads are required to accept a `please_stop` signal, and are 
   expected to test it in a timely manner and exit when signalled.
@@ -32,7 +30,7 @@ safe. Parent threads have access to uncaught child thread exceptions, and
 the cProfiler properly aggregates results from the multiple threads.
 
 
-###What's it used for###
+### What's it used for
 
 A good amount of time is spent waiting for underlying C libraries and OS
 services to respond to network and file access requests. Multiple
@@ -43,7 +41,7 @@ waiting for disk writes or remote logging posts. Please note, this level of
 speed improvement can only be realized if there is no serialization happening
 at the multi-threaded queue.  
 
-###Asynch vs. Actors###
+### Asynch vs. Actors
 
 My personal belief is that [actors](http://en.wikipedia.org/wiki/Actor_model)
 are easier to reason about than [asynch tasks](https://docs.python.org/3/library/asyncio-task.html).
@@ -54,9 +52,11 @@ dangerous because:
 2. actors can use blocking methods, co-routines can not
 3. there is no way to manage resource priority with co-routines.
 4. stack traces are lost with co-routines
+5. asynch scope easily escapes lexical scope, which promotes bugs 
 
-Synchronization Primitives
---------------------------
+Python's asynch efforts are a still-immature re-invention of threading functionality by another name. Expect to experience a decade of problems that are already solved by threading; [here is an example](https://www.python.org/dev/peps/pep-0550/)
+
+### Synchronization Primitives
 
 There are three major aspects of a synchronization primitive:
 
@@ -83,7 +83,7 @@ These three aspects can be combined to give us 8 synchronization primitives:
 
 Locks are identical to [threading monitors](https://en.wikipedia.org/wiki/Monitor_(synchronization)), except for two differences: 
 
-1. The `wait()` method will **always acquire the lock before returning**. This is an important feature; ensuring every line in a code block has  lock acquisition is easier to reason about.
+1. The `wait()` method will **always acquire the lock before returning**. This is an important feature; ensuring every line in a code block has lock acquisition is easier to reason about.
 2. Exiting a lock via `__exit__()` will **always** signal any waiting thread to resume immediately. This ensures no signals are missed, and every thread gets an opportunity to react to possible change.  
 
 		lock = Lock()
@@ -98,12 +98,12 @@ Locks are identical to [threading monitors](https://en.wikipedia.org/wiki/Monito
 In this example, we look for stuff `todo`, and if there is none, we wait for a second. During that time others can acquire the `lock` and add `todo` items. Upon releasing the the `lock`, our example code will immediately resume to see what's available, waiting again if nothing is found.
 
 
-##The `Signal` and `Till` Classes
+## The `Signal` and `Till` Classes
 
-[The `Signal` class](https://github.com/klahnakoski/pyLibrary/blob/dev/pyLibrary/thread/signal.py) is like a binary semaphore that can be signalled only once. It can be signalled by any thread. Subsequent signals have no effect. Any thread can wait on a `Signal`; and once signalled, all waits are unblocked, including all subsequent waits. Its current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`.  It can not be reversed.  
+[The `Signal` class](https://github.com/klahnakoski/pyLibrary/blob/dev/pyLibrary/thread/signal.py) is like a binary semaphore that can be signalled only once. It can be signalled by any thread. Subsequent signals have no effect. Any thread can wait on a `Signal`; and once signalled, all waiting threads are unblocked, including all subsequent waiting threads. A Signal's current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`. It can not be reversed.  
 
 	is_done = Signal()
-	yield is_done
+	yield is_done  # give signal to another that wants to know when done
 	# DO WORK
 	is_done.go()
 

@@ -15,6 +15,7 @@ from __future__ import unicode_literals
 import os
 from unittest import skipIf
 
+from mo_future import text_type
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.dates import Date
@@ -58,7 +59,7 @@ class TestThreads(FuzzyTestCase):
                 phase2.append(value)
 
         with locker:
-            threads = [Thread.run(unicode(i), work, i) for i in range(NUM)]
+            threads = [Thread.run(text_type(i), work, i) for i in range(NUM)]
 
         # CONTINUE TO USE THE locker SO WAITS GET TRIGGERED
 
@@ -68,11 +69,11 @@ class TestThreads(FuzzyTestCase):
         for t in threads:
             t.join()
 
-        self.assertEqual(len(phase1), NUM, "expecting "+unicode(NUM)+" items")
-        self.assertEqual(len(phase2), NUM, "expecting "+unicode(NUM)+" items")
+        self.assertEqual(len(phase1), NUM, "expecting "+text_type(NUM)+" items")
+        self.assertEqual(len(phase2), NUM, "expecting "+text_type(NUM)+" items")
         for i in range(NUM):
-            self.assertTrue(i in phase1, "expecting "+unicode(i))
-            self.assertTrue(i in phase2, "expecting "+unicode(i))
+            self.assertTrue(i in phase1, "expecting "+text_type(i))
+            self.assertTrue(i in phase2, "expecting "+text_type(i))
         Log.note("done")
 
     def test_thread_wait_till(self):
@@ -112,7 +113,7 @@ class TestThreads(FuzzyTestCase):
         """
         CAN WE CATCH A SIGINT?
         """
-        p = Process("not much" ["python", "tests/resources/utils/wait_for_signal.py"])
+        p = Process("waiting" ["python", "tests/resources/utils/wait_for_signal.py"])
         k = Process("killer", ["kill", "-SIGINT", p.pid])
 
         p.join()
@@ -136,7 +137,7 @@ class TestThreads(FuzzyTestCase):
 
         # We expect 10, but 9 is good enough
         num = len(acc)
-        self.assertGreater(num, 9, "Expecting some reasonable number of entries to prove there was looping, not "+unicode(num))
+        self.assertGreater(num, 9, "Expecting some reasonable number of entries to prove there was looping, not "+text_type(num))
 
     def test_or_signal_timeout(self):
         acc = []
