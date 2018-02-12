@@ -19,7 +19,7 @@ import requests
 
 from mo_collections.queue import Queue
 from mo_future import allocate_lock as _allocate_lock, text_type
-from mo_logs import Log
+from mo_logs import Log, machine_metadata
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till, till, lock
 from mo_threads.busy_lock import BusyLock
@@ -52,6 +52,14 @@ class TestLocks(FuzzyTestCase):
                 locks[i].release()
 
     def test_queue_speed(self):
+        if "PyPy" in machine_metadata.python:
+            # PyPy requires some warmup time
+            self._test_queue_speed()
+            self._test_queue_speed()
+            Till(seconds=1).wait()
+        self._test_queue_speed(test=True)
+
+    def _test_queue_speed(self, test=False):
         SCALE = 1000*10
 
         done = Signal("done")
@@ -76,7 +84,8 @@ class TestLocks(FuzzyTestCase):
             Log.note("Done insert")
             done.wait()
 
-        self.assertLess(timer.duration.seconds, 1.5, "Expecting queue to be fast")
+        if test:
+            self.assertLess(timer.duration.seconds, 1.5, "Expecting queue to be fast")
 
     def test_lock_and_till(self):
         locker = Lock("prime lock")
