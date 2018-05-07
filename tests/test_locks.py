@@ -15,7 +15,11 @@ from __future__ import unicode_literals
 import json
 from time import time
 
+import gc
+
+import os
 import requests
+import psutil
 
 from mo_collections.queue import Queue
 from mo_future import allocate_lock as _allocate_lock, text_type
@@ -168,6 +172,33 @@ class TestLocks(FuzzyTestCase):
             t.join()
 
         self.assertEqual(counter[0], 100*50, "Expecting lock to work")
+
+    def test_memory_cleanup(self):
+        gc.collect()
+        start_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("Start memory {{mem|comma}}", mem=start_mem)
+        root = Signal()
+        for i in range(100000):
+            root = root | Till(seconds=100000)
+            mid_mem = psutil.Process(os.getpid()).memory_info().rss
+            if mid_mem > 1.5 * 1000 * 1000 * 1000:
+                Log.note("{{num}} Till triggers created", num=i)
+                break
+        trigger = Signal()
+        root = root | trigger
+
+        mid_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("Mid memory {{mem|comma}}", mem=mid_mem)
+
+        trigger.go()
+        root.wait()  # THERE SHOULD BE NO DELAY HERE
+
+        Till(seconds=1).wait()  # LET TIMER DAEMON CLEANUP
+        gc.collect()
+        end_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("End memory {{mem|comma}}", mem=end_mem)
+
+        self.assertLess(end_mem, (start_mem+mid_mem)/2, "memory should be closer to start")
 
 
 def query_activedata(suite, platforms=None):
