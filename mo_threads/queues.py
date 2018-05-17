@@ -149,15 +149,13 @@ class Queue(object):
         if timeout != None:
             time_to_stop_waiting = now + timeout
         else:
-            time_to_stop_waiting = None
+            time_to_stop_waiting = now + DEFAULT_WAIT_TIME
 
         if self.next_warning < now:
             self.next_warning = now + wait_time
 
         while not self.please_stop and len(self.queue) >= self.max:
             if now > time_to_stop_waiting:
-                if not Log:
-                    _late_import()
                 Log.error(THREAD_TIMEOUT)
 
             if self.silent:

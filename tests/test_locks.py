@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import json
+import threading
 from time import time
 
 import gc
@@ -24,7 +25,10 @@ import psutil
 from mo_collections.queue import Queue
 from mo_future import allocate_lock as _allocate_lock, text_type
 from mo_logs import Log, machine_metadata
+from mo_math.randoms import Random
 from mo_testing.fuzzytestcase import FuzzyTestCase
+
+import mo_threads
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till, till, lock
 from mo_threads.busy_lock import BusyLock
 from mo_times.timer import Timer
@@ -173,7 +177,7 @@ class TestLocks(FuzzyTestCase):
 
         self.assertEqual(counter[0], 100*50, "Expecting lock to work")
 
-    def test_memory_cleanup(self):
+    def test_memory_cleanup_with_till(self):
         gc.collect()
         start_mem = psutil.Process(os.getpid()).memory_info().rss
         Log.note("Start memory {{mem|comma}}", mem=start_mem)
@@ -192,6 +196,48 @@ class TestLocks(FuzzyTestCase):
 
         trigger.go()
         root.wait()  # THERE SHOULD BE NO DELAY HERE
+
+        Till(seconds=1).wait()  # LET TIMER DAEMON CLEANUP
+        gc.collect()
+        end_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("End memory {{mem|comma}}", mem=end_mem)
+
+        self.assertLess(end_mem, (start_mem+mid_mem)/2, "memory should be closer to start")
+
+    def test_memory_cleanup_with_signal(self):
+        gc.collect()
+        start_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("Start memory {{mem|comma}}", mem=start_mem)
+
+        queue = mo_threads.Queue("", max=1000000)
+
+        def _consumer(please_stop):
+            while not please_stop:
+                v = queue.pop(till=please_stop)
+                if Random.int(1000) == 0:
+                    Log.note("got " + v)
+
+        consumer = Thread.run("", _consumer)
+
+        def _producer(t):
+            for i in range(2):
+                queue.add(str(t)+":"+str(i))
+                Till(seconds=0.01).wait()
+
+        for g in range(10):
+            mid_mem = psutil.Process(os.getpid()).memory_info().rss
+            Log.note("{{group}} memory {{mem|comma}}", group=g, mem=mid_mem)
+            threads = [threading.Thread(target=_producer, args=(i,)) for i in range(500)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+        consumer.please_stop.go()
+        consumer.join()
+
+        mid_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("Mid memory {{mem|comma}}", mem=mid_mem)
 
         Till(seconds=1).wait()  # LET TIMER DAEMON CLEANUP
         gc.collect()
