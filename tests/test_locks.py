@@ -19,6 +19,8 @@ from time import time
 import gc
 
 import os
+
+import objgraph
 import requests
 import psutil
 
@@ -34,6 +36,7 @@ from mo_threads.busy_lock import BusyLock
 from mo_times.timer import Timer
 
 ACTIVEDATA_URL = "https://activedata.allizom.org/query"
+USE_PYTHON_THREADS = False
 
 
 class TestLocks(FuzzyTestCase):
@@ -204,6 +207,28 @@ class TestLocks(FuzzyTestCase):
 
         self.assertLess(end_mem, (start_mem+mid_mem)/2, "memory should be closer to start")
 
+    def test_job_queue_in_signal(self):
+
+        gc.collect()
+        start_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("Start memory {{mem|comma}}", mem=start_mem)
+
+        main = Signal()
+        result = [main | Signal() for _ in range(10000)]
+
+        mid_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("Mid memory {{mem|comma}}", mem=mid_mem)
+
+        del result
+        gc.collect()
+
+        end_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("End memory {{mem|comma}}", mem=end_mem)
+
+        main.go()  # NOT NEEDED, BUT INTERESTING
+
+        self.assertLess(end_mem, (start_mem+mid_mem)/2, "end memory should be closer to start")
+
     def test_memory_cleanup_with_signal(self):
         gc.collect()
         start_mem = psutil.Process(os.getpid()).memory_info().rss
@@ -217,34 +242,46 @@ class TestLocks(FuzzyTestCase):
                 if Random.int(1000) == 0:
                     Log.note("got " + v)
 
-        consumer = Thread.run("", _consumer)
-
-        def _producer(t):
+        def _producer(t, please_stop=None):
             for i in range(2):
                 queue.add(str(t)+":"+str(i))
                 Till(seconds=0.01).wait()
 
-        for g in range(10):
+        consumer = Thread.run("", _consumer)
+
+        objgraph.show_growth(limit=3)
+
+        no_change = 0
+        for g in range(100):
             mid_mem = psutil.Process(os.getpid()).memory_info().rss
             Log.note("{{group}} memory {{mem|comma}}", group=g, mem=mid_mem)
-            threads = [threading.Thread(target=_producer, args=(i,)) for i in range(500)]
-            for t in threads:
-                t.start()
+            if USE_PYTHON_THREADS:
+                threads = [threading.Thread(target=_producer, args=(i,)) for i in range(500)]
+                for t in threads:
+                    t.start()
+            else:
+                threads = [Thread.run("", _producer, i) for i in range(500)]
+
             for t in threads:
                 t.join()
+            del threads
+
+            gc.collect()
+            results = objgraph.growth(limit=3)
+            if not results:
+                no_change += 1
+            else:
+                for typ, count, delta in results:
+                    Log.note('%-*s%9d %+9d\n' % (18, typ, count, delta))
+                    obj_list = objgraph.by_type(typ)
+                    if obj_list:
+                        obj = obj_list[-1]
+                        objgraph.show_backrefs(obj, max_depth=10)
 
         consumer.please_stop.go()
         consumer.join()
 
-        mid_mem = psutil.Process(os.getpid()).memory_info().rss
-        Log.note("Mid memory {{mem|comma}}", mem=mid_mem)
-
-        Till(seconds=1).wait()  # LET TIMER DAEMON CLEANUP
-        gc.collect()
-        end_mem = psutil.Process(os.getpid()).memory_info().rss
-        Log.note("End memory {{mem|comma}}", mem=end_mem)
-
-        self.assertLess(end_mem, (start_mem+mid_mem)/2, "memory should be closer to start")
+        self.assertGreater(no_change, 50)
 
 
 def query_activedata(suite, platforms=None):
