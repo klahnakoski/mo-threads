@@ -48,6 +48,19 @@ class TestLocks(FuzzyTestCase):
     def tearDownClass(cls):
         Log.stop()
 
+    def test_signal_is_not_null(self):
+        a = Signal()
+        self.assertNotEqual(a, None)
+        a.go()
+        self.assertNotEqual(a, None)
+
+    def test_signal_is_boolean(self):
+        a = Signal()
+        self.assertEqual(bool(a), False)
+        a.go()
+        self.assertEqual(bool(a), True)
+
+
     def test_lock_speed(self):
         SCALE = 1000*100
 
@@ -230,6 +243,14 @@ class TestLocks(FuzzyTestCase):
         self.assertLess(end_mem, (start_mem+mid_mem)/2, "end memory should be closer to start")
 
     def test_memory_cleanup_with_signal(self):
+        """
+        LOOKING FOR A MEMORY LEAK THAT HAPPENS ONLY DURING THREADING
+
+        ACTUALLY, THE PARTICULAR LEAK FOUND CAN BE RECREATED WITHOUT THREADS
+        BUT IT IS TOO LATE TO CHANGE THIS TEST
+        """
+
+        NUM_CYCLES = 100
         gc.collect()
         start_mem = psutil.Process(os.getpid()).memory_info().rss
         Log.note("Start memory {{mem|comma}}", mem=start_mem)
@@ -252,7 +273,7 @@ class TestLocks(FuzzyTestCase):
         objgraph.show_growth(limit=3)
 
         no_change = 0
-        for g in range(100):
+        for g in range(NUM_CYCLES):
             mid_mem = psutil.Process(os.getpid()).memory_info().rss
             Log.note("{{group}} memory {{mem|comma}}", group=g, mem=mid_mem)
             if USE_PYTHON_THREADS:
@@ -281,7 +302,7 @@ class TestLocks(FuzzyTestCase):
         consumer.please_stop.go()
         consumer.join()
 
-        self.assertGreater(no_change, 50)
+        self.assertGreater(no_change, NUM_CYCLES/2)  # IF MOST CYCLES DO NOT HAVE MORE OBJCETS, WE ASSUME THERE IS NO LEAK
 
 
 def query_activedata(suite, platforms=None):
