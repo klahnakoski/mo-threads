@@ -86,15 +86,18 @@ Locks are identical to [threading monitors](https://en.wikipedia.org/wiki/Monito
 1. The `wait()` method will **always acquire the lock before returning**. This is an important feature; ensuring every line in a code block has lock acquisition is easier to reason about.
 2. Exiting a lock via `__exit__()` will **always** signal any waiting thread to resume immediately. This ensures no signals are missed, and every thread gets an opportunity to react to possible change.  
 
-		lock = Lock()
-		todo = []
 
-		while not please_stop:
-			with lock:
-				while not todo:
-					lock.wait(seconds=1)
-				# DO SOME WORK
-	
+```python
+    lock = Lock()
+    todo = []
+    
+    while not please_stop:
+        with lock:
+            while not todo:
+                lock.wait(seconds=1)
+            # DO SOME WORK
+```
+
 In this example, we look for stuff `todo`, and if there is none, we wait for a second. During that time others can acquire the `lock` and add `todo` items. Upon releasing the the `lock`, our example code will immediately resume to see what's available, waiting again if nothing is found.
 
 
@@ -102,39 +105,50 @@ In this example, we look for stuff `todo`, and if there is none, we wait for a s
 
 [The `Signal` class](https://github.com/klahnakoski/pyLibrary/blob/dev/pyLibrary/thread/signal.py) is like a binary semaphore that can be signalled only once. It can be signalled by any thread. Subsequent signals have no effect. Any thread can wait on a `Signal`; and once signalled, all waiting threads are unblocked, including all subsequent waiting threads. A Signal's current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`. It can not be reversed.  
 
-	is_done = Signal()
-	yield is_done  # give signal to another that wants to know when done
-	# DO WORK
-	is_done.go()
+```python
+is_done = Signal()
+yield is_done  # give signal to another that wants to know when done
+# DO WORK
+is_done.go()
+```
 
 You can attach methods to a `Signal`, which will be run, just once, upon `go()`
 
-	is_done = Signal()
-	is_done.on_go(lambda: print("done"))
-	return is_done
+```python
+is_done = Signal()
+is_done.on_go(lambda: print("done"))
+return is_done
+```
 
 You may also wait on a `Signal`, which will block the current thread until the `Signal` is a go
 
-	is_done = worker_thread.stopped
-	is_done.wait()
-	is_done = print("worker thread is done")
+```python
+is_done = worker_thread.stopped
+is_done.wait()
+is_done = print("worker thread is done")
+```
 
 [The `Till` class](https://github.com/klahnakoski/pyLibrary/blob/dev/pyLibrary/thread/till.py) is used to represent timeouts. They can serve as a `sleep()` replacement: 
 
-	Till(seconds=20).wait()
-	Till(till=Date("21 Jan 2016").unix).wait()
+```python
+Till(seconds=20).wait()
+Till(till=Date("21 Jan 2016").unix).wait()
+```
 
 Because `Signals` are first class, they can be passed around and combined with other Signals. For example, using logical or (`|`):
 
-	def worker(please_stop):
-		while not please_stop:
-			#DO WORK 
+```python
+def worker(please_stop):
+    while not please_stop:
+        #DO WORK 
 
-	user_cancel = get_user_cancel_signal()
-	worker(user_cancel | Till(seconds=360))
+user_cancel = get_user_cancel_signal()
+worker(user_cancel | Till(seconds=360))
+```
 
 `Signal`s can also be combined using logical and (`&`):
 
-	(workerA.stopped & workerB.stopped).wait()
-	print("both threads are done")
-
+```python
+(workerA.stopped & workerB.stopped).wait()
+print("both threads are done")
+```

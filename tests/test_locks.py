@@ -13,19 +13,30 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import json
+import threading
 from time import time
 
+import gc
+
+import os
+
+import objgraph
 import requests
+import psutil
 
 from mo_collections.queue import Queue
 from mo_future import allocate_lock as _allocate_lock, text_type
 from mo_logs import Log, machine_metadata
+from mo_math.randoms import Random
 from mo_testing.fuzzytestcase import FuzzyTestCase
+
+import mo_threads
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till, till, lock
 from mo_threads.busy_lock import BusyLock
 from mo_times.timer import Timer
 
 ACTIVEDATA_URL = "https://activedata.allizom.org/query"
+USE_PYTHON_THREADS = False
 
 
 class TestLocks(FuzzyTestCase):
@@ -36,6 +47,19 @@ class TestLocks(FuzzyTestCase):
     @classmethod
     def tearDownClass(cls):
         Log.stop()
+
+    def test_signal_is_not_null(self):
+        a = Signal()
+        self.assertNotEqual(a, None)
+        a.go()
+        self.assertNotEqual(a, None)
+
+    def test_signal_is_boolean(self):
+        a = Signal()
+        self.assertEqual(bool(a), False)
+        a.go()
+        self.assertEqual(bool(a), True)
+
 
     def test_lock_speed(self):
         SCALE = 1000*100
@@ -168,6 +192,117 @@ class TestLocks(FuzzyTestCase):
             t.join()
 
         self.assertEqual(counter[0], 100*50, "Expecting lock to work")
+
+    def test_memory_cleanup_with_till(self):
+        gc.collect()
+        start_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("Start memory {{mem|comma}}", mem=start_mem)
+        root = Signal()
+        for i in range(100000):
+            root = root | Till(seconds=100000)
+            mid_mem = psutil.Process(os.getpid()).memory_info().rss
+            if mid_mem > 1.5 * 1000 * 1000 * 1000:
+                Log.note("{{num}} Till triggers created", num=i)
+                break
+        trigger = Signal()
+        root = root | trigger
+
+        mid_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("Mid memory {{mem|comma}}", mem=mid_mem)
+
+        trigger.go()
+        root.wait()  # THERE SHOULD BE NO DELAY HERE
+
+        Till(seconds=1).wait()  # LET TIMER DAEMON CLEANUP
+        gc.collect()
+        end_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("End memory {{mem|comma}}", mem=end_mem)
+
+        self.assertLess(end_mem, (start_mem+mid_mem)/2, "memory should be closer to start")
+
+    def test_job_queue_in_signal(self):
+
+        gc.collect()
+        start_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("Start memory {{mem|comma}}", mem=start_mem)
+
+        main = Signal()
+        result = [main | Signal() for _ in range(10000)]
+
+        mid_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("Mid memory {{mem|comma}}", mem=mid_mem)
+
+        del result
+        gc.collect()
+
+        end_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("End memory {{mem|comma}}", mem=end_mem)
+
+        main.go()  # NOT NEEDED, BUT INTERESTING
+
+        self.assertLess(end_mem, (start_mem+mid_mem)/2, "end memory should be closer to start")
+
+    def test_memory_cleanup_with_signal(self):
+        """
+        LOOKING FOR A MEMORY LEAK THAT HAPPENS ONLY DURING THREADING
+
+        ACTUALLY, THE PARTICULAR LEAK FOUND CAN BE RECREATED WITHOUT THREADS
+        BUT IT IS TOO LATE TO CHANGE THIS TEST
+        """
+
+        NUM_CYCLES = 100
+        gc.collect()
+        start_mem = psutil.Process(os.getpid()).memory_info().rss
+        Log.note("Start memory {{mem|comma}}", mem=start_mem)
+
+        queue = mo_threads.Queue("", max=1000000)
+
+        def _consumer(please_stop):
+            while not please_stop:
+                v = queue.pop(till=please_stop)
+                if Random.int(1000) == 0:
+                    Log.note("got " + v)
+
+        def _producer(t, please_stop=None):
+            for i in range(2):
+                queue.add(str(t)+":"+str(i))
+                Till(seconds=0.01).wait()
+
+        consumer = Thread.run("", _consumer)
+
+        objgraph.show_growth(limit=3)
+
+        no_change = 0
+        for g in range(NUM_CYCLES):
+            mid_mem = psutil.Process(os.getpid()).memory_info().rss
+            Log.note("{{group}} memory {{mem|comma}}", group=g, mem=mid_mem)
+            if USE_PYTHON_THREADS:
+                threads = [threading.Thread(target=_producer, args=(i,)) for i in range(500)]
+                for t in threads:
+                    t.start()
+            else:
+                threads = [Thread.run("", _producer, i) for i in range(500)]
+
+            for t in threads:
+                t.join()
+            del threads
+
+            gc.collect()
+            results = objgraph.growth(limit=3)
+            if not results:
+                no_change += 1
+            else:
+                for typ, count, delta in results:
+                    Log.note('%-*s%9d %+9d\n' % (18, typ, count, delta))
+                    obj_list = objgraph.by_type(typ)
+                    if obj_list:
+                        obj = obj_list[-1]
+                        objgraph.show_backrefs(obj, max_depth=10)
+
+        consumer.please_stop.go()
+        consumer.join()
+
+        self.assertGreater(no_change, NUM_CYCLES/2)  # IF MOST CYCLES DO NOT HAVE MORE OBJCETS, WE ASSUME THERE IS NO LEAK
 
 
 def query_activedata(suite, platforms=None):
