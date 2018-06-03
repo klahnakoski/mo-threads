@@ -44,7 +44,7 @@ def find_packages(where='.', lib_prefix='', exclude=()):
 
 setup(
     name='mo-threads',
-    version="2.10.18154",
+    version="2.11.18154",
     description='More Threads! Simpler and faster threading.',
     long_description=long_desc,
     author='Kyle Lahnakoski',
@@ -52,7 +52,7 @@ setup(
     url='https://github.com/klahnakoski/mo-threads',
     license='MPL 2.0',
     packages=find_packages(".", lib_prefix=""),
-    install_requires=["mo-dots>=2.7.18148","mo-future>=2.3.18147","mo-logs"],
+    install_requires=["mo-dots>=2.7.18148","mo-future>=2.3.18147","mo-logs>=2.11.18154"],
     include_package_data=True,
     zip_safe=False,
     classifiers=[  #https://pypi.python.org/pypi?%3Aaction=list_classifiers
