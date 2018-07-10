@@ -4,7 +4,7 @@
 
 ## Module `threads`
 
-The main distinction between this library and Python's is:
+The main benefits over Python's threading library is:
 
 1. **Multi-threaded queues do not use serialization** - Serialization is 
 great in the general case, where you may also be communicating between 
@@ -16,8 +16,8 @@ library is missing strict conventions for controlled and orderly shutdown.
 These conventions eliminate the need for `interrupt()` and `abort()`, both of 
 which are unstable idioms when using resources. Each thread can shutdown on 
 its own terms, but is expected to do so expediently.
-  * All threads are required to accept a `please_stop` signal, and are 
-  expected to test it in a timely manner and exit when signalled.
+  * All threads are required to accept a `please_stop` signal; are 
+  expected to test it in a timely manner; and expected to exit when signalled.
   * All threads have a parent - The parent is responsible for ensuring their 
   children get the `please_stop` signal, and are dead, before stopping 
   themselves. This responsibility is baked into the thread spawning process, 
@@ -73,37 +73,35 @@ These three aspects can be combined to give us 8 synchronization primitives:
 * `- - -` - Semaphore
 * `- B -` - Binary Semaphore
 * `R - -` - Monitor
-* `R B -` - Lock
-* `- - I` - Progress (not implemented)
-* `- B I` - Signal
-* `R - I` - ?limited usefulness?
-* `R B I` - ?limited usefulness?
+* `R B -` - **Lock**
+* `- - I` - Iterator/generator
+* `- B I` - **Signal**
+* `R - I` - Private Iterator 
+* `R B I` - Private Signal (best implemented as `is_done` Boolean flag)
 
-## The `Lock`
+## `Lock` Class
 
 Locks are identical to [threading monitors](https://en.wikipedia.org/wiki/Monitor_(synchronization)), except for two differences: 
 
-1. The `wait()` method will **always acquire the lock before returning**. This is an important feature; ensuring every line in a code block has lock acquisition is easier to reason about.
-2. Exiting a lock via `__exit__()` will **always** signal any waiting thread to resume immediately. This ensures no signals are missed, and every thread gets an opportunity to react to possible change.  
-
+1. The `wait()` method will **always acquire the lock before returning**. This is an important feature, it ensures every line inside a `with` block has lock acquisition is easier to reason about.
+2. Exiting a lock via `__exit__()` will **always** signal a waiting thread resume. This ensures no signals are missed, and every thread gets an opportunity to react to possible change.
 
 ```python
-    lock = Lock()
-    todo = []
-    
+    lock = Lo
     while not please_stop:
         with lock:
             while not todo:
                 lock.wait(seconds=1)
             # DO SOME WORK
+
 ```
 
 In this example, we look for stuff `todo`, and if there is none, we wait for a second. During that time others can acquire the `lock` and add `todo` items. Upon releasing the the `lock`, our example code will immediately resume to see what's available, waiting again if nothing is found.
 
 
-## The `Signal` and `Till` Classes
+## `Signal` and `Till` Classes
 
-[The `Signal` class](https://github.com/klahnakoski/pyLibrary/blob/dev/pyLibrary/thread/signal.py) is like a binary semaphore that can be signalled only once. It can be signalled by any thread. Subsequent signals have no effect. Any thread can wait on a `Signal`; and once signalled, all waiting threads are unblocked, including all subsequent waiting threads. A Signal's current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`. It can not be reversed.  
+[The `Signal` class](mo_threads/signal.py) is like a binary semaphore that can be signalled only once; it can be signalled by any thread; subsequent signals have no effect. Any thread can wait on a `Signal`; and once signalled, all waiting threads are unblocked, including all subsequent waiting threads. A Signal's current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`. It can not be reversed.  
 
 ```python
 is_done = Signal()
@@ -112,7 +110,7 @@ yield is_done  # give signal to another that wants to know when done
 is_done.go()
 ```
 
-You can attach methods to a `Signal`, which will be run, just once, upon `go()`
+You can attach methods to a `Signal`, which will be run, just once, upon `go()`. If already signalled, then the method is run immediately.
 
 ```python
 is_done = Signal()
@@ -128,14 +126,7 @@ is_done.wait()
 is_done = print("worker thread is done")
 ```
 
-[The `Till` class](https://github.com/klahnakoski/pyLibrary/blob/dev/pyLibrary/thread/till.py) is used to represent timeouts. They can serve as a `sleep()` replacement: 
-
-```python
-Till(seconds=20).wait()
-Till(till=Date("21 Jan 2016").unix).wait()
-```
-
-Because `Signals` are first class, they can be passed around and combined with other Signals. For example, using logical or (`|`):
+`Signals` are first class, they can be passed around and combined with other Signals. For example, using the `__or__` operator (`|`):  `either = lhs | rhs`; `either` will be triggered when `lhs` or `rhs` is triggered.
 
 ```python
 def worker(please_stop):
@@ -146,9 +137,22 @@ user_cancel = get_user_cancel_signal()
 worker(user_cancel | Till(seconds=360))
 ```
 
-`Signal`s can also be combined using logical and (`&`):
+`Signal`s can also be combined using logical and (`&`):  `both = lhs & rhs`; `both` is triggered only when both `lhs` and `rhs` are triggered:
 
 ```python
 (workerA.stopped & workerB.stopped).wait()
 print("both threads are done")
 ```
+
+## `Till` Class
+
+[The `Till` class](https://github.com/klahnakoski/pyLibrary/blob/dev/pyLibrary/thread/till.py) is used to represent timeouts. They can serve as a `sleep()` replacement: 
+
+```python
+Till(seconds=20).wait()
+Till(till=Date("21 Jan 2016").unix).wait()
+```
+
+Actually, `Till` is better than `sleep()` because you can combine them with other `Signals`. 
+
+Beware that all `Till` objects will be triggered before expiry when the main thread is asked to shutdown
