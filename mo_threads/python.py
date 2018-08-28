@@ -88,7 +88,7 @@ class Python(object):
                 if line == THREAD_STOP:
                     please_stop.go()
                     break
-                Log.note("Error line: {{line}}", line=line)
+                Log.note("Error line from {{name}}({{pid}}): {{line}}", line=line, name=self.process.name, pid=self.process.pid)
             except Exception as e:
                 Log.error("could not process line", cause=e)
 
