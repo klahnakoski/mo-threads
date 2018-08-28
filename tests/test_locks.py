@@ -12,26 +12,24 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import gc
 import json
+import os
 import threading
 from time import time
-
-import gc
-
-import os
+from unittest import skip
 
 import objgraph
-import requests
 import psutil
+import requests
 
+import mo_threads
 from mo_collections.queue import Queue
 from mo_future import allocate_lock as _allocate_lock, text_type
 from mo_logs import Log, machine_metadata
 from mo_math.randoms import Random
 from mo_testing.fuzzytestcase import FuzzyTestCase
-
-import mo_threads
-from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till, till, lock
+from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
 from mo_threads.busy_lock import BusyLock
 from mo_times.timer import Timer
 
@@ -242,6 +240,7 @@ class TestLocks(FuzzyTestCase):
 
         self.assertLess(end_mem, (start_mem+mid_mem)/2, "end memory should be closer to start")
 
+    @skip("takes too long")
     def test_memory_cleanup_with_signal(self):
         """
         LOOKING FOR A MEMORY LEAK THAT HAPPENS ONLY DURING THREADING
