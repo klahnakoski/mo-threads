@@ -54,7 +54,7 @@ class Queue(object):
         self.silent = silent
         self.allow_add_after_close=allow_add_after_close
         self.unique = unique
-        self.please_stop = Signal("stop signal for " + name)
+        self.closed = Signal("stop adding signal for " + name)  # INDICATE THE PRODUCER IS DONE GENERATING ITEMS TO QUEUE
         self.lock = Lock("lock for queue " + name)
         self.queue = deque()
         self.next_warning = time()  # FOR DEBUGGING
@@ -62,7 +62,7 @@ class Queue(object):
     def __iter__(self):
         try:
             while True:
-                value = self.pop(self.please_stop)
+                value = self.pop()
                 if value is THREAD_STOP:
                     break
                 if value is not None:
@@ -70,16 +70,23 @@ class Queue(object):
         except Exception as e:
             Log.warning("Tell me about what happened here", e)
 
-    def add(self, value, timeout=None):
+    def add(self, value, timeout=None, force=False):
+        """
+        :param value:  ADDED THE THE QUEUE
+        :param timeout:  HOW LONG TO WAIT FOR QUEUE TO NOT BE FULL
+        :param force:  ADD TO QUEUE, EVEN IF FULL (USE ONLY WHEN CONSUMER IS RETURNING WORK TO THE QUEUE)
+        :return: self
+        """
         with self.lock:
             if value is THREAD_STOP:
                 # INSIDE THE lock SO THAT EXITING WILL RELEASE wait()
                 self.queue.append(value)
-                self.please_stop.go()
+                self.closed.go()
                 return
 
-            self._wait_for_queue_space(timeout=timeout)
-            if self.please_stop and not self.allow_add_after_close:
+            if not force:
+                self._wait_for_queue_space(timeout=timeout)
+            if self.closed and not self.allow_add_after_close:
                 Log.error("Do not add to closed queue")
             else:
                 if self.unique:
@@ -93,12 +100,12 @@ class Queue(object):
         """
         SNEAK value TO FRONT OF THE QUEUE
         """
-        if self.please_stop and not self.allow_add_after_close:
+        if self.closed and not self.allow_add_after_close:
             Log.error("Do not push to closed queue")
 
         with self.lock:
             self._wait_for_queue_space()
-            if not self.please_stop:
+            if not self.closed:
                 self.queue.appendleft(value)
         return self
 
@@ -113,24 +120,24 @@ class Queue(object):
         return Null, self.pop(till=till)
 
     def extend(self, values):
-        if self.please_stop and not self.allow_add_after_close:
+        if self.closed and not self.allow_add_after_close:
             Log.error("Do not push to closed queue")
 
         with self.lock:
             # ONCE THE queue IS BELOW LIMIT, ALLOW ADDING MORE
             self._wait_for_queue_space()
-            if not self.please_stop:
+            if not self.closed:
                 if self.unique:
                     for v in values:
                         if v is THREAD_STOP:
-                            self.please_stop.go()
+                            self.closed.go()
                             continue
                         if v not in self.queue:
                             self.queue.append(v)
                 else:
                     for v in values:
                         if v is THREAD_STOP:
-                            self.please_stop.go()
+                            self.closed.go()
                             continue
                         self.queue.append(v)
         return self
@@ -152,14 +159,14 @@ class Queue(object):
         if self.next_warning < now:
             self.next_warning = now + wait_time
 
-        while not self.please_stop and len(self.queue) >= self.max:
+        while not self.closed and len(self.queue) >= self.max:
             if now > time_to_stop_waiting:
                 Log.error(THREAD_TIMEOUT)
 
             if self.silent:
                 self.lock.wait(Till(till=time_to_stop_waiting))
             else:
-                self.lock.wait(Till(timeout=wait_time))
+                self.lock.wait(Till(seconds=wait_time))
                 if len(self.queue) >= self.max:
                     now = time()
                     if self.next_warning < now:
@@ -196,13 +203,13 @@ class Queue(object):
                 if self.queue:
                     value = self.queue.popleft()
                     return value
-                if self.please_stop:
+                if self.closed:
                     break
-                if not self.lock.wait(till=till | self.please_stop):
-                    if self.please_stop:
+                if not self.lock.wait(till=self.closed | till):
+                    if self.closed:
                         break
                     return None
-        (DEBUG or not self.silent) and Log.note(self.name + " queue stopped")
+        (DEBUG or not self.silent) and Log.note(self.name + " queue closed")
         return THREAD_STOP
 
     def pop_all(self):
@@ -220,19 +227,18 @@ class Queue(object):
         NON-BLOCKING POP IN QUEUE, IF ANY
         """
         with self.lock:
-            if self.please_stop:
+            if self.closed:
                 return [THREAD_STOP]
             elif not self.queue:
                 return None
             else:
                 v =self.queue.pop()
                 if v is THREAD_STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
-                    self.please_stop.go()
+                    self.closed.go()
                 return v
 
     def close(self):
-        with self.lock:
-            self.please_stop.go()
+        self.closed.go()
 
     def commit(self):
         pass
@@ -242,6 +248,151 @@ class Queue(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+
+class PriorityQueue(Queue):
+    """
+        ADDS ITEMS TO THEIR PRIORITY AND POP'S THE HIGHEST PRIORITY VALUE (UNLESS REQUESTED OTHERWISE)
+    """
+    def __init__(self, name, numpriorities, max=None, silent=False, unique=False, allow_add_after_close=False):
+        Queue.__init__(self, name=name, max=max, silent=silent, unique=False, allow_add_after_close=False)
+
+        self.numpriorities = numpriorities
+        self.queue = [
+            Queue(name=name, max=max, silent=silent, unique=False, allow_add_after_close=False)
+            for _ in range(numpriorities)
+        ]
+
+    def __iter__(self):
+        try:
+            while True:
+                value = self.pop(self.closed)
+                if value is THREAD_STOP:
+                    break
+                if value is not None:
+                    yield value
+        except Exception as e:
+            Log.warning("Tell me about what happened here", e)
+
+        if not self.silent:
+            Log.note("queue iterator is done")
+
+    def add(self, value, timeout=None, priority=0):
+        with self.lock:
+            if value is THREAD_STOP:
+                # INSIDE THE lock SO THAT EXITING WILL RELEASE wait()
+                self.queue[priority].queue.append(value)
+                self.closed.go()
+                return
+
+            self.queue[priority]._wait_for_queue_space(timeout=timeout)
+            if self.closed and not self.queue[priority].allow_add_after_close:
+                Log.error("Do not add to closed queue")
+            else:
+                if self.unique:
+                    if value not in self.queue[priority].queue:
+                        self.queue[priority].queue.append(value)
+                else:
+                    self.queue[priority].queue.append(value)
+        return self
+
+    def push(self, value, priority=0):
+        """
+        SNEAK value TO FRONT OF THE QUEUE
+        """
+        if self.closed and not self.queue[priority].allow_add_after_close:
+            Log.error("Do not push to closed queue")
+
+        with self.lock:
+            self.queue[priority]._wait_for_queue_space()
+            if not self.closed:
+                self.queue[priority].queue.appendleft(value)
+        return self
+
+    def __len__(self):
+        with self.lock:
+            return sum([len(q.queue) for q in self.queue])
+
+    def __nonzero__(self):
+        with self.lock:
+            return any(any(r != THREAD_STOP for r in q.queue) for q in self.queue)
+
+    def highest_entry(self):
+        for count, q in enumerate(self.queue):
+            if len(q) > 0:
+                return count
+        return None
+
+    def pop(self, till=None, priority=None):
+        """
+        WAIT FOR NEXT ITEM ON THE QUEUE
+        RETURN THREAD_STOP IF QUEUE IS CLOSED
+        RETURN None IF till IS REACHED AND QUEUE IS STILL EMPTY
+
+        :param till:  A `Signal` to stop waiting and return None
+        :return:  A value, or a THREAD_STOP or None
+        """
+        if till is not None and not isinstance(till, Signal):
+            Log.error("expecting a signal")
+
+        with self.lock:
+            while True:
+                if not priority:
+                    priority = self.highest_entry()
+                if priority:
+                    value = self.queue[priority].queue.popleft()
+                    return value
+                if self.closed:
+                    break
+                if not self.lock.wait(till=till | self.closed):
+                    if self.closed:
+                        break
+                    return None
+        (DEBUG or not self.silent) and Log.note(self.name + " queue stopped")
+        return THREAD_STOP
+
+    def pop_all(self, priority=None):
+        """
+        NON-BLOCKING POP ALL IN QUEUE, IF ANY
+        """
+        output = []
+        with self.lock:
+            if not priority:
+                priority = self.highest_entry()
+            if priority:
+                output = list(self.queue[priority].queue)
+                self.queue[priority].queue.clear()
+        return output
+
+    def pop_all_queues(self):
+        """
+        NON-BLOCKING POP ALL IN QUEUE, IF ANY
+        """
+        output = []
+        with self.lock:
+            for q in self.queue:
+                output.extend(list(q.queue))
+                q.queue.clear()
+
+        return output
+
+    def pop_one(self, priority=None):
+        """
+        NON-BLOCKING POP IN QUEUE, IF ANY
+        """
+        with self.lock:
+            if not priority:
+                priority = self.highest_entry()
+            if self.closed:
+                return [THREAD_STOP]
+            elif not self.queue:
+                return None
+            else:
+                v =self.pop(priority=priority)
+                if v is THREAD_STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
+                    self.closed.go()
+                return v
+
 
 
 class ThreadedQueue(Queue):
@@ -272,10 +423,7 @@ class ThreadedQueue(Queue):
         Queue.__init__(self, name=name, max=max_size, silent=silent)
 
         def worker_bee(please_stop):
-            def stopper():
-                self.add(THREAD_STOP)
-
-            please_stop.on_go(stopper)
+            please_stop.on_go(lambda: self.add(THREAD_STOP))
 
             _buffer = []
             _post_push_functions = []
@@ -364,24 +512,15 @@ class ThreadedQueue(Queue):
     def add(self, value, timeout=None):
         with self.lock:
             self._wait_for_queue_space(timeout=timeout)
-            if not self.please_stop:
+            if not self.closed:
                 self.queue.append(value)
-            # if Random.range(0, 50) == 0:
-            #     sizes = wrap([{"id":i["id"], "size":len(value2json(i))} for i in self.queue if isinstance(i, Mapping)])
-            #     size=sum(sizes.size)
-            #     if size>50000000:
-            #         from jx_python import jx
-            #
-            #         biggest = jx.sort(sizes, "size").last().id
-            #         Log.note("Big record {{id}}", id=biggest)
-            #     Log.note("{{name}} has {{num}} items with json size of {{size|comma}}", name=self.name, num=len(self.queue), size=size)
         return self
 
     def extend(self, values):
         with self.lock:
             # ONCE THE queue IS BELOW LIMIT, ALLOW ADDING MORE
             self._wait_for_queue_space()
-            if not self.please_stop:
+            if not self.closed:
                 self.queue.extend(values)
             Log.note("{{name}} has {{num}} items", name=self.name, num=len(self.queue))
         return self
@@ -389,9 +528,9 @@ class ThreadedQueue(Queue):
     def __enter__(self):
         return self
 
-    def __exit__(self, a, b, c):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         self.add(THREAD_STOP)
-        if isinstance(b, BaseException):
+        if isinstance(exc_val, BaseException):
             self.thread.please_stop.go()
         self.thread.join()
 

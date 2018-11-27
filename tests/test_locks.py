@@ -111,14 +111,14 @@ class TestLocks(FuzzyTestCase):
 
     def test_lock_and_till(self):
         locker = Lock("prime lock")
-        got_lock = Signal()
+        got_signal = Signal()
         a_is_ready = Signal("a lock")
         b_is_ready = Signal("b lock")
 
         Log.note("begin")
         def loop(is_ready, please_stop):
             with locker:
-                while not got_lock:
+                while not got_signal:
                     locker.wait(till=Till(seconds=0))
                     is_ready.go()
                     Log.note("is ready", thread=Thread.current().name)
@@ -131,7 +131,7 @@ class TestLocks(FuzzyTestCase):
         a_is_ready.wait()
         b_is_ready.wait()
         with locker:
-            got_lock.go()
+            got_signal.go()
             locker.wait(till=Till(seconds=0.1))
             Log.note("leaving")
             pass
