@@ -73,7 +73,7 @@ These three aspects can be combined to give us 8 synchronization primitives:
 * `- - -` - Semaphore
 * `- B -` - Binary Semaphore
 * `R - -` - Monitor
-* `R B -` - **[Lock](lock-class)**
+* `R B -` - **[Lock](#lock-class)**
 * `- - I` - Iterator/generator
 * `- B I` - **[Signal](#signal-class)**
 * `R - I` - Private Iterator 
