@@ -101,7 +101,17 @@ In this example, we look for stuff `todo`, and if there is none, we wait for a s
 
 ## `Signal` and `Till` Classes
 
-[The `Signal` class](mo_threads/signal.py) is like a binary semaphore that can be signalled only once; it can be signalled by any thread; subsequent signals have no effect. Any thread can wait on a `Signal`; and once signalled, all waiting threads are unblocked, including all subsequent waiting threads. A Signal's current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`. It can not be reversed.  
+[The `Signal` class](mo_threads/signal.py) is a binary semaphore that can be signalled only once; it can be signalled by any thread; subsequent signals have no effect. Any thread can wait on a `Signal`; and once signalled, all waiting threads are unblocked, including all subsequent waiting threads. A Signal's current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`. It can not be reversed.  
+
+Both are like a Promise, but focused on third party manipulation.
+
+|   Signal   |      Promise       |
+|:----------:|:------------------:|
+|   s.go()   |    s.resolve()     |
+| s.on_go(f) |     s.then(m)      |
+|  s.wait()  |      await s       |
+|   s & t    | Promise.all(s, t)  | 
+|   s | t    | Promise.race(s, t) |
 
 ```python
 is_done = Signal()
