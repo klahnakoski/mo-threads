@@ -83,8 +83,8 @@ These three aspects can be combined to give us 8 synchronization primitives:
 
 Locks are identical to [threading monitors](https://en.wikipedia.org/wiki/Monitor_(synchronization)), except for two differences: 
 
-1. The `wait()` method will **always acquire the lock before returning**. This is an important feature, it ensures every line inside a `with` block has lock acquisition is easier to reason about.
-2. Exiting a lock via `__exit__()` will **always** signal a waiting thread resume. This ensures no signals are missed, and every thread gets an opportunity to react to possible change.
+1. The `wait()` method will **always acquire the lock before returning**. This is an important feature, it ensures every line inside a `with` block has lock acquisition, and is easier to reason about.
+2. Exiting a lock via `__exit__()` will **always** signal a waiting thread to resume. This ensures no signals are missed, and every thread gets an opportunity to react to possible change.
 
 ```python
     lock = Lo
@@ -101,7 +101,7 @@ In this example, we look for stuff `todo`, and if there is none, we wait for a s
 
 ## `Signal` Class
 
-[The `Signal` class](mo_threads/signal.py) is a binary semaphore that can be signalled only once; it can be signalled by any thread; subsequent signals have no effect. Any thread can wait on a `Signal`; and once signalled, all waiting threads are unblocked, including all subsequent waiting threads. A Signal's current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`. It can not be reversed.  
+[The `Signal` class](mo_threads/signal.py) is a binary semaphore that can be signalled only once; subsequent signals have no effect. It can be signalled by any thread; any thread can wait on a `Signal`; and once signalled, all waiting threads are unblocked, including all subsequent waiting threads. A Signal's current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`. It can not be reversed.  
 
 Both are like a Promise, but focused on third party manipulation.
 
