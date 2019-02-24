@@ -22,7 +22,7 @@ its own terms, but is expected to do so expediently.
   children get the `please_stop` signal, and are dead, before stopping 
   themselves. This responsibility is baked into the thread spawning process, 
   so you need not deal with it unless you want.
-3. Uses [**Signals**](#the-signal-and-till-classes) to simplify logical 
+3. Uses [**Signals**](#signal-class) to simplify logical 
 dependencies among multiple threads, events, and timeouts.
 4. **Logging and Profiling is Integrated** - Logging and exception handling 
 is seamlessly integrated: This means logs are centrally handled, and thread 
@@ -73,9 +73,9 @@ These three aspects can be combined to give us 8 synchronization primitives:
 * `- - -` - Semaphore
 * `- B -` - Binary Semaphore
 * `R - -` - Monitor
-* `R B -` - **Lock**
+* `R B -` - **[Lock](#lock-class)**
 * `- - I` - Iterator/generator
-* `- B I` - **Signal**
+* `- B I` - **[Signal](#signal-class)**
 * `R - I` - Private Iterator 
 * `R B I` - Private Signal (best implemented as `is_done` Boolean flag)
 
@@ -83,8 +83,8 @@ These three aspects can be combined to give us 8 synchronization primitives:
 
 Locks are identical to [threading monitors](https://en.wikipedia.org/wiki/Monitor_(synchronization)), except for two differences: 
 
-1. The `wait()` method will **always acquire the lock before returning**. This is an important feature, it ensures every line inside a `with` block has lock acquisition is easier to reason about.
-2. Exiting a lock via `__exit__()` will **always** signal a waiting thread resume. This ensures no signals are missed, and every thread gets an opportunity to react to possible change.
+1. The `wait()` method will **always acquire the lock before returning**. This is an important feature, it ensures every line inside a `with` block has lock acquisition, and is easier to reason about.
+2. Exiting a lock via `__exit__()` will **always** signal a waiting thread to resume. This ensures no signals are missed, and every thread gets an opportunity to react to possible change.
 
 ```python
     lock = Lo
@@ -99,9 +99,19 @@ Locks are identical to [threading monitors](https://en.wikipedia.org/wiki/Monito
 In this example, we look for stuff `todo`, and if there is none, we wait for a second. During that time others can acquire the `lock` and add `todo` items. Upon releasing the the `lock`, our example code will immediately resume to see what's available, waiting again if nothing is found.
 
 
-## `Signal` and `Till` Classes
+## `Signal` Class
 
-[The `Signal` class](mo_threads/signal.py) is like a binary semaphore that can be signalled only once; it can be signalled by any thread; subsequent signals have no effect. Any thread can wait on a `Signal`; and once signalled, all waiting threads are unblocked, including all subsequent waiting threads. A Signal's current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`. It can not be reversed.  
+[The `Signal` class](mo_threads/signal.py) is a binary semaphore that can be signalled only once; subsequent signals have no effect. It can be signalled by any thread; any thread can wait on a `Signal`; and once signalled, all waiting threads are unblocked, including all subsequent waiting threads. A Signal's current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`. It can not be reversed.  
+
+Both are like a Promise, but focused on third party manipulation.
+
+|   Signal   |      Promise       |
+|:----------:|:------------------:|
+|   s.go()   |    s.resolve()     |
+| s.on_go(f) |     s.then(m)      |
+|  s.wait()  |      await s       |
+|   s & t    | Promise.all(s, t)  | 
+|   s | t    | Promise.race(s, t) |
 
 ```python
 is_done = Signal()
@@ -146,13 +156,13 @@ print("both threads are done")
 
 ## `Till` Class
 
-[The `Till` class](https://github.com/klahnakoski/pyLibrary/blob/dev/pyLibrary/thread/till.py) is used to represent timeouts. They can serve as a `sleep()` replacement: 
+[The `Till` class](https://github.com/klahnakoski/pyLibrary/blob/dev/pyLibrary/thread/till.py) is a special `Signal` used to represent timeouts.  
 
 ```python
 Till(seconds=20).wait()
 Till(till=Date("21 Jan 2016").unix).wait()
 ```
 
-Actually, `Till` is better than `sleep()` because you can combine them with other `Signals`. 
+Use `Till` rather than `sleep()` because you can combine `Till` objects with other `Signals`. 
 
-Beware that all `Till` objects will be triggered before expiry when the main thread is asked to shutdown
+**Beware that all `Till` objects will be triggered before expiry when the main thread is asked to shutdown**
