@@ -8,3 +8,4 @@ exclude_lines =
     except Exception as
     except BaseException as
     if DEBUG
+    if self.debug and

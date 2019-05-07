@@ -108,15 +108,15 @@ In this example, we look for stuff `todo`, and if there is none, we wait for a s
 
 [The `Signal` class](mo_threads/signal.py) is a binary semaphore that can be signalled only once; subsequent signals have no effect. It can be signalled by any thread; any thread can wait on a `Signal`; and once signalled, all waiting threads are unblocked, including all subsequent waiting threads. A Signal's current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`. It can not be reversed.  
 
-Both are like a Promise, but focused on third party manipulation.
+Signals are like a Promise, but more explicit 
 
 |   Signal   |      Promise       |
 |:----------:|:------------------:|
 |   s.go()   |    s.resolve()     |
-| s.on_go(f) |     s.then(m)      |
+| s.then(f) |     s.then(m)      |
 |  s.wait()  |      await s       |
 |   s & t    | Promise.all(s, t)  | 
-|   s | t    | Promise.race(s, t) |
+|   s &vert; t    | Promise.race(s, t) |
 
 ```python
 is_done = Signal()
@@ -129,7 +129,7 @@ You can attach methods to a `Signal`, which will be run, just once, upon `go()`.
 
 ```python
 is_done = Signal()
-is_done.on_go(lambda: print("done"))
+is_done.then(lambda: print("done"))
 return is_done
 ```
 

@@ -24,7 +24,6 @@ DEBUG_SIGNAL = False
 SEED = random.Random()
 
 
-
 class Signal(object):
     """
     SINGLE-USE THREAD SAFE SIGNAL

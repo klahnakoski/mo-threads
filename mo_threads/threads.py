@@ -13,15 +13,16 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-import signal as _signal
-import sys
 from copy import copy
 from datetime import datetime, timedelta
+import signal as _signal
+import sys
 from time import sleep
 
 from mo_dots import Data, coalesce, unwraplist
 from mo_future import allocate_lock, get_function_name, get_ident, start_new_thread, text_type
 from mo_logs import Except, Log
+
 from mo_threads.lock import Lock
 from mo_threads.profiles import CProfiler, write_profiles
 from mo_threads.signal import AndSignals, Signal
