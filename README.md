@@ -2,6 +2,11 @@
 # More Threads!
 
 
+|Branch      |Status   |
+|------------|---------|
+|master      | [![Build Status](https://travis-ci.org/klahnakoski/mo-threads.svg?branch=master)](https://travis-ci.org/klahnakoski/mo-threads) |
+|dev         | [![Build Status](https://travis-ci.org/klahnakoski/mo-threads.svg?branch=dev)](https://travis-ci.org/klahnakoski/mo-threads)  [![Coverage Status](https://coveralls.io/repos/github/klahnakoski/mo-threads/badge.svg?branch=dev)](https://coveralls.io/github/klahnakoski/mo-threads?branch=dev)  |
+
 ## Module `threads`
 
 The main benefits over Python's threading library is:
