@@ -75,7 +75,7 @@ These three aspects can be combined to give us 8 synchronization primitives:
 * `R - -` - Monitor
 * `R B -` - **[Lock](#lock-class)**
 * `- - I` - Iterator/generator
-* `- B I` - **[Signal](#signal-class)**
+* `- B I` - **[Signal](#signal-class)** (or Promise)
 * `R - I` - Private Iterator 
 * `R B I` - Private Signal (best implemented as `is_done` Boolean flag)
 
