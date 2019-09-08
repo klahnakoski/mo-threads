@@ -67,12 +67,14 @@ class AllThread(object):
             Log.error("Problem in child threads", cause=exceptions)
 
 
-    def add(self, target, *args, **kwargs):
+    def add(self, name, target, *args, **kwargs):
         """
         target IS THE FUNCTION TO EXECUTE IN THE THREAD
         """
-        t = Thread.run(target.__name__, target, *args, **kwargs)
+        t = Thread.run(name, target, *args, **kwargs)
         self.threads.append(t)
+
+    run = add
 
 
 class BaseThread(object):
