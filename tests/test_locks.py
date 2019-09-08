@@ -86,7 +86,7 @@ class TestLocks(FuzzyTestCase):
 
         done = Signal("done")
         slow = Queue()
-        q = ThreadedQueue("test queue", queue=slow)
+        q = ThreadedQueue("test queue", slow_queue=slow)
 
         def empty(please_stop):
             while not please_stop:

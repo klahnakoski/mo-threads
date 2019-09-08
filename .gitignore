@@ -7,3 +7,5 @@
 /tests/*.pyc
 /.coverage
 .svn
+.idea
+/mo-threads.iml
