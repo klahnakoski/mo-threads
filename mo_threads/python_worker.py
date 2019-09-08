@@ -36,6 +36,8 @@ please_stop = Signal()
 
 
 def command_loop(local):
+    STDOUT.write(value2json({"out": "ok"}))
+    STDOUT.write('\n')
     DEBUG and Log.note("mo-python process running with {{config|json}}", config=local['config'])
     while not please_stop:
         line = sys.stdin.readline()

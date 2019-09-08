@@ -50,7 +50,7 @@ class Process(object):
 
             self.please_stop = Signal()
             self.please_stop.then(self._kill)
-            self.child_lock = Lock()
+            self.child_lock = Lock("children of "+self.name)
             self.children = [
                 Thread.run(self.name + " stdin", self._writer, service.stdin, self.stdin, please_stop=self.service_stopped, parent_thread=self),
                 Thread.run(self.name + " stdout", self._reader, "stdout", service.stdout, self.stdout, please_stop=self.service_stopped, parent_thread=self),
@@ -146,6 +146,7 @@ class Process(object):
                     break
         finally:
             pipe.close()
+            receive.add(THREAD_STOP)
         self.debug and Log.note("{{process}} ({{name}} is closed)", name=name, process=self.name)
 
         receive.add(THREAD_STOP)

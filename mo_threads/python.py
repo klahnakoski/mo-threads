@@ -13,6 +13,7 @@ import os
 from mo_dots import set_default, wrap
 from mo_json import json2value, value2json
 from mo_logs import Except, Log
+from mo_threads.signal import DONE
 
 from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, Till
 
@@ -29,9 +30,11 @@ class Python(object):
 
         self.process = Process(name, [PYTHON, "mo_threads" + os.sep + "python_worker.py"], shell=True)
         self.process.stdin.add(value2json(set_default({"debug": {"trace": True}}, config)))
-
+        status = self.process.stdout.pop()
+        if status != '{"out":"ok"}':
+            Log.error("could not start python\n{{error|indent}}", error=self.process.stderr.pop_all()+[status]+self.process.stdin.pop_all())
         self.lock = Lock("wait for response from "+name)
-        self.current_task = None
+        self.current_task = DONE
         self.current_response = None
         self.current_error = None
 
@@ -40,13 +43,14 @@ class Python(object):
 
     def _execute(self, command):
         with self.lock:
-            if self.current_task is not None:
-                self.current_task.wait()
+            self.current_task.wait()
             self.current_task = Signal()
             self.current_response = None
             self.current_error = None
+        if self.process.service_stopped:
+            Log.error("python is not running")
         self.process.stdin.add(value2json(command))
-        self.current_task.wait()
+        (self.current_task | self.process.service_stopped).wait()
         with self.lock:
             try:
                 if self.current_error:
@@ -54,7 +58,7 @@ class Python(object):
                 else:
                     return self.current_response
             finally:
-                self.current_task = None
+                self.current_task = DONE
                 self.current_response = None
                 self.current_error = None
 
