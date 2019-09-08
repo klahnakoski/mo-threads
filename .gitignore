@@ -6,3 +6,4 @@
 /tests/__pycache__/*.pyc
 /tests/*.pyc
 /.coverage
+.svn

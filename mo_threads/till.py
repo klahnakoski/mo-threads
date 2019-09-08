@@ -40,14 +40,11 @@ class Till(Signal):
     def __new__(cls, till=None, seconds=None):
         if not Till.enabled:
             return DONE
-        elif till != None:
+        if seconds is None:
             return object.__new__(cls)
-        elif seconds == None:
-            return object.__new__(cls)
-        elif seconds <= 0:
+        if seconds <= 0:
             return DONE
-        else:
-            return object.__new__(cls)
+        return object.__new__(cls)
 
     def __init__(self, till=None, seconds=None):
         """
