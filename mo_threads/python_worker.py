@@ -8,8 +8,10 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
+import os
 from copy import copy
 
+from mo_files import File
 from mo_future import is_text
 
 context = copy(globals())
@@ -22,7 +24,7 @@ from mo_dots import is_list
 from mo_dots import set_default, listwrap, coalesce
 from mo_future import text_type, PY3
 from mo_json import json2value, value2json
-from mo_logs import Log, constants
+from mo_logs import Log, constants, Except
 from mo_threads import Signal
 
 if PY3:
@@ -38,7 +40,17 @@ please_stop = Signal()
 def command_loop(local):
     STDOUT.write(value2json({"out": "ok"}))
     STDOUT.write('\n')
-    DEBUG and Log.note("mo-python process running with {{config|json}}", config=local['config'])
+    DEBUG and Log.note(
+        "python process running with\n"
+        "Config:\n{{config|json|indent}}\n"
+        "Environment:\n{{env|json|indent}}\n"
+        "Direcotry:\n{{cwd|indent}}\n",
+        config=local['config'],
+        env=dict(os.environ.items()),
+        cwd=os.getcwd()
+    )
+
+    file = File
     while not please_stop:
         line = sys.stdin.readline()
         try:
@@ -76,6 +88,7 @@ def command_loop(local):
                     STDOUT.write(value2json({"out": local['_return']}))
                     STDOUT.write('\n')
         except Exception as e:
+            e = Except.wrap(e)
             STDOUT.write(value2json({"err": e}))
             STDOUT.write('\n')
         finally:
@@ -92,8 +105,7 @@ def temp_var():
     finally:
         num_temps += 1
 
-
-if __name__ == "__main__":
+def start():
     try:
         config = json2value(sys.stdin.readline().decode('utf8'))
         constants.set(config.constants)
@@ -103,3 +115,7 @@ if __name__ == "__main__":
         Log.error("problem staring worker", cause=e)
     finally:
         Log.stop()
+
+
+if __name__ == "__main__":
+    start()
