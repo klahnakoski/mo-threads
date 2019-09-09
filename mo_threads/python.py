@@ -57,11 +57,12 @@ class Python(object):
             self.current_task = Signal()
             self.current_response = None
             self.current_error = None
-        if self.process.service_stopped:
-            Log.error("python is not running")
-        self.process.stdin.add(value2json(command))
-        (self.current_task | self.process.service_stopped).wait()
-        with self.lock:
+
+            if self.process.service_stopped:
+                Log.error("python is not running")
+            self.process.stdin.add(value2json(command))
+            (self.current_task | self.process.service_stopped).wait()
+
             try:
                 if self.current_error:
                     Log.error("problem with process call", cause=Except.new_instance(self.current_error))
@@ -78,18 +79,16 @@ class Python(object):
             if line is THREAD_STOP:
                 break
             try:
-                data = json2value(line.decode('utf8'))
+                data = json2value(line)
                 if "log" in data:
                     Log.main_log.write(*data.log)
                 elif "out" in data:
-                    with self.lock:
-                        self.current_response = data.out
-                        self.current_task.go()
+                    self.current_response = data.out
+                    self.current_task.go()
                 elif "err" in data:
-                    with self.lock:
-                        self.current_error = data.err
-                        self.current_task.go()
-            except Exception:
+                    self.current_error = data.err
+                    self.current_task.go()
+            except Exception as e:
                 Log.note("non-json line: {{line}}", line=line)
         DEBUG and Log.note("stdout reader is done")
 

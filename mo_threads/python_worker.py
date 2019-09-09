@@ -31,14 +31,13 @@ else:
     STDOUT = sys.stdout
     STDIN = sys.stdin
 
-DEBUG = True
+DEBUG = False
 DONE = value2json({"out": {}}).encode('utf8') + b"\n"
 please_stop = Signal()
 
 
 def command_loop(local):
-    STDOUT.write(b'{"out": "ok"}\n')
-    STDOUT.write(("directory: "+os.getcwd()).encode('utf8'))
+    STDOUT.write(b'{"out":"ok"}\n')
     DEBUG and Log.note("python process running")
 
     file = File
@@ -95,6 +94,7 @@ def temp_var():
         return "temp_var" + text_type(num_temps)
     finally:
         num_temps += 1
+
 
 def start():
     try:
