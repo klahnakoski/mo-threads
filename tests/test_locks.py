@@ -80,16 +80,16 @@ class TestLocks(FuzzyTestCase):
             Till(seconds=1).wait()
         self._test_queue_speed(test=True)
 
-    def _test_queue_speed(self, test=False):
+    def test_queue_speed(self, test=False):
         SCALE = 1000*10
 
         done = Signal("done")
         slow = Queue()
-        q = ThreadedQueue("test queue", slow_queue=slow)
+        q = ThreadedQueue("test queue", slow_queue=slow, max_size=SCALE)
 
         def empty(please_stop):
             while not please_stop:
-                item = q.pop()
+                item = slow.pop()
                 if item is THREAD_STOP:
                     break
 

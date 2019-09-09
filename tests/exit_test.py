@@ -35,7 +35,7 @@ Log.note("you must type 'exit', and press Enter, or wait 20seconds")
 Thread.wait_for_shutdown_signal(allow_exit=True, please_stop=please_stop)
 
 if not please_stop:
-    Log.note("'exit' detected")
+    Log.note("exit detected")
 else:
     Log.note("timeout detected")
 please_stop.go()
