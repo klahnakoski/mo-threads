@@ -461,6 +461,7 @@ def _wait_for_exit(please_stop):
         if line.strip() == "exit":
             Log.alert("'exit' Detected!  Stopping...")
             return
+    Log.note("done waiting for exit")
 
 
 def _wait_for_exit_on_windows(please_stop):
