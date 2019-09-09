@@ -27,30 +27,38 @@ def blame():
     Log.warning("Got signal to stop timeout")
 
 
-STDOUT.write(b"make stop signal\n")
+print("make stop signal\n")
 
 
 please_stop = Signal()
 please_stop.then(blame)
 
-STDOUT.write(b"make please_stop\n")
+print("make please_stop\n")
 
 
 def timeout(please_stop):
+    print("set debug")
     till.DEBUG=True
+    print("make timer")
     timer = Till(seconds=20)
+    print("set blame")
     timer.then(blame)
     (timer | please_stop).wait()
-    STDOUT.write(b"out of time\n")
+    if timer:
+        STDOUT.write(("timer value: "+text_type(timer._go)+"\n").encode("utf8"))
+        print("problem with timer\n")
+    if please_stop:
+        print("problem with stop\n")
+    print("out of time\n")
     please_stop.go()
 
-STDOUT.write(b"defined timeout\n")
+print("defined timeout\n")
 
 if please_stop:
-    STDOUT.write(b"stopped before thread\n")
+    print("stopped before thread\n")
 Thread.run("timeout", target=timeout, please_stop=please_stop)
 if please_stop:
-    STDOUT.write(b"stopped after thread\n")
+    print("stopped after thread\n")
 
 Log.note("you must type 'exit', and press Enter, or wait 20seconds")
 MAIN_THREAD.wait_for_shutdown_signal(allow_exit=True, please_stop=please_stop)

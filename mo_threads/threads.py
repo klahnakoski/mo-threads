@@ -180,7 +180,7 @@ class MainThread(BaseThread):
             Log.error("Only the main thread can sleep forever (waiting for KeyboardInterrupt)")
 
         if please_stop:
-            STDOUT.write(b"stopped before mutual\n")
+            print("stopped before mutual\n")
 
         if isinstance(please_stop, Signal):
             # MUTUAL SIGNALING MAKES THESE TWO EFFECTIVELY THE SAME SIGNAL
@@ -190,7 +190,7 @@ class MainThread(BaseThread):
             please_stop = self.please_stop
 
         if please_stop:
-            STDOUT.write(b"stopped after mutual\n")
+            print("stopped after mutual\n")
 
         if not wait_forever:
             # TRIGGER SIGNAL WHEN ALL CHILDREN THREADS ARE DONE
