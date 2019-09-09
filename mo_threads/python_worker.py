@@ -26,8 +26,10 @@ del context['copy']
 
 if PY3:
     STDOUT = sys.stdout.buffer
+    STDIN = sys.stdin.buffer
 else:
     STDOUT = sys.stdout
+    STDIN = sys.stdin
 
 DEBUG = True
 DONE = value2json({"out": {}}).encode('utf8') + b"\n"
@@ -43,7 +45,7 @@ def command_loop(local):
 
     file = File
     while not please_stop:
-        line = sys.stdin.readline()
+        line = STDIN.readline()
         try:
             command = json2value(line.decode('utf8'))
             DEBUG and Log.note("got {{command}}", command=command)
@@ -98,7 +100,7 @@ def temp_var():
 
 def start():
     try:
-        config = json2value(sys.stdin.readline().decode('utf8'))
+        config = json2value(STDIN.readline().decode('utf8'))
         constants.set(config.constants)
         Log.start(set_default(config.debug, {"logs": [{"type": "raw"}]}))
         command_loop({"config": config})
