@@ -32,7 +32,6 @@ def blame():
 
 print("make stop signal\n")
 
-
 please_stop = Signal()
 please_stop.then(blame)
 
@@ -41,7 +40,7 @@ print("make please_stop\n")
 
 def timeout(please_stop):
     print("set debug")
-    till.DEBUG=True
+    till.DEBUG = True
     print("make timer")
     timer = Till(seconds=20)
     print("set blame")
@@ -54,6 +53,7 @@ def timeout(please_stop):
         print("problem with stop\n")
     print("out of time\n")
     please_stop.go()
+
 
 print("defined timeout\n")
 
