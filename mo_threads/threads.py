@@ -175,10 +175,12 @@ class MainThread(BaseThread):
         :param wait_forever:: Assume all needed threads have been launched. When done
         :return:
         """
+        print("ready")
         self_thread = Thread.current()
         if self_thread != MAIN_THREAD or self_thread != self:
             Log.error("Only the main thread can sleep forever (waiting for KeyboardInterrupt)")
 
+        print("link stop signals")
         if isinstance(please_stop, Signal):
             # MUTUAL SIGNALING MAKES THESE TWO EFFECTIVELY THE SAME SIGNAL
             self.please_stop.then(please_stop.go)
@@ -196,6 +198,7 @@ class MainThread(BaseThread):
                 print("waiting for "+p.name+" to finish")
                 p.stopped.then(children_done.done)
 
+        print("wait...")
         try:
             if allow_exit:
                 _wait_for_exit(please_stop)
