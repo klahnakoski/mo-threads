@@ -28,11 +28,16 @@ class Python(object):
         if config.debug.logs:
             Log.error("not allowed to configure logging on other process")
 
+        Log.note("begin process")
         self.process = Process(name, [PYTHON, "mo_threads" + os.sep + "python_worker.py"], shell=True)
+        Log.note("send config")
         self.process.stdin.add(value2json(set_default({"debug": {"trace": True}}, config)))
+        Log.note("wait for first line")
         status = self.process.stdout.pop()
+        Log.note("verify first line")
         if status != '{"out":"ok"}':
             Log.error("could not start python\n{{error|indent}}", error=self.process.stderr.pop_all()+[status]+self.process.stdin.pop_all())
+        Log.note("ready")
         self.lock = Lock("wait for response from "+name)
         self.current_task = DONE
         self.current_response = None
