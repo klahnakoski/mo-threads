@@ -187,5 +187,6 @@ class TestThreads(FuzzyTestCase):
 
     def test_disabled_till(self):
         Till.enabled = False
-        t = Till(seconds=10000000)  # ONCE THE Till DAEMON IS DOWN, ALL TIMING SIGNALS ARE A go()!
+        t = Till(seconds=10000000)  # ALL NEW TIMING SIGNALS ARE A go()!
         t.wait()
+        Till.enabled = True
