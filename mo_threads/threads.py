@@ -181,13 +181,15 @@ class MainThread(BaseThread):
 
         if isinstance(please_stop, Signal):
             # MUTUAL SIGNALING MAKES THESE TWO EFFECTIVELY THE SAME SIGNAL
+            if please_stop:
+                Log.note("already asked to stop")
+            if self.please_stop:
+                Log.note("self already asked to stop")
+
             self.please_stop.then(please_stop.go)
             please_stop.then(self.please_stop.go)
         else:
             please_stop = self.please_stop
-
-        if please_stop:
-            Log.note("already asked to stop")
 
         if not wait_forever:
             # TRIGGER SIGNAL WHEN ALL CHILDREN THREADS ARE DONE
