@@ -13,12 +13,13 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+from mo_threads import till
 from mo_threads.lock import Lock
 from mo_threads.multiprocess import Process
 from mo_threads.queues import Queue, ThreadedQueue
 from mo_threads.signals import Signal
 from mo_threads.threads import MAIN_THREAD, MainThread, THREAD_STOP, THREAD_TIMEOUT, Thread, stop_main_thread
-from mo_threads.till import Till
 
 MAIN_THREAD.timers = Thread.run("timers daemon", till.daemon)
 MAIN_THREAD.children.remove(threads.MAIN_THREAD.timers)
+till.enabled.wait()

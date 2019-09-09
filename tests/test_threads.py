@@ -197,7 +197,7 @@ class TestThreads(FuzzyTestCase):
         self.assertEqual(acc, ["worker", "worker", "worker", "done"])
 
     def test_disabled_till(self):
-        Till.enabled = False
+        till.enabled = Signal()
         t = Till(seconds=10000000)  # ALL NEW TIMING SIGNALS ARE A go()!
         t.wait()
-        Till.enabled = True
+        till.enabled.go()
