@@ -19,9 +19,8 @@ from __future__ import unicode_literals
 from mo_future import text_type
 from mo_logs import Log
 
-from mo_threads import Thread, Signal, MAIN_THREAD
+from mo_threads import Thread, Signal, MAIN_THREAD, Till
 from mo_threads.threads import STDOUT
-from mo_threads.till import Till
 
 
 def blame():
