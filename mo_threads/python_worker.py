@@ -8,24 +8,21 @@
 #
 from __future__ import absolute_import, division, unicode_literals
 
-import os
 from copy import copy
+import os
+import sys
 
 from mo_files import File
 from mo_future import is_text
-
-context = copy(globals())
-del context['copy']
-
-
-import sys
-
 from mo_dots import is_list
 from mo_dots import set_default, listwrap, coalesce
 from mo_future import text_type, PY3
 from mo_json import json2value, value2json
 from mo_logs import Log, constants, Except
 from mo_threads import Signal
+
+context = copy(globals())
+del context['copy']
 
 if PY3:
     STDOUT = sys.stdout.buffer
@@ -42,15 +39,7 @@ def command_loop(local):
     STDOUT.write('\n')
 
     STDOUT.write("directory: "+os.getcwd())
-    DEBUG and Log.note(
-        "python process running with\n"
-        "Config:\n{{config|json|indent}}\n"
-        "Environment:\n{{env|json|indent}}\n"
-        "Direcotry:\n{{cwd|indent}}\n",
-        config=local['config'],
-        env=dict(os.environ.items()),
-        cwd=os.getcwd()
-    )
+    DEBUG and Log.note("python process running")
 
     file = File
     while not please_stop:
