@@ -18,14 +18,14 @@ from __future__ import unicode_literals
 
 print("start imports")
 
-# from mo_future import text_type
-# from mo_logs import Log
-#
-# print("import threads")
-#
-# from mo_threads import Thread, Signal, MAIN_THREAD, Till, till
-#
-#
+from mo_future import text_type
+from mo_logs import Log
+
+print("import threads")
+
+from mo_threads import Thread, Signal, MAIN_THREAD, Till, till
+
+
 # def blame():
 #     Log.warning("Got signal to stop timeout")
 #
