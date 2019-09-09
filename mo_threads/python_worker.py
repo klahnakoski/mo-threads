@@ -40,6 +40,8 @@ please_stop = Signal()
 def command_loop(local):
     STDOUT.write(value2json({"out": "ok"}))
     STDOUT.write('\n')
+
+    STDOUT.write("directory: "+os.getcwd())
     DEBUG and Log.note(
         "python process running with\n"
         "Config:\n{{config|json|indent}}\n"
