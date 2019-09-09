@@ -14,7 +14,7 @@ install:
   - "pip install -r tests/requirements.txt"
 
 script:
-  - "python -m unittest tests.test_threads.TestThreads.test_interrupt"
+  - "python -u -m unittest tests.test_threads.TestThreads.test_interrupt"
 
 after_success:
   - coveralls
