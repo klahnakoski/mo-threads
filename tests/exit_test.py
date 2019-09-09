@@ -60,7 +60,7 @@ print("defined timeout\n")
 if please_stop:
     print("stopped before thread\n")
 
-Thread.run("timeout", target=timeout, please_stop=please_stop)
+# Thread.run("timeout", target=timeout, please_stop=please_stop)
 if please_stop:
     print("stopped after thread\n")
 
