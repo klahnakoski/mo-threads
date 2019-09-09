@@ -175,29 +175,29 @@ class MainThread(BaseThread):
         :param wait_forever:: Assume all needed threads have been launched. When done
         :return:
         """
-        # print("ready")
-        # self_thread = Thread.current()
-        # if self_thread != MAIN_THREAD or self_thread != self:
-        #     Log.error("Only the main thread can sleep forever (waiting for KeyboardInterrupt)")
-        #
-        # print("link stop signals")
-        # if isinstance(please_stop, Signal):
-        #     # MUTUAL SIGNALING MAKES THESE TWO EFFECTIVELY THE SAME SIGNAL
-        #     self.please_stop.then(please_stop.go)
-        #     please_stop.then(self.please_stop.go)
-        # else:
-        #     please_stop = self.please_stop
-        #
-        # if not wait_forever:
-        #     # TRIGGER SIGNAL WHEN ALL CHILDREN THREADS ARE DONE
-        #     with self_thread.child_lock:
-        #         pending = copy(self_thread.children)
-        #     children_done = AndSignals(please_stop, len(pending))
-        #     children_done.signal.then(self.please_stop.go)
-        #     for p in pending:
-        #         print("waiting for "+p.name+" to finish")
-        #         p.stopped.then(children_done.done)
-        #
+        print("ready")
+        self_thread = Thread.current()
+        if self_thread != MAIN_THREAD or self_thread != self:
+            Log.error("Only the main thread can sleep forever (waiting for KeyboardInterrupt)")
+
+        print("link stop signals")
+        if isinstance(please_stop, Signal):
+            # MUTUAL SIGNALING MAKES THESE TWO EFFECTIVELY THE SAME SIGNAL
+            self.please_stop.then(please_stop.go)
+            please_stop.then(self.please_stop.go)
+        else:
+            please_stop = self.please_stop
+
+        if not wait_forever:
+            # TRIGGER SIGNAL WHEN ALL CHILDREN THREADS ARE DONE
+            with self_thread.child_lock:
+                pending = copy(self_thread.children)
+            children_done = AndSignals(please_stop, len(pending))
+            children_done.signal.then(self.please_stop.go)
+            for p in pending:
+                print("waiting for "+p.name+" to finish")
+                p.stopped.then(children_done.done)
+
         # print("wait...")
         # try:
         #     if allow_exit:
