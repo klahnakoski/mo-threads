@@ -181,11 +181,6 @@ class MainThread(BaseThread):
 
         if isinstance(please_stop, Signal):
             # MUTUAL SIGNALING MAKES THESE TWO EFFECTIVELY THE SAME SIGNAL
-            if please_stop:
-                STDOUT.write(b"already asked to stop\n")
-            if self.please_stop:
-                STDOUT.write(b"self already asked to stop\n")
-
             self.please_stop.then(please_stop.go)
             please_stop.then(self.please_stop.go)
         else:

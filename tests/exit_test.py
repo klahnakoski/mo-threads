@@ -19,6 +19,7 @@ from __future__ import unicode_literals
 from mo_logs import Log
 
 from mo_threads import Thread, Signal, MAIN_THREAD
+from mo_threads.threads import STDOUT
 from mo_threads.till import Till
 
 
@@ -34,7 +35,11 @@ def timeout(please_stop):
     please_stop.go()
 
 
+if please_stop:
+    STDOUT.write(b"stopped before thread")
 Thread.run("timeout", target=timeout, please_stop=please_stop)
+if please_stop:
+    STDOUT.write(b"stopped after thread")
 
 Log.note("you must type 'exit', and press Enter, or wait 20seconds")
 MAIN_THREAD.wait_for_shutdown_signal(allow_exit=True, please_stop=please_stop)
