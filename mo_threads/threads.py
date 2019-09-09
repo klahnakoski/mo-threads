@@ -447,14 +447,12 @@ def _wait_for_exit(please_stop):
     /dev/null PIPED TO sys.stdin SPEWS INFINITE LINES, DO NOT POLL AS OFTEN
     """
 
-    if "windows" in platform.system().lower():
-        try:
-            # THIS IMPORT WILL DEADLOCK PYTHON ON SOME LINUX
-            import msvcrt
-            _wait_for_exit_on_windows(please_stop)
-            return
-        except:
-            pass
+    try:
+        import msvcrt
+        _wait_for_exit_on_windows(please_stop)
+        return
+    except:
+        pass
 
     cr_count = 0  # COUNT NUMBER OF BLANK LINES
 
@@ -464,8 +462,8 @@ def _wait_for_exit(please_stop):
             if cr_count > 30:
                 (Till(seconds=3) | please_stop).wait()
             try:
-                # line = ""
-                line = STDIN.readline().decode('utf8')
+                line = ""
+                # line = STDIN.readline().decode('utf8')
             except Exception as e:
                 Except.wrap(e)
                 if "Bad file descriptor" in e:
