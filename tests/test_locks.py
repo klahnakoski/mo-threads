@@ -119,9 +119,9 @@ class TestLocks(FuzzyTestCase):
         def loop(is_ready, please_stop):
             with locker:
                 while not got_signal:
-                    locker.wait(till=Till(seconds=0))
+                    locker.wait(till=Till(seconds=0.01))
                     is_ready.go()
-                    Log.note("is ready", thread=Thread.current().name)
+                    Log.note("{{thread}} is ready", thread=Thread.current().name)
                 Log.note("outside loop")
                 locker.wait()
                 Log.note("thread is expected to get here")
@@ -168,6 +168,7 @@ class TestLocks(FuzzyTestCase):
                 (Till(seconds=0.001) | please_stop).wait()
                 counter += 1
                 Log.note("{{count}}", count=counter)
+            Log.note("loop done")
 
         please_stop=Signal("please_stop")
         Thread.run("loop", loop, please_stop=please_stop)
@@ -176,6 +177,7 @@ class TestLocks(FuzzyTestCase):
             q = please_stop.job_queue
             self.assertLessEqual(0 if q is None else len(q), 1, "Expecting only one pending job on go")
         please_stop.go()
+        Log.note("test done")
 
     def test_consistency(self):
         counter = [0]
