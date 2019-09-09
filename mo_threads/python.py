@@ -9,6 +9,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import os
+import platform
 
 from mo_dots import set_default, wrap
 from mo_json import json2value, value2json
@@ -29,7 +30,17 @@ class Python(object):
             Log.error("not allowed to configure logging on other process")
 
         Log.note("begin process")
-        self.process = Process(name, [PYTHON, "mo_threads" + os.sep + "python_worker.py"], shell=True)
+        if "windows" in platform.system().lower():
+            shell = True
+        else:
+            shell = False
+        self.process = Process(
+            name,
+            [PYTHON, "mo_threads" + os.sep + "python_worker.py"],
+            debug=True,
+            cwd=os.getcwd(),
+            shell=shell
+        )
         Log.note("send config")
         self.process.stdin.add(value2json(set_default({"debug": {"trace": True}}, config)))
         Log.note("wait for first line")
