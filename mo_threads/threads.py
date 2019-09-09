@@ -449,8 +449,10 @@ def _wait_for_exit(please_stop):
 
     if "windows" in platform.system().lower():
         try:
+            # THIS IMPORT WILL DEADLOCK PYTHON ON SOME LINUX
             import msvcrt
             _wait_for_exit_on_windows(please_stop)
+            return
         except:
             pass
 
