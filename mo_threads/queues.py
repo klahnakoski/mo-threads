@@ -502,6 +502,7 @@ class ThreadedQueue(Queue):
         if _buffer:
             # ONE LAST PUSH, DO NOT HAVE TIME TO DEAL WITH ERRORS
             push_to_queue()
+        self.slow_queue.add(THREAD_STOP)
 
     def add(self, value, timeout=None):
         with self.lock:

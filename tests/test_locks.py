@@ -85,7 +85,7 @@ class TestLocks(FuzzyTestCase):
 
         done = Signal("done")
         slow = Queue()
-        q = ThreadedQueue("test queue", slow_queue=slow, max_size=SCALE)
+        q = ThreadedQueue("test queue", slow_queue=slow)
 
         def empty(please_stop):
             while not please_stop:
@@ -105,7 +105,7 @@ class TestLocks(FuzzyTestCase):
             Log.note("Done insert")
             done.wait()
 
-        Log.note("{{num}} items through queue in {{seconds}}", num=SCALE, seconds=timer.duration.seconds)
+        Log.note("{{num}} items through queue in {{seconds|round(3)}} seconds", num=SCALE, seconds=timer.duration.seconds)
         if test:
             self.assertLess(timer.duration.seconds, 1.5, "Expecting queue to be fast")
 
