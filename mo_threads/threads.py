@@ -13,6 +13,7 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+import platform
 from copy import copy
 from datetime import datetime, timedelta
 import signal as _signal
@@ -445,11 +446,13 @@ def _wait_for_exit(please_stop):
     """
     /dev/null PIPED TO sys.stdin SPEWS INFINITE LINES, DO NOT POLL AS OFTEN
     """
-    # try:
-    #     import msvcrt
-    #     _wait_for_exit_on_windows(please_stop)
-    # except:
-    #     pass
+
+    if "windows" in platform.system().lower():
+        try:
+            import msvcrt
+            _wait_for_exit_on_windows(please_stop)
+        except:
+            pass
 
     cr_count = 0  # COUNT NUMBER OF BLANK LINES
 
