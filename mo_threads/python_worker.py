@@ -37,10 +37,8 @@ please_stop = Signal()
 
 
 def command_loop(local):
-    STDOUT.write(value2json({"out": "ok"}))
-    STDOUT.write('\n')
-
-    STDOUT.write("directory: "+os.getcwd())
+    STDOUT.write(b'{"out": "ok"}\n')
+    STDOUT.write(("directory: "+os.getcwd()).encode('utf8'))
     DEBUG and Log.note("python process running")
 
     file = File
@@ -62,8 +60,8 @@ def command_loop(local):
                     context[k] = v
                 STDOUT.write(DONE)
             elif "get" in command:
-                STDOUT.write(value2json({"out": coalesce(local.get(command['get']), context.get(command['get']))}))
-                STDOUT.write('\n')
+                STDOUT.write(value2json({"out": coalesce(local.get(command['get']), context.get(command['get']))}).encode('utf8'))
+                STDOUT.write(b'\n')
             elif "stop" in command:
                 STDOUT.write(DONE)
                 please_stop.go()
@@ -78,12 +76,12 @@ def command_loop(local):
                         exec ("_return = " + k + "(" + ",".join(map(value2json, v)) + ")", context, local)
                     else:
                         exec ("_return = " + k + "(" + ",".join(kk + "=" + value2json(vv) for kk, vv in v.items()) + ")", context, local)
-                    STDOUT.write(value2json({"out": local['_return']}))
-                    STDOUT.write('\n')
+                    STDOUT.write(value2json({"out": local['_return']}).encode('utf8'))
+                    STDOUT.write(b'\n')
         except Exception as e:
             e = Except.wrap(e)
-            STDOUT.write(value2json({"err": e}))
-            STDOUT.write('\n')
+            STDOUT.write(value2json({"err": e}).encode('utf8'))
+            STDOUT.write(b'\n')
         finally:
             STDOUT.flush()
 
