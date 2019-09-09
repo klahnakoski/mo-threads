@@ -39,12 +39,8 @@ STDOUT.write(b"make please_stop\n")
 def timeout(please_stop):
     till.DEBUG=True
     timer = Till(seconds=20)
+    timer.then(blame)
     (timer | please_stop).wait()
-    if timer:
-        STDOUT.write(("timer value: "+text_type(timer._go)+"\n").encode("utf8"))
-        STDOUT.write(b"problem with timer\n")
-    if please_stop:
-        STDOUT.write(b"problem with stop\n")
     STDOUT.write(b"out of time\n")
     please_stop.go()
 
