@@ -149,12 +149,12 @@ class Signal(object):
         return text_type(repr(self._go))
 
     def __or__(self, other):
-        if self or other:
-            return DONE
         if other == None:
             return self
         if not isinstance(other, Signal):
             Log.error("Expecting OR with other signal")
+        if self or other:
+            return DONE
 
         output = Signal(self.name + " | " + other.name)
         OrSignal(output, (self, other))
