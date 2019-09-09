@@ -180,7 +180,7 @@ class MainThread(BaseThread):
             please_stop = self.please_stop
 
         if not wait_forever:
-            # TRIGGER SIGNAL WHEN ALL CHILDREN THEADS ARE DONE
+            # TRIGGER SIGNAL WHEN ALL CHILDREN THREADS ARE DONE
             with self_thread.child_lock:
                 pending = copy(self_thread.children)
             children_done = AndSignals(please_stop, len(pending))
