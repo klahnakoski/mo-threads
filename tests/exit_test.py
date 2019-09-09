@@ -16,11 +16,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+print("strart imports")
+
 from mo_future import text_type
 from mo_logs import Log
 
+print("import threads")
+
 from mo_threads import Thread, Signal, MAIN_THREAD, Till, till
-from mo_threads.threads import STDOUT
 
 
 def blame():
@@ -45,7 +48,7 @@ def timeout(please_stop):
     timer.then(blame)
     (timer | please_stop).wait()
     if timer:
-        STDOUT.write(("timer value: "+text_type(timer._go)+"\n").encode("utf8"))
+        print("timer value: " + text_type(timer._go) + "\n")
         print("problem with timer\n")
     if please_stop:
         print("problem with stop\n")
