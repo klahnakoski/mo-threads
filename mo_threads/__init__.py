@@ -23,6 +23,8 @@ from mo_threads.till import Till
 
 MAIN_THREAD.timers = Thread.run("timers daemon", till.daemon)
 MAIN_THREAD.children.remove(threads.MAIN_THREAD.timers)
+print("wait for till timer startup")
 till.enabled.wait()
+print("till timer ready")
 
 keep_import = (Till, )
