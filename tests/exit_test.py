@@ -65,7 +65,7 @@ if please_stop:
     print("stopped after thread\n")
 
 Log.note("you must type 'exit', and press Enter, or wait 20seconds")
-# MAIN_THREAD.wait_for_shutdown_signal(allow_exit=True, please_stop=please_stop, wait_forever=False)
+MAIN_THREAD.wait_for_shutdown_signal  #(allow_exit=True, please_stop=please_stop, wait_forever=False)
 
 if not please_stop:
     Log.note("exit detected")
