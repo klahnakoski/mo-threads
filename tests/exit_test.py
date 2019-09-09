@@ -40,7 +40,7 @@ def timeout(please_stop):
     timer = Till(seconds=20)
     (timer | please_stop).wait()
     if timer:
-        STDOUT.write(("timer value"+text_type(timer._go)+"\n").encode("utf8"))
+        STDOUT.write(("timer value: "+text_type(timer._go)+"\n").encode("utf8"))
         STDOUT.write(b"problem with timer\n")
     if please_stop:
         STDOUT.write(b"problem with stop\n")
