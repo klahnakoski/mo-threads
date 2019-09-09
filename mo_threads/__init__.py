@@ -17,7 +17,7 @@ from mo_future import is_text, is_binary
 from mo_threads.lock import Lock
 from mo_threads.multiprocess import Process
 from mo_threads.queues import Queue, ThreadedQueue
-from mo_threads.signal import Signal
+from mo_threads.signals import Signal
 from mo_threads.threads import MAIN_THREAD, MainThread, THREAD_STOP, THREAD_TIMEOUT, Thread, stop_main_thread
 from mo_threads.till import Till
 

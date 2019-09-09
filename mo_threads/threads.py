@@ -25,7 +25,7 @@ from mo_logs import Except, Log
 
 from mo_threads.lock import Lock
 from mo_threads.profiles import CProfiler, write_profiles
-from mo_threads.signal import AndSignals, Signal
+from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till
 
 DEBUG = False

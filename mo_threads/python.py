@@ -14,7 +14,7 @@ import platform
 from mo_dots import set_default, wrap
 from mo_json import json2value, value2json
 from mo_logs import Except, Log
-from mo_threads.signal import DONE
+from mo_threads.signals import DONE
 
 from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, Till
 

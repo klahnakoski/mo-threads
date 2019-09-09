@@ -24,7 +24,7 @@ from mo_future import long
 from mo_logs import Except, Log
 
 from mo_threads.lock import Lock
-from mo_threads.signal import Signal
+from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, THREAD_TIMEOUT, Thread
 from mo_threads.till import Till
 

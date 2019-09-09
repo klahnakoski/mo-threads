@@ -20,7 +20,7 @@ from weakref import ref
 from mo_future import allocate_lock as _allocate_lock, text_type
 from mo_logs import Log
 
-from mo_threads.signal import DONE, Signal
+from mo_threads.signals import DONE, Signal
 
 DEBUG = False
 INTERVAL = 0.1

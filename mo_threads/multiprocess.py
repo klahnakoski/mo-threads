@@ -19,7 +19,7 @@ from mo_logs.exceptions import Except
 
 from mo_threads.lock import Lock
 from mo_threads.queues import Queue
-from mo_threads.signal import Signal
+from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, Thread
 from mo_threads.till import Till
 from mo_times import Timer
