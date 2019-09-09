@@ -20,7 +20,7 @@ import sys
 from time import sleep
 
 from mo_dots import Data, coalesce, unwraplist
-from mo_future import allocate_lock, get_function_name, get_ident, start_new_thread, text_type, decorate
+from mo_future import allocate_lock, get_function_name, get_ident, start_new_thread, text_type, decorate, PY3
 from mo_logs import Except, Log
 
 from mo_threads.lock import Lock
@@ -38,6 +38,13 @@ THREAD_STOP = "stop"
 THREAD_TIMEOUT = "TIMEOUT"
 
 datetime.strptime('2012-01-01', '%Y-%m-%d')  # http://bugs.python.org/issue7980
+
+if PY3:
+    STDOUT = sys.stdout.buffer
+    STDIN = sys.stdin.buffer
+else:
+    STDOUT = sys.stdout
+    STDIN = sys.stdin
 
 
 class AllThread(object):
@@ -446,7 +453,7 @@ def _wait_for_exit(please_stop):
             if cr_count > 30:
                 (Till(seconds=3) | please_stop).wait()
             try:
-                line = sys.stdin.readline()
+                line = STDIN.readline().decode('utf8')
             except Exception as e:
                 Except.wrap(e)
                 if "Bad file descriptor" in e:
@@ -454,7 +461,7 @@ def _wait_for_exit(please_stop):
                     break
 
             # DEBUG and Log.note("read line {{line|quote}}, count={{count}}", line=line, count=cr_count)
-            if line == "":
+            if not line:
                 cr_count += 1
             else:
                 cr_count = -1000000  # NOT /dev/null

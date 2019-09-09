@@ -20,16 +20,10 @@ from mo_future import text_type, PY3
 from mo_json import json2value, value2json
 from mo_logs import Log, constants, Except
 from mo_threads import Signal
+from mo_threads.threads import STDOUT, STDIN
 
 context = copy(globals())
 del context['copy']
-
-if PY3:
-    STDOUT = sys.stdout.buffer
-    STDIN = sys.stdin.buffer
-else:
-    STDOUT = sys.stdout
-    STDIN = sys.stdin
 
 DEBUG = False
 DONE = value2json({"out": {}}).encode('utf8') + b"\n"
