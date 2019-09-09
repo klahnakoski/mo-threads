@@ -25,7 +25,9 @@ please_stop = Signal()
 
 
 def timeout(please_stop):
+    Log.note("timeout to wait")
     (Till(seconds=20) | please_stop).wait()
+    Log.note("timeout is done waiting")
     please_stop.go()
 
 
