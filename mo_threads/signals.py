@@ -193,6 +193,8 @@ class AndSignals(object):
         self.signal = signal
         self.locker = _allocate_lock()
         self.remaining = count
+        if not count:
+            self.signal.go()
 
     def done(self):
         with self.locker:
