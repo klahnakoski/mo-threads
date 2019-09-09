@@ -114,6 +114,7 @@ class TestThreads(FuzzyTestCase):
         CAN WE CATCH A SIGINT?
         """
         p = Process("waiting", ["python", "tests/exit_test.py"], debug=True)
+        p.stdout.pop()  # WAIT FOR PROCESS TO START
         k = Process("killer", ["kill", "-SIGINT", p.pid])
         p.join()
         self.assertIn("exit detected", p.stdout.pop_all())
