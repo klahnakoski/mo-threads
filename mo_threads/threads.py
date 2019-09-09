@@ -460,8 +460,10 @@ def _wait_for_exit(please_stop):
         while not please_stop:
             # DEBUG and Log.note("inside wait-for-shutdown loop")
             if cr_count > 30:
+                print("wait beofre getting more input")
                 (Till(seconds=3) | please_stop).wait()
             try:
+                print("readline")
                 line = ""
                 # line = STDIN.readline().decode('utf8')
             except Exception as e:
