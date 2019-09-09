@@ -459,6 +459,7 @@ def _wait_for_exit(please_stop):
             if cr_count > 30:
                 (Till(seconds=3) | please_stop).wait()
             try:
+                line = ""
                 # line = STDIN.readline().decode('utf8')
             except Exception as e:
                 Except.wrap(e)
