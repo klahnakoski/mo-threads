@@ -27,26 +27,26 @@ def blame():
     Log.warning("Got signal to stop timeout")
 
 
-STDOUT("make stop signal\n")
+STDOUT.write("make stop signal\n")
 
 
 please_stop = Signal()
 please_stop.then(blame)
 
-STDOUT("make please_stop\n")
+STDOUT.write("make please_stop\n")
 
 
 def timeout(please_stop):
     timer = Till(seconds=20)
     (Till(seconds=20) | please_stop).wait()
     if timer:
-        STDOUT("problem with timer\n")
+        STDOUT.write("problem with timer\n")
     if please_stop:
-        STDOUT("problem with stop\n")
+        STDOUT.write("problem with stop\n")
     STDOUT.write(b"out of time\n")
     please_stop.go()
 
-STDOUT("defined timeout\n")
+STDOUT.write("defined timeout\n")
 
 if please_stop:
     STDOUT.write(b"stopped before thread\n")
