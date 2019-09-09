@@ -60,12 +60,12 @@ print("defined timeout\n")
 if please_stop:
     print("stopped before thread\n")
 
-# Thread.run("timeout", target=timeout, please_stop=please_stop)
+Thread.run("timeout", target=timeout, please_stop=please_stop)
 if please_stop:
     print("stopped after thread\n")
 
 Log.note("you must type 'exit', and press Enter, or wait 20seconds")
-MAIN_THREAD.wait_for_shutdown_signal(allow_exit=True, please_stop=please_stop)
+# MAIN_THREAD.wait_for_shutdown_signal(allow_exit=True, please_stop=please_stop)
 
 if not please_stop:
     Log.note("exit detected")
