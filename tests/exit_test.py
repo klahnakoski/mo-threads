@@ -32,14 +32,15 @@ please_stop.then(blame)
 
 def timeout(please_stop):
     (Till(seconds=20) | please_stop).wait()
+    STDOUT.write(b"out of time\n")
     please_stop.go()
 
 
 if please_stop:
-    STDOUT.write(b"stopped before thread")
+    STDOUT.write(b"stopped before thread\n")
 Thread.run("timeout", target=timeout, please_stop=please_stop)
 if please_stop:
-    STDOUT.write(b"stopped after thread")
+    STDOUT.write(b"stopped after thread\n")
 
 Log.note("you must type 'exit', and press Enter, or wait 20seconds")
 MAIN_THREAD.wait_for_shutdown_signal(allow_exit=True, please_stop=please_stop)

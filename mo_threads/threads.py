@@ -226,7 +226,8 @@ class Thread(BaseThread):
 
         # ENSURE THERE IS A SHARED please_stop SIGNAL
         self.kwargs = copy(kwargs)
-        self.kwargs[PLEASE_STOP] = self.kwargs.get(PLEASE_STOP, Signal("please_stop for " + self.name))
+        if self.kwargs.get(PLEASE_STOP) is None:
+            self.kwargs[PLEASE_STOP] = Signal("please_stop for " + self.name)
         self.please_stop = self.kwargs[PLEASE_STOP]
 
         self.thread = None
