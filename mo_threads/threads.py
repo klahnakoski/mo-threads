@@ -198,18 +198,18 @@ class MainThread(BaseThread):
                 print("waiting for "+p.name+" to finish")
                 p.stopped.then(children_done.done)
 
-        # print("wait...")
-        # try:
-        #     if allow_exit:
-        #         _wait_for_exit(please_stop)
-        #     else:
-        #         _wait_for_interrupt(please_stop)
-        # except KeyboardInterrupt as _:
-        #     Log.alert("SIGINT Detected!  Stopping...")
-        # except SystemExit as _:
-        #     Log.alert("SIGTERM Detected!  Stopping...")
-        # finally:
-        #     self.stop()
+        print("wait...")
+        try:
+            if allow_exit:
+                _wait_for_exit(please_stop)
+            else:
+                _wait_for_interrupt(please_stop)
+        except KeyboardInterrupt as _:
+            Log.alert("SIGINT Detected!  Stopping...")
+        except SystemExit as _:
+            Log.alert("SIGTERM Detected!  Stopping...")
+        finally:
+            self.stop()
 
 
 class Thread(BaseThread):
@@ -459,7 +459,7 @@ def _wait_for_exit(please_stop):
             if cr_count > 30:
                 (Till(seconds=3) | please_stop).wait()
             try:
-                line = STDIN.readline().decode('utf8')
+                # line = STDIN.readline().decode('utf8')
             except Exception as e:
                 Except.wrap(e)
                 if "Bad file descriptor" in e:
