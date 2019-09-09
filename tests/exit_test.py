@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+from mo_future import text_type
 from mo_logs import Log
 
 from mo_threads import Thread, Signal, MAIN_THREAD
@@ -38,8 +39,9 @@ STDOUT.write(b"make please_stop\n")
 
 def timeout(please_stop):
     timer = Till(seconds=20)
-    (Till(seconds=20) | please_stop).wait()
+    (timer | please_stop).wait()
     if timer:
+        STDOUT.write(("timer value"+text_type(timer._go)+"\n").encode("utf8"))
         STDOUT.write(b"problem with timer\n")
     if please_stop:
         STDOUT.write(b"problem with stop\n")
