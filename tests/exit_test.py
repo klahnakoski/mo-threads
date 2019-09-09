@@ -25,13 +25,12 @@ from mo_threads.till import Till
 def blame():
     Log.warning("Got signal to stop timeout")
 
+
 please_stop = Signal()
 please_stop.then(blame)
 
 def timeout(please_stop):
-    Log.note("timeout to wait")
     (Till(seconds=20) | please_stop).wait()
-    Log.note("timeout is done waiting")
     please_stop.go()
 
 
