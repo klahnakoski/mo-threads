@@ -19,7 +19,7 @@ from __future__ import unicode_literals
 from mo_future import text_type
 from mo_logs import Log
 
-from mo_threads import Thread, Signal, MAIN_THREAD, Till
+from mo_threads import Thread, Signal, MAIN_THREAD, Till, till
 from mo_threads.threads import STDOUT
 
 
@@ -37,6 +37,7 @@ STDOUT.write(b"make please_stop\n")
 
 
 def timeout(please_stop):
+    till.DEBUG=True
     timer = Till(seconds=20)
     (timer | please_stop).wait()
     if timer:
