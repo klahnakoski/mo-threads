@@ -19,7 +19,6 @@ import threading
 from time import time
 from unittest import skip
 
-import objgraph
 import psutil
 import requests
 
@@ -248,6 +247,7 @@ class TestLocks(FuzzyTestCase):
         ACTUALLY, THE PARTICULAR LEAK FOUND CAN BE RECREATED WITHOUT THREADS
         BUT IT IS TOO LATE TO CHANGE THIS TEST
         """
+        import objgraph
 
         NUM_CYCLES = 100
         gc.collect()
