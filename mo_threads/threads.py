@@ -186,6 +186,9 @@ class MainThread(BaseThread):
         else:
             please_stop = self.please_stop
 
+        if please_stop:
+            Log.note("already asked to stop")
+
         if not wait_forever:
             # TRIGGER SIGNAL WHEN ALL CHILDREN THREADS ARE DONE
             with self_thread.child_lock:
