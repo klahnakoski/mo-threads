@@ -457,6 +457,7 @@ def _wait_for_exit(please_stop):
             except Exception as e:
                 Except.wrap(e)
                 if "Bad file descriptor" in e:
+                    Log.note("can not read from stdin")
                     _wait_for_interrupt(please_stop)
                     break
 
@@ -472,6 +473,8 @@ def _wait_for_exit(please_stop):
     except Exception as e:
         Log.warning("programming error", cause=e)
     finally:
+        if please_stop:
+            Log.note("please_stop has been requested")
         Log.note("done waiting for exit")
 
 
