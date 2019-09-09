@@ -22,7 +22,7 @@ from mo_logs import Log
 
 from mo_threads.signals import DONE, Signal
 
-DEBUG = False
+DEBUG = True
 INTERVAL = 0.1
 
 
