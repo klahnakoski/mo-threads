@@ -21,8 +21,12 @@ from mo_logs import Log
 from mo_threads import Thread, Signal, MAIN_THREAD
 from mo_threads.till import Till
 
-please_stop = Signal()
 
+def blame():
+    Log.warning("Got signal to stop timeout")
+
+please_stop = Signal()
+please_stop.then(blame)
 
 def timeout(please_stop):
     Log.note("timeout to wait")
