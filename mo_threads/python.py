@@ -35,7 +35,7 @@ class Python(object):
         self.process = Process(
             name,
             [PYTHON, "mo_threads" + os.sep + "python_worker.py"],
-            debug=False,
+            debug=True,
             cwd=os.getcwd(),
             shell=shell
         )
