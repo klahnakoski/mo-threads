@@ -30,25 +30,19 @@ class Python(object):
             Log.error("not allowed to configure logging on other process")
 
         Log.note("begin process")
-        if "windows" in platform.system().lower():
-            shell = True
-        else:
-            shell = False
+        # WINDOWS REQUIRED shell, WHILE LINUX NOT
+        shell = "windows" in platform.system().lower()
         self.process = Process(
             name,
             [PYTHON, "mo_threads" + os.sep + "python_worker.py"],
-            debug=True,
+            debug=False,
             cwd=os.getcwd(),
             shell=shell
         )
-        Log.note("send config")
         self.process.stdin.add(value2json(set_default({"debug": {"trace": True}}, config)))
-        Log.note("wait for first line")
         status = self.process.stdout.pop()
-        Log.note("verify first line")
         if status != '{"out":"ok"}':
             Log.error("could not start python\n{{error|indent}}", error=self.process.stderr.pop_all()+[status]+self.process.stdin.pop_all())
-        Log.note("ready")
         self.lock = Lock("wait for response from "+name)
         self.current_task = DONE
         self.current_response = None
