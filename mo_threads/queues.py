@@ -145,15 +145,14 @@ class Queue(object):
 
         :param timeout:  IN SECONDS
         """
+        start = time()
         timeout = coalesce(timeout, DEFAULT_WAIT_TIME)
         wait_time = 5
 
         (DEBUG and len(self.queue) > 1 * 1000 * 1000) and Log.warning("Queue {{name}} has over a million items")
 
-        start = time()
-        stop_waiting = Till(till=start + timeout)
-
         while not self.closed and len(self.queue) >= self.max:
+            stop_waiting = Till(till=start + timeout)
             if stop_waiting:
                 Log.error(THREAD_TIMEOUT)
 
@@ -193,10 +192,7 @@ class Queue(object):
         with self.lock:
             while True:
                 if self.queue:
-                    value = self.queue.popleft()
-                    return value
-                if self.closed:
-                    break
+                    return self.queue.popleft()
                 if not self.lock.wait(till=self.closed | till):
                     if self.closed:
                         break
@@ -440,7 +436,6 @@ class ThreadedQueue(Queue):
                     item = self.pop()
                     now = time()
                     if now > last_push + period:
-                        # Log.note("delay next push")
                         next_push = Till(till=now + period)
                 else:
                     item = self.pop(till=next_push)
@@ -454,7 +449,6 @@ class ThreadedQueue(Queue):
                     _post_push_functions.append(item)
                 elif item is not None:
                     _buffer.append(item)
-
             except Exception as e:
                 e = Except.wrap(e)
                 if error_target:
@@ -479,7 +473,6 @@ class ThreadedQueue(Queue):
                         push_to_queue()
                         last_push = now = time()
                     next_push = Till(till=now + period)
-
             except Exception as e:
                 e = Except.wrap(e)
                 if error_target:

@@ -149,6 +149,8 @@ class Signal(object):
         return text_type(repr(self._go))
 
     def __or__(self, other):
+        if self or other:
+            return DONE
         if other == None:
             return self
         if not isinstance(other, Signal):
@@ -162,7 +164,7 @@ class Signal(object):
         return self.__or__(other)
 
     def __and__(self, other):
-        if other == None:
+        if other == None or other:
             return self
         if not isinstance(other, Signal):
             Log.error("Expecting OR with other signal")
