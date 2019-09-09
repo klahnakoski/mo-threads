@@ -31,7 +31,12 @@ please_stop = Signal()
 please_stop.then(blame)
 
 def timeout(please_stop):
+    timer = Till(seconds=20)
     (Till(seconds=20) | please_stop).wait()
+    if timer:
+        STDOUT("problem with timer")
+    if please_stop:
+        STDOUT("problem with stop")
     STDOUT.write(b"out of time\n")
     please_stop.go()
 

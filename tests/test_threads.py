@@ -120,6 +120,14 @@ class TestThreads(FuzzyTestCase):
         p.join()
         self.assertIn("exit detected", p.stdout.pop_all())
 
+    # def test_exit(self):
+    #     p = Process("waiting", ["python", "tests/exit_test.py"], debug=True)
+    #     p.stdout.pop()  # WAIT FOR PROCESS TO START
+    #     Till(seconds=2).wait()
+    #     p.stdin.add("exit\n")
+    #     p.join()
+    #     self.assertIn("exit detected", p.stdout.pop_all())
+
     def test_loop(self):
         acc = []
         started = Signal()
