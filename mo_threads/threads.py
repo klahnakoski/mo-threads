@@ -464,8 +464,8 @@ def _wait_for_exit(please_stop):
                 (Till(seconds=3) | please_stop).wait()
             try:
                 print("readline")
-                line = ""
-                # line = STDIN.readline().decode('utf8')
+                # line = ""
+                line = STDIN.readline()
             except Exception as e:
                 Except.wrap(e)
                 if "Bad file descriptor" in e:
@@ -479,7 +479,7 @@ def _wait_for_exit(please_stop):
             else:
                 cr_count = -1000000  # NOT /dev/null
 
-            if line.strip() == "exit":
+            if line.strip() == b"exit":
                 Log.alert("'exit' Detected!  Stopping...")
                 return
     except Exception as e:
