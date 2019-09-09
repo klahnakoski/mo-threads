@@ -199,6 +199,7 @@ class MainThread(BaseThread):
             children_done = AndSignals(please_stop, len(pending))
             children_done.signal.then(self.please_stop.go)
             for p in pending:
+                print("waiting for "+p.name+" to finish")
                 p.stopped.then(children_done.done)
 
         try:
