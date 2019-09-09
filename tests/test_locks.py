@@ -107,7 +107,7 @@ class TestLocks(FuzzyTestCase):
 
         Log.note("{{num}} items through queue in {{seconds|round(3)}} seconds", num=SCALE, seconds=timer.duration.seconds)
         if test:
-            self.assertLess(timer.duration.seconds, 1.5, "Expecting queue to be fast")
+            self.assertLess(timer.duration.seconds, 2, "Expecting queue to be fast")
 
     def test_lock_and_till(self):
         locker = Lock("prime lock")
