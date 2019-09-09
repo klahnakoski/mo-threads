@@ -31,7 +31,7 @@ else:
     STDOUT = sys.stdout
     STDIN = sys.stdin
 
-DEBUG = False
+DEBUG = True
 DONE = value2json({"out": {}}).encode('utf8') + b"\n"
 please_stop = Signal()
 
