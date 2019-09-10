@@ -214,12 +214,17 @@ class TestLocks(FuzzyTestCase):
         trigger.go()
         root.wait()  # THERE SHOULD BE NO DELAY HERE
 
-        Till(seconds=1).wait()  # LET TIMER DAEMON CLEANUP
-        gc.collect()
-        end_mem = psutil.Process(os.getpid()).memory_info().rss
-        Log.note("End memory {{mem|comma}}", mem=end_mem)
+        for _ in range(0, 20):
+            try:
+                gc.collect()
+                end_mem = psutil.Process(os.getpid()).memory_info().rss
+                Log.note("End memory {{mem|comma}}", mem=end_mem)
 
-        self.assertLess(end_mem, (start_mem+mid_mem)/2, "memory should be closer to start")
+                self.assertLess(end_mem, (start_mem+mid_mem)/2, "memory should be closer to start")
+                break
+            except Exception as e:
+                Till(seconds=1).wait()  # LET TIMER DAEMON CLEANUP
+        Log.error("'memory did not go down")
 
     def test_job_queue_in_signal(self):
 
