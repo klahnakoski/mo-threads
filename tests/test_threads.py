@@ -113,10 +113,20 @@ class TestThreads(FuzzyTestCase):
         """
         CAN WE CATCH A SIGINT?
         """
-        p = Process("waiting" ["python", "tests/resources/utils/wait_for_signal.py"])
+        p = Process("waiting", ["python", "-u", "tests/exit_test.py"], debug=True)
+        p.stdout.pop()  # WAIT FOR PROCESS TO START
+        Till(seconds=2).wait()
         k = Process("killer", ["kill", "-SIGINT", p.pid])
-
         p.join()
+        self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
+
+    def test_exit(self):
+        p = Process("waiting", ["python", "-u", "tests/exit_test.py"], debug=True)
+        p.stdout.pop()  # WAIT FOR PROCESS TO START
+        Till(seconds=2).wait()
+        p.stdin.add("exit\n")
+        p.join()
+        self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
     def test_loop(self):
         acc = []
@@ -187,6 +197,7 @@ class TestThreads(FuzzyTestCase):
         self.assertEqual(acc, ["worker", "worker", "worker", "done"])
 
     def test_disabled_till(self):
-        Till.enabled = False
-        t = Till(seconds=10000000)  # ONCE THE Till DAEMON IS DOWN, ALL TIMING SIGNALS ARE A go()!
+        till.enabled = Signal()
+        t = Till(seconds=10000000)  # ALL NEW TIMING SIGNALS ARE A go()!
         t.wait()
+        till.enabled.go()

@@ -4,3 +4,4 @@ mo-logs
 mo-testing
 jx-python
 psutil
+objgraph

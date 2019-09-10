@@ -90,23 +90,23 @@ Locks are identical to [threading monitors](https://en.wikipedia.org/wiki/Monito
 
 1. The `wait()` method will **always acquire the lock before returning**. This is an important feature, it ensures every line inside a `with` block has lock acquisition, and is easier to reason about.
 2. Exiting a lock via `__exit__()` will **always** signal a waiting thread to resume. This ensures no signals are missed, and every thread gets an opportunity to react to possible change.
+3. `Lock` is **not reentrant**! This is a feature to ensure locks are not held for long periods of time.
 
+**Example**
 ```python
-    lock = Lo
-    while not please_stop:
-        with lock:
-            while not todo:
-                lock.wait(seconds=1)
-            # DO SOME WORK
-
+lock = Lock()
+while not please_stop:
+    with lock:
+        while not todo:
+            lock.wait(seconds=1)
+        # DO SOME WORK
 ```
-
 In this example, we look for stuff `todo`, and if there is none, we wait for a second. During that time others can acquire the `lock` and add `todo` items. Upon releasing the the `lock`, our example code will immediately resume to see what's available, waiting again if nothing is found.
 
 
 ## `Signal` Class
 
-[The `Signal` class](mo_threads/signal.py) is a binary semaphore that can be signalled only once; subsequent signals have no effect. It can be signalled by any thread; any thread can wait on a `Signal`; and once signalled, all waiting threads are unblocked, including all subsequent waiting threads. A Signal's current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`. It can not be reversed.  
+[The `Signal` class](mo_threads/signals.py) is a binary semaphore that can be signalled only once; subsequent signals have no effect. It can be signalled by any thread; any thread can wait on a `Signal`; and once signalled, all waiting threads are unblocked, including all subsequent waiting threads. A Signal's current state can be accessed by any thread without blocking. `Signal` is used to model thread-safe state advancement. It initializes to `False`, and when signalled (with `go()`) becomes `True`. It can not be reversed.  
 
 Signals are like a Promise, but more explicit 
 
@@ -161,7 +161,7 @@ print("both threads are done")
 
 ## `Till` Class
 
-[The `Till` class](https://github.com/klahnakoski/pyLibrary/blob/dev/pyLibrary/thread/till.py) is a special `Signal` used to represent timeouts.  
+[The `Till` class](mo-threads/till.py) is a special `Signal` used to represent timeouts.  
 
 ```python
 Till(seconds=20).wait()
