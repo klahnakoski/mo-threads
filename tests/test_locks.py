@@ -221,7 +221,7 @@ class TestLocks(FuzzyTestCase):
                 Log.note("End memory {{mem|comma}}", mem=end_mem)
 
                 self.assertLess(end_mem, (start_mem+mid_mem)/2, "memory should be closer to start")
-                break
+                return
             except Exception as e:
                 Till(seconds=1).wait()  # LET TIMER DAEMON CLEANUP
         Log.error("'memory did not go down")
