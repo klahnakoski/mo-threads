@@ -214,6 +214,7 @@ class TestLocks(FuzzyTestCase):
         trigger.go()
         root.wait()  # THERE SHOULD BE NO DELAY HERE
         del root
+        del trigger
         for _ in range(0, 20):
             try:
                 gc.collect()
