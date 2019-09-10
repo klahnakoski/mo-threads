@@ -225,7 +225,6 @@ class TestLocks(FuzzyTestCase):
 
         for _ in range(0, 20):
             try:
-                till.DEBUG=True
                 Till(seconds=0.1).wait()  # LET TIMER DAEMON CLEANUP
                 gc.collect()
                 end_mem = psutil.Process(os.getpid()).memory_info().rss
