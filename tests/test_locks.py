@@ -217,6 +217,8 @@ class TestLocks(FuzzyTestCase):
 
         mid_mem = psutil.Process(os.getpid()).memory_info().rss
         Log.note("Mid memory {{mem|comma}}", mem=mid_mem)
+        growth = objgraph.growth(limit=10)
+        growth and Log.note("More object\n{{growth}}", growth=growth)
 
         trigger.go()
         root.wait()  # THERE SHOULD BE NO DELAY HERE
@@ -229,7 +231,7 @@ class TestLocks(FuzzyTestCase):
                 end_mem = psutil.Process(os.getpid()).memory_info().rss
                 Log.note("End memory {{mem|comma}}", mem=end_mem)
                 growth = objgraph.growth(limit=10)
-                Log.note("More object\n{{growth}}", growth=growth)
+                growth and Log.note("More object\n{{growth}}", growth=growth)
 
                 self.assertLess(end_mem, (start_mem+mid_mem)/2, "memory should be closer to start")
                 return
