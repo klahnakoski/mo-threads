@@ -15,6 +15,7 @@ from __future__ import unicode_literals
 import gc
 import json
 import os
+import platform
 import threading
 from time import time
 from unittest import skip
@@ -25,7 +26,7 @@ import requests
 
 import mo_threads
 from mo_collections.queue import Queue
-from mo_future import allocate_lock as _allocate_lock, text_type
+from mo_future import allocate_lock as _allocate_lock, text_type, PY2
 from mo_logs import Log, machine_metadata
 from mo_math.randoms import Random
 from mo_testing.fuzzytestcase import FuzzyTestCase
@@ -107,10 +108,14 @@ class TestLocks(FuzzyTestCase):
             done.wait()
 
         Log.note("{{num}} items through queue in {{seconds|round(3)}} seconds", num=SCALE, seconds=timer.duration.seconds)
+        if PY2 and "windows" not in platform.system().lower():
+            expected_time = 10  # LINUX PY2 IS CRAZY SLOW
+        else:
+            expected_time = 2
         if test:
             self.assertLess(
                 timer.duration.seconds,
-                2,
+                expected_time,
                 "Expecting queue to be fast, not " + text_type(timer.duration.seconds) + " seconds"
             )
 
