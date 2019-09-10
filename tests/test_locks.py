@@ -222,7 +222,7 @@ class TestLocks(FuzzyTestCase):
 
         mid_mem = psutil.Process(os.getpid()).memory_info().rss
         Log.note("Mid memory {{mem|comma}}", mem=mid_mem)
-        growth = objgraph.growth(limit=10)
+        growth = objgraph.growth(limit=4)
         growth and Log.note("More object\n{{growth}}", growth=growth)
 
         trigger.go()
@@ -234,10 +234,11 @@ class TestLocks(FuzzyTestCase):
                 gc.collect()
                 end_mem = psutil.Process(os.getpid()).memory_info().rss
                 Log.note("End memory {{mem|comma}}", mem=end_mem)
-                growth = objgraph.growth(limit=10)
-                growth and Log.note("More object\n{{growth}}", growth=growth)
+                current = [(t, objgraph.count(t), objgraph.count(t)-c) for t, c, d in growth]
+                Log.note("Object count\n{{current}}", current=current)
 
-                self.assertLess(end_mem, (start_mem+mid_mem)/2, "memory should be closer to start")
+                for (_, _, cd), (_, _, gd) in zip(current, growth):
+                    self.assertAlmostEqual(-cd, gd, places=2)
                 return
             except Exception as e:
                 pass
