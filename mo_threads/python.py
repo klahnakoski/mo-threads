@@ -34,7 +34,7 @@ class Python(object):
         shell = "windows" in platform.system().lower()
         self.process = Process(
             name,
-            [PYTHON, "mo_threads" + os.sep + "python_worker.py"],
+            [PYTHON, "-u", "mo_threads" + os.sep + "python_worker.py"],
             debug=False,
             cwd=os.getcwd(),
             shell=shell
