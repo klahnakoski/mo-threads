@@ -19,6 +19,7 @@ import threading
 from time import time
 from unittest import skip
 
+import objgraph
 import psutil
 import requests
 
@@ -28,13 +29,13 @@ from mo_future import allocate_lock as _allocate_lock, text_type
 from mo_logs import Log, machine_metadata
 from mo_math.randoms import Random
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
+from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till, till
 from mo_threads.busy_lock import BusyLock
 from mo_times.timer import Timer
 
 ACTIVEDATA_URL = "https://activedata.allizom.org/query"
 USE_PYTHON_THREADS = False
-
+DEBUG_SHOW_BACKREFS = False
 
 class TestLocks(FuzzyTestCase):
     @classmethod
@@ -198,6 +199,8 @@ class TestLocks(FuzzyTestCase):
         gc.collect()
         start_mem = psutil.Process(os.getpid()).memory_info().rss
         Log.note("Start memory {{mem|comma}}", mem=start_mem)
+        objgraph.growth()
+
         root = Signal()
         for i in range(100000):
             root = root | Till(seconds=100000)
@@ -213,18 +216,21 @@ class TestLocks(FuzzyTestCase):
 
         trigger.go()
         root.wait()  # THERE SHOULD BE NO DELAY HERE
-        del root
-        del trigger
+
         for _ in range(0, 20):
             try:
+                till.DEBUG=True
+                Till(seconds=0.1).wait()  # LET TIMER DAEMON CLEANUP
                 gc.collect()
                 end_mem = psutil.Process(os.getpid()).memory_info().rss
                 Log.note("End memory {{mem|comma}}", mem=end_mem)
+                growth = objgraph.growth(limit=10)
+                Log.note("More object\n{{growth}}", growth=growth)
 
                 self.assertLess(end_mem, (start_mem+mid_mem)/2, "memory should be closer to start")
                 return
             except Exception as e:
-                Till(seconds=1).wait()  # LET TIMER DAEMON CLEANUP
+                pass
         Log.error("'memory did not go down")
 
     def test_job_queue_in_signal(self):
@@ -257,8 +263,6 @@ class TestLocks(FuzzyTestCase):
         ACTUALLY, THE PARTICULAR LEAK FOUND CAN BE RECREATED WITHOUT THREADS
         BUT IT IS TOO LATE TO CHANGE THIS TEST
         """
-        import objgraph
-
         NUM_CYCLES = 100
         gc.collect()
         start_mem = psutil.Process(os.getpid()).memory_info().rss
@@ -279,7 +283,7 @@ class TestLocks(FuzzyTestCase):
 
         consumer = Thread.run("", _consumer)
 
-        objgraph.show_growth(limit=3)
+        objgraph.growth(limit=None)
 
         no_change = 0
         for g in range(NUM_CYCLES):
@@ -301,12 +305,15 @@ class TestLocks(FuzzyTestCase):
             if not results:
                 no_change += 1
             else:
-                for typ, count, delta in results:
-                    Log.note('%-*s%9d %+9d\n' % (18, typ, count, delta))
-                    obj_list = objgraph.by_type(typ)
-                    if obj_list:
-                        obj = obj_list[-1]
-                        objgraph.show_backrefs(obj, max_depth=10)
+                if DEBUG_SHOW_BACKREFS:
+                    for typ, count, delta in results:
+                        Log.note('%-*s%9d %+9d\n' % (18, typ, count, delta))
+                        obj_list = objgraph.by_type(typ)
+                        if obj_list:
+                            obj = obj_list[-1]
+                            objgraph.show_backrefs(obj, max_depth=10)
+                else:
+                    Log.note("growth = \n{{results}}", results=results)
 
         consumer.please_stop.go()
         consumer.join()

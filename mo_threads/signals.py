@@ -221,6 +221,7 @@ class OrSignal(object):
     def cleanup(self, r=None):
         for d in self.dependencies:
             d.remove_go(self)
+        self.dependencies = []
 
     def __call__(self, *args, **kwargs):
         s = self.signal()
