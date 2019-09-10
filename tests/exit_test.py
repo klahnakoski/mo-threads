@@ -21,9 +21,9 @@ from mo_logs import Log
 from mo_threads import Thread, Signal, MAIN_THREAD, Till
 
 def timeout(please_stop):
-    timer = Till(seconds=20)
-    (timer | please_stop).wait()
-    if not please_stop:
+    Log.note("timout waiting")
+    (Till(seconds=20) | please_stop).wait()
+    if please_stop:
         Log.note("exit detected")
     else:
         Log.note("timeout detected")
