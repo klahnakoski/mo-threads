@@ -24,7 +24,7 @@ def timeout(please_stop):
     Log.note("timout waiting")
     (Till(seconds=20) | please_stop).wait()
     if please_stop:
-        Log.note("exit detected")
+        Log.note("EXIT DETECTED")
     else:
         Log.note("timeout detected")
 
