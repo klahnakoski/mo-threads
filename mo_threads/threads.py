@@ -437,12 +437,10 @@ _describe_exit_codes = {
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
 
-
 def _wait_for_exit(please_stop):
     """
     /dev/null PIPED TO sys.stdin SPEWS INFINITE LINES, DO NOT POLL AS OFTEN
     """
-
     try:
         import msvcrt
         _wait_for_exit_on_windows(please_stop)
@@ -453,7 +451,13 @@ def _wait_for_exit(please_stop):
     cr_count = 0  # COUNT NUMBER OF BLANK LINES
 
     try:
+        # NO LONGER NEEDED, THE HAPPY PATH WILL EXIT
+        _signal.signal(_signal.SIGTERM, _signal.default_int_handler)
+        _signal.signal(_signal.SIGINT, _signal.default_int_handler)
+
         while not please_stop:
+
+
             # DEBUG and Log.note("inside wait-for-shutdown loop")
             if cr_count > 30:
                 (Till(seconds=3) | please_stop).wait()
