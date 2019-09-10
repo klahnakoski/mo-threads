@@ -300,19 +300,19 @@ class Thread(BaseThread):
                         children = copy(self.children)
                     for c in children:
                         try:
-                            DEBUG and sys.stdout.write(str("Stopping thread " + c.name + "\n"))
+                            DEBUG and Log.note("Stopping thread " + c.name + "\n")
                             c.stop()
                         except Exception as e:
                             Log.warning("Problem stopping thread {{thread}}", thread=c.name, cause=e)
 
                     for c in children:
                         try:
-                            DEBUG and sys.stdout.write(str("Joining on thread " + c.name + "\n"))
+                            DEBUG and Log.note("Joining on thread " + c.name + "\n")
                             c.join()
                         except Exception as e:
                             Log.warning("Problem joining thread {{thread}}", thread=c.name, cause=e)
                         finally:
-                            DEBUG and sys.stdout.write(str("Joined on thread " + c.name + "\n"))
+                            DEBUG and Log.note("Joined on thread " + c.name + "\n")
 
                     del self.target, self.args, self.kwargs
                     DEBUG and Log.note("thread {{name|quote}} stopping", name=self.name)
