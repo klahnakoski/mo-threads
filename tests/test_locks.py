@@ -26,7 +26,7 @@ import requests
 
 import mo_threads
 from mo_collections.queue import Queue
-from mo_future import allocate_lock as _allocate_lock, text_type, PY2
+from mo_future import allocate_lock as _allocate_lock, text_type, PY2, PY3
 from mo_logs import Log, machine_metadata
 from mo_math.randoms import Random
 from mo_testing.fuzzytestcase import FuzzyTestCase
@@ -110,6 +110,8 @@ class TestLocks(FuzzyTestCase):
         Log.note("{{num}} items through queue in {{seconds|round(3)}} seconds", num=SCALE, seconds=timer.duration.seconds)
         if PY2 and "windows" not in platform.system().lower():
             expected_time = 10  # LINUX PY2 IS CRAZY SLOW
+        elif PY3 and "windows" not in platform.system().lower():
+            expected_time = 4  # LINUX PY3 IS SLOW
         else:
             expected_time = 2
         if test:
