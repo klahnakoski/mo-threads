@@ -34,7 +34,6 @@ def timeout(please_stop):
 Thread.run("timeout", target=timeout, please_stop=please_stop)
 
 Log.note("you must type 'exit', and press Enter, or wait 20seconds")
-sleep(5)
 try:
     MAIN_THREAD.wait_for_shutdown_signal(allow_exit=True, please_stop=please_stop, wait_forever=False)
 except Exception as e:
