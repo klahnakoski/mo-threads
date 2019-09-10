@@ -205,9 +205,6 @@ class TestLocks(FuzzyTestCase):
         self.assertEqual(counter[0], 100*50, "Expecting lock to work")
 
     def test_memory_cleanup_with_till(self):
-        gc.collect()
-        start_mem = psutil.Process(os.getpid()).memory_info().rss
-        Log.note("Start memory {{mem|comma}}", mem=start_mem)
         objgraph.growth()
 
         root = Signal()
@@ -220,8 +217,6 @@ class TestLocks(FuzzyTestCase):
         trigger = Signal()
         root = root | trigger
 
-        mid_mem = psutil.Process(os.getpid()).memory_info().rss
-        Log.note("Mid memory {{mem|comma}}", mem=mid_mem)
         growth = objgraph.growth(limit=4)
         growth and Log.note("More object\n{{growth}}", growth=growth)
 
@@ -231,18 +226,16 @@ class TestLocks(FuzzyTestCase):
         for _ in range(0, 20):
             try:
                 Till(seconds=0.1).wait()  # LET TIMER DAEMON CLEANUP
-                gc.collect()
-                end_mem = psutil.Process(os.getpid()).memory_info().rss
-                Log.note("End memory {{mem|comma}}", mem=end_mem)
                 current = [(t, objgraph.count(t), objgraph.count(t)-c) for t, c, d in growth]
                 Log.note("Object count\n{{current}}", current=current)
 
+                # NUMBER OF OBJECTS CLEANED UP SHOULD MATCH NUMBER OF OBJECTS CREATED
                 for (_, _, cd), (_, _, gd) in zip(current, growth):
                     self.assertAlmostEqual(-cd, gd, places=2)
                 return
             except Exception as e:
                 pass
-        Log.error("'memory did not go down")
+        Log.error("object counts did not go down")
 
     def test_job_queue_in_signal(self):
 
