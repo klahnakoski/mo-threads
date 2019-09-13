@@ -13,7 +13,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import os
-from unittest import skipIf
+from unittest import skipIf, skip
 
 from mo_future import text_type
 from mo_logs import Log
@@ -120,6 +120,7 @@ class TestThreads(FuzzyTestCase):
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
+    @skip("the keyboard input and stdin are different")
     def test_exit(self):
         p = Process("waiting", ["python", "-u", "tests/exit_test.py"], debug=True)
         p.stdout.pop()  # WAIT FOR PROCESS TO START

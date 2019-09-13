@@ -111,9 +111,9 @@ class TestLocks(FuzzyTestCase):
         if PY2 and "windows" not in platform.system().lower():
             expected_time = 10  # LINUX PY2 IS CRAZY SLOW
         elif PY3 and "windows" not in platform.system().lower():
-            expected_time = 4  # LINUX PY3 IS SLOW
+            expected_time = 6  # LINUX PY3 IS SLOW
         else:
-            expected_time = 2
+            expected_time = 6
         if test:
             self.assertLess(
                 timer.duration.seconds,

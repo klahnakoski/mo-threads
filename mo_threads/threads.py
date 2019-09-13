@@ -13,11 +13,10 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-import platform
-from copy import copy
-from datetime import datetime, timedelta
 import signal as _signal
 import sys
+from copy import copy
+from datetime import datetime, timedelta
 from time import sleep
 
 from mo_dots import Data, coalesce, unwraplist
@@ -75,14 +74,12 @@ class AllThread(object):
             Log.error("Problem in child threads", cause=exceptions)
 
 
-    def add(self, name, target, *args, **kwargs):
+    def add(self, target, *args, **kwargs):
         """
         target IS THE FUNCTION TO EXECUTE IN THE THREAD
         """
-        t = Thread.run(name, target, *args, **kwargs)
+        t = Thread.run(target.__name__, target, *args, **kwargs)
         self.threads.append(t)
-
-    run = add
 
 
 class BaseThread(object):

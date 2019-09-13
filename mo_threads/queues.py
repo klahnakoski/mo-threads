@@ -14,10 +14,10 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
+import types
 from collections import deque
 from datetime import datetime
 from time import time
-import types
 
 from mo_dots import Null, coalesce
 from mo_future import long

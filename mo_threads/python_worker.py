@@ -9,16 +9,15 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from copy import copy
-import os
-import sys
 
-from mo_files import File
-from mo_future import is_text
 from mo_dots import is_list
 from mo_dots import set_default, listwrap, coalesce
-from mo_future import text_type, PY3
+from mo_files import File
+from mo_future import is_text
+from mo_future import text_type
 from mo_json import json2value, value2json
 from mo_logs import Log, constants, Except
+
 from mo_threads import Signal
 from mo_threads.threads import STDOUT, STDIN
 
