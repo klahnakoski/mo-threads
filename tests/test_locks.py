@@ -26,7 +26,7 @@ import requests
 
 import mo_threads
 from mo_collections.queue import Queue
-from mo_future import allocate_lock as _allocate_lock, text_type, PY2, PY3
+from mo_future import allocate_lock as _allocate_lock, text, PY2, PY3
 from mo_logs import Log, machine_metadata
 from mo_math.randoms import Random
 from mo_testing.fuzzytestcase import FuzzyTestCase
@@ -111,14 +111,14 @@ class TestLocks(FuzzyTestCase):
         if PY2 and "windows" not in platform.system().lower():
             expected_time = 10  # LINUX PY2 IS CRAZY SLOW
         elif PY3 and "windows" not in platform.system().lower():
-            expected_time = 4  # LINUX PY3 IS SLOW
+            expected_time = 6  # LINUX PY3 IS SLOW
         else:
-            expected_time = 2
+            expected_time = 6
         if test:
             self.assertLess(
                 timer.duration.seconds,
                 expected_time,
-                "Expecting queue to be fast, not " + text_type(timer.duration.seconds) + " seconds"
+                "Expecting queue to be fast, not " + text(timer.duration.seconds) + " seconds"
             )
 
     def test_lock_and_till(self):
@@ -169,7 +169,7 @@ class TestLocks(FuzzyTestCase):
         thread = Thread.run("test", loop, please_stop=ps)
         thread.stopped.wait()
 
-        self.assertGreater(len(tills), 60000, "Till objects must be created faster: " + text_type(len(tills)) + " per second is too slow")
+        self.assertGreater(len(tills), 60000, "Till objects must be created faster: " + text(len(tills)) + " per second is too slow")
         Log.note("{{num}} new Tills in one second", num=len(tills))
 
     def test_till_in_loop(self):
@@ -200,7 +200,7 @@ class TestLocks(FuzzyTestCase):
                 with lock:
                     counter[0] += 1
 
-        threads = [Thread.run(text_type(i), adder) for i in range(50)]
+        threads = [Thread.run(text(i), adder) for i in range(50)]
         for t in threads:
             t.join()
 

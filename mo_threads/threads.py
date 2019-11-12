@@ -13,15 +13,14 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-import platform
-from copy import copy
-from datetime import datetime, timedelta
 import signal as _signal
 import sys
+from copy import copy
+from datetime import datetime, timedelta
 from time import sleep
 
 from mo_dots import Data, coalesce, unwraplist
-from mo_future import allocate_lock, get_function_name, get_ident, start_new_thread, text_type, decorate, PY3
+from mo_future import allocate_lock, get_function_name, get_ident, start_new_thread, text, decorate, PY3
 from mo_logs import Except, Log
 
 from mo_threads.lock import Lock
@@ -86,23 +85,23 @@ class AllThread(object):
 
 
 class BaseThread(object):
-    __slots__ = ["id", "name", "children", "child_lock", "cprofiler"]
+    __slots__ = ["id", "name", "children", "child_locker", "cprofiler"]
 
     def __init__(self, ident):
         self.id = ident
         if ident != -1:
-            self.name = "Unknown Thread " + text_type(ident)
-        self.child_lock = allocate_lock()
+            self.name = "Unknown Thread " + text(ident)
+        self.child_locker = allocate_lock()
         self.children = []
         self.cprofiler = None
 
     def add_child(self, child):
-        with self.child_lock:
+        with self.child_locker:
             self.children.append(child)
 
     def remove_child(self, child):
         try:
-            with self.child_lock:
+            with self.child_locker:
                 self.children.remove(child)
         except Exception:
             pass
@@ -131,7 +130,7 @@ class MainThread(BaseThread):
         self.please_stop.go()
 
         join_errors = []
-        with self.child_lock:
+        with self.child_locker:
             children = copy(self.children)
         for c in reversed(children):
             DEBUG and c.name and Log.note("Stopping thread {{name|quote}}", name=c.name)
@@ -189,7 +188,7 @@ class MainThread(BaseThread):
 
         if not wait_forever:
             # TRIGGER SIGNAL WHEN ALL CHILDREN THREADS ARE DONE
-            with self_thread.child_lock:
+            with self_thread.child_locker:
                 pending = copy(self_thread.children)
             children_done = AndSignals(please_stop, len(pending))
             children_done.signal.then(self.please_stop.go)
@@ -219,7 +218,7 @@ class Thread(BaseThread):
 
     def __init__(self, name, target, *args, **kwargs):
         BaseThread.__init__(self, -1)
-        self.name = coalesce(name, "thread_" + text_type(object.__hash__(self)))
+        self.name = coalesce(name, "thread_" + text(object.__hash__(self)))
         self.target = target
         self.end_of_thread = Data()
         self.synch_lock = Lock("response synch lock")
@@ -227,10 +226,9 @@ class Thread(BaseThread):
 
         # ENSURE THERE IS A SHARED please_stop SIGNAL
         self.kwargs = copy(kwargs)
-        please_stop = self.kwargs.get(PLEASE_STOP)
-        if please_stop is None:
-            please_stop = self.kwargs[PLEASE_STOP] = Signal("please_stop for " + self.name)
-        self.please_stop = please_stop
+        self.please_stop = self.kwargs.get(PLEASE_STOP)
+        if self.please_stop is None:
+            self.please_stop = self.kwargs[PLEASE_STOP] = Signal("please_stop for " + self.name)
 
         self.thread = None
         self.stopped = Signal("stopped signal for " + self.name)
@@ -265,7 +263,7 @@ class Thread(BaseThread):
         """
         SEND STOP SIGNAL, DO NOT BLOCK
         """
-        with self.child_lock:
+        with self.child_locker:
             children = copy(self.children)
         for c in children:
             DEBUG and c.name and Log.note("Stopping thread {{name|quote}}", name=c.name)
@@ -286,17 +284,17 @@ class Thread(BaseThread):
                 e = Except.wrap(e)
                 with self.synch_lock:
                     self.end_of_thread.exception = e
-                with self.parent.child_lock:
+                with self.parent.child_locker:
                     emit_problem = self not in self.parent.children
                 if emit_problem:
                     # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
                     try:
                         Log.error("Problem in thread {{name|quote}}", name=self.name, cause=e)
                     except Exception:
-                        sys.stderr.write(str("ERROR in thread: " + self.name + " " + text_type(e) + "\n"))
+                        sys.stderr.write(str("ERROR in thread: " + self.name + " " + text(e) + "\n"))
             finally:
                 try:
-                    with self.child_lock:
+                    with self.child_locker:
                         children = copy(self.children)
                     for c in children:
                         try:
@@ -332,7 +330,7 @@ class Thread(BaseThread):
         if self is Thread:
             Log.error("Thread.join() is not a valid call, use t.join()")
 
-        with self.child_lock:
+        with self.child_locker:
             children = copy(self.children)
         for c in children:
             c.join(till=till)
@@ -385,6 +383,7 @@ class RegisterThread(object):
     This will ensure the thread has unregistered, or
     has completed before MAIN_THREAD is shutdown
     """
+    __slots__ = ["thread"]
 
     def __init__(self, thread=None):
         if thread is None:
@@ -407,6 +406,7 @@ class RegisterThread(object):
 def register_thread(func):
     """
     Call `with RegisterThread():`
+    Track this thread to ensure controlled shutdown
     """
 
     @decorate(func)

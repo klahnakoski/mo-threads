@@ -14,9 +14,8 @@ import platform
 from mo_dots import set_default, wrap
 from mo_json import json2value, value2json
 from mo_logs import Except, Log
-from mo_threads.signals import DONE
 
-from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, Till
+from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, DONE
 
 PYTHON = "python"
 DEBUG = True
@@ -76,7 +75,7 @@ class Python(object):
     def _daemon(self, please_stop):
         while not please_stop:
             line = self.process.stdout.pop(till=please_stop)
-            if line is THREAD_STOP:
+            if line == THREAD_STOP:
                 break
             try:
                 data = json2value(line)
@@ -96,7 +95,7 @@ class Python(object):
         while not please_stop:
             try:
                 line = self.process.stderr.pop(till=please_stop)
-                if line is THREAD_STOP:
+                if line == THREAD_STOP:
                     please_stop.go()
                     break
                 Log.note("Error line from {{name}}({{pid}}): {{line}}", line=line, name=self.process.name, pid=self.process.pid)

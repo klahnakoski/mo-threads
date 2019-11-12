@@ -12,11 +12,9 @@ import os
 import platform
 import subprocess
 
-from mo_dots import NullType, set_default, wrap, Null
-from mo_future import none_type, PY2
+from mo_dots import set_default, wrap, Null
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
-
 from mo_threads.lock import Lock
 from mo_threads.queues import Queue
 from mo_threads.signals import Signal
@@ -36,6 +34,11 @@ class Process(object):
         self.stderr = Queue("stderr for process " + strings.quote(name), silent=True)
 
         try:
+            if cwd == None:
+                cwd = os.getcwd()
+            else:
+                cwd = str(cwd)
+
             self.debug = debug or DEBUG
             self.service = service = subprocess.Popen(
                 [str(p) for p in params],
@@ -43,14 +46,14 @@ class Process(object):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 bufsize=bufsize,
-                cwd=cwd if isinstance(cwd, (str, NullType, none_type)) else cwd.abspath,
+                cwd=cwd,
                 env={str(k): str(v) for k, v in set_default(env, os.environ).items()},
                 shell=shell
             )
 
             self.please_stop = Signal()
             self.please_stop.then(self._kill)
-            self.child_lock = Lock("children of "+self.name)
+            self.child_locker = Lock()
             self.children = [
                 Thread.run(self.name + " stdin", self._writer, service.stdin, self.stdin, please_stop=self.service_stopped, parent_thread=self),
                 Thread.run(self.name + " stdout", self._reader, "stdout", service.stdout, self.stdout, please_stop=self.service_stopped, parent_thread=self),
@@ -74,7 +77,7 @@ class Process(object):
 
     def join(self, raise_on_error=False):
         self.service_stopped.wait()
-        with self.child_lock:
+        with self.child_locker:
             child_threads, self.children = self.children, []
         for c in child_threads:
             c.join()
@@ -88,7 +91,7 @@ class Process(object):
         return self
 
     def remove_child(self, child):
-        with self.child_lock:
+        with self.child_locker:
             try:
                 self.children.remove(child)
             except Exception:
@@ -222,6 +225,11 @@ else:
 
 
 class Command(object):
+    """
+    FASTER Process CLASS - OPENS A COMMAND_LINE APP (CMD on windows) AND KEEPS IT OPEN FOR MULTIPLE COMMANDS
+    EACH WORKING DIRECTORY WILL HAVE ITS OWN PROCESS, MULTIPLE PROCESSES WILL OPEN FOR THE SAME DIR IF MULTIPLE
+    THREADS ARE REQUESTING Commands
+    """
 
     available_locker = Lock("cmd lock")
     available_process = {}

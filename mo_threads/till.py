@@ -17,7 +17,7 @@ from collections import namedtuple
 from time import sleep, time
 from weakref import ref
 
-from mo_future import allocate_lock as _allocate_lock, text_type
+from mo_future import allocate_lock as _allocate_lock, text
 from mo_logs import Log
 
 from mo_threads.signals import DONE, Signal
@@ -41,11 +41,14 @@ class Till(Signal):
         if not enabled:
             Log.note("Till daemon not enabled")
             return DONE
-        if seconds is None:
+        elif till != None:
             return object.__new__(cls)
-        if seconds <= 0:
+        elif seconds == None:
+            return object.__new__(cls)
+        elif seconds <= 0:
             return DONE
-        return object.__new__(cls)
+        else:
+            return object.__new__(cls)
 
     def __init__(self, till=None, seconds=None):
         """
@@ -65,7 +68,7 @@ class Till(Signal):
             from mo_logs import Log
             raise Log.error("Should not happen")
 
-        Signal.__init__(self, name=text_type(timeout))
+        Signal.__init__(self, name=text(timeout))
 
         with Till.locker:
             if timeout != None:
