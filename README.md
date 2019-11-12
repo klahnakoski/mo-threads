@@ -46,20 +46,25 @@ waiting for disk writes or remote logging posts. Please note, this level of
 speed improvement can only be realized if there is no serialization happening
 at the multi-threaded queue.  
 
-### Asynch vs. Actors
+### Async vs. Actors
 
 My personal belief is that [actors](http://en.wikipedia.org/wiki/Actor_model)
-are easier to reason about than [asynch tasks](https://docs.python.org/3/library/asyncio-task.html).
+are easier to reason about than [async tasks](https://docs.python.org/3/library/asyncio-task.html).
 Mixing regular methods and co-routines (with their `yield from` pollution) is
 dangerous because:
 
-1. calling styles between methods and co-routines can be easily confused
+1. calling styles between synchronous and asynchronous methods can be easily confused
 2. actors can use blocking methods, co-routines can not
 3. there is no way to manage resource priority with co-routines.
 4. stack traces are lost with co-routines
-5. asynch scope easily escapes lexical scope, which promotes bugs 
+5. async scope easily escapes lexical scope, which promotes bugs 
 
-Python's asynch efforts are a still-immature re-invention of threading functionality by another name. Expect to experience a decade of problems that are already solved by threading; [here is an example](https://www.python.org/dev/peps/pep-0550/)
+Python's async efforts are still immature; a re-invention of threading functionality by another name. Expect to experience a decade of problems that are already solved by threading; [here is an example](https://www.python.org/dev/peps/pep-0550/).  
+
+**Reading**
+
+* Fibers were an async experiment using a stack, as opposed to the state-machine-based async Python uses now. It does not apply to my argument, but is an interesting read: [[Fibers are] not an appropriate solution for writing scalable concurrent software](http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2018/p1364r0.pdf)
+
 
 ### Synchronization Primitives
 
