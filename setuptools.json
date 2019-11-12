@@ -9,7 +9,7 @@
     ],
     "description": "More Threads! Simpler and faster threading.",
     "include_package_data": true,
-    "install_requires": ["mo-dots>=2.53.19239", "mo-future>=2.48.19205", "mo-logs>=2.53.19239"],
+    "install_requires": ["mo-dots>=3.2.19316", "mo-future>=3.1.19316", "mo-logs>=3.5.19316"],
     "license": "MPL 2.0",
     "long_description": {
         "$concat": [
@@ -68,13 +68,18 @@
             "Mixing regular methods and co-routines (with their `yield from` pollution) is",
             "dangerous because:",
             "",
-            "1. calling styles between methods and co-routines can be easily confused",
+            "1. calling styles between synchronous and asynchronous methods can be easily confused",
             "2. actors can use blocking methods, co-routines can not",
             "3. there is no way to manage resource priority with co-routines.",
             "4. stack traces are lost with co-routines",
             "5. async scope easily escapes lexical scope, which promotes bugs ",
             "",
-            "Python's async efforts are a still-immature re-invention of threading functionality by another name. Expect to experience a decade of problems that are already solved by threading; [here is an example](https://www.python.org/dev/peps/pep-0550/)",
+            "Python's async efforts are still immature; a re-invention of threading functionality by another name. Expect to experience a decade of problems that are already solved by threading; [here is an example](https://www.python.org/dev/peps/pep-0550/).  ",
+            "",
+            "**Reading**",
+            "",
+            "* Fibers were an async experiment using a stack, as opposed to the state-machine-based async Python uses now. It does not apply to my argument, but is an interesting read: [[Fibers are] not an appropriate solution for writing scalable concurrent software](http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2018/p1364r0.pdf)",
+            "",
             "",
             "### Synchronization Primitives",
             "",
@@ -194,6 +199,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "2.55.19253",
+    "version": "3.6.19316",
     "zip_safe": false
 }
