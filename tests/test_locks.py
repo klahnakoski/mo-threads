@@ -109,7 +109,7 @@ class TestLocks(FuzzyTestCase):
 
         Log.note("{{num}} items through queue in {{seconds|round(3)}} seconds", num=SCALE, seconds=timer.duration.seconds)
         if PY2 and "windows" not in platform.system().lower():
-            expected_time = 10  # LINUX PY2 IS CRAZY SLOW
+            expected_time = 15  # LINUX PY2 IS CRAZY SLOW
         elif PY3 and "windows" not in platform.system().lower():
             expected_time = 6  # LINUX PY3 IS SLOW
         else:
