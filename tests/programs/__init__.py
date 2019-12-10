@@ -11,6 +11,7 @@ def timeout(please_stop):
     else:
         Log.note("timeout detected")
 
-Thread.run("timeout", target=timeout)
-Log.note("you must type 'exit', and press Enter, or wait 20seconds")
 
+Thread.run("timeout", target=timeout)
+
+Log.note("waiting for SIGINT...")

@@ -12,8 +12,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import os
-from unittest import skipIf, skip
+from unittest import skipIf
 
 from mo_future import text
 from mo_logs import Log

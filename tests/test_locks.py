@@ -23,16 +23,16 @@ from unittest import skip
 import objgraph
 import psutil
 import requests
-
-import mo_threads
 from mo_collections.queue import Queue
 from mo_future import allocate_lock as _allocate_lock, text, PY2, PY3
 from mo_logs import Log, machine_metadata
 from mo_math.randoms import Random
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till, till
-from mo_threads.busy_lock import BusyLock
 from mo_times.timer import Timer
+
+import mo_threads
+from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
+from mo_threads.busy_lock import BusyLock
 
 ACTIVEDATA_URL = "https://activedata.allizom.org/query"
 USE_PYTHON_THREADS = False
