@@ -23,6 +23,7 @@ from mo_times.durations import SECOND
 
 from mo_threads import Lock, Thread, Signal, Till, till
 from mo_threads import Process
+from tests import IS_WINDOWS
 
 
 class TestThreads(FuzzyTestCase):
@@ -108,21 +109,33 @@ class TestThreads(FuzzyTestCase):
         Till(seconds=0.5).wait()
         Log.note("done")
 
-    @skipIf(os.name == "nt", "Can not SIGINT on Windows")
-    def test_interrupt(self):
+    @skipIf(IS_WINDOWS, "Can not SIGINT on Windows")
+    def test_interrupt1(self):
         """
         CAN WE CATCH A SIGINT?
         """
-        p = Process("waiting", ["python", "-u", "tests/exit_test.py"], debug=True)
+        p = Process("waiting", ["python", "-u", "tests/exit_test1.py"], debug=True)
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         k = Process("killer", ["kill", "-SIGINT", p.pid])
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
-    @skip("the keyboard input and stdin are different")
+    @skipIf(IS_WINDOWS, "Can not SIGINT on Windows")
+    def test_interrupt2(self):
+        """
+        CAN WE CATCH A SIGINT?
+        """
+        p = Process("waiting", ["python", "-u", "tests/exit_test2.py"], debug=True)
+        p.stdout.pop()  # WAIT FOR PROCESS TO START
+        Till(seconds=2).wait()
+        k = Process("killer", ["kill", "-SIGINT", p.pid])
+        p.join()
+        self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
+
+    @skipIf(IS_WINDOWS, "the keyboard input and stdin are different")
     def test_exit(self):
-        p = Process("waiting", ["python", "-u", "tests/exit_test.py"], debug=True)
+        p = Process("waiting", ["python", "-u", "tests/exit_test1.py"], debug=True)
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         p.stdin.add("exit\n")

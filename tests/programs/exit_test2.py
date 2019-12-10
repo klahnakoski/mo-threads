@@ -18,20 +18,13 @@ from __future__ import unicode_literals
 
 from mo_logs import Log
 
-from mo_threads import Thread, Signal, MAIN_THREAD, Till
+import tests.programs as _
+from mo_threads import MAIN_THREAD
 
-def timeout(please_stop):
-    Log.note("timout waiting")
-    (Till(seconds=20) | please_stop).wait()
-    if please_stop:
-        Log.note("EXIT DETECTED")
-    else:
-        Log.note("timeout detected")
-
-Thread.run("timeout", target=timeout)
+keep_import = _
 
 Log.note("you must type 'exit', and press Enter, or wait 20seconds")
 try:
-    MAIN_THREAD.wait_for_shutdown_signal(allow_exit=True, wait_forever=False)
+    MAIN_THREAD.wait_for_shutdown_signal(allow_exit=False, wait_forever=False)
 except Exception as e:
     Log.error("can not wait", cause=e)

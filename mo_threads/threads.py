@@ -426,7 +426,7 @@ def stop_main_thread(*args):
     except Exception as _:
         pass
     finally:
-        MAIN_THREAD.stop()
+        MAIN_THREAD.please_stop.go()
 
 
 _describe_exit_codes = {
@@ -505,14 +505,14 @@ def _wait_for_exit_on_windows(please_stop):
             sleep(1)
 
 
-
 def _wait_for_interrupt(please_stop):
     DEBUG and Log.note("inside wait-for-shutdown loop")
-    while not please_stop:
-        try:
-            sleep(1)
-        except Exception:
-            pass
+    try:
+        please_stop.wait()
+    except KeyboardInterrupt as k:
+        pass
+    except Exception as e:
+        pass
 
 
 MAIN_THREAD = MainThread()
