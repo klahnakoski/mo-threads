@@ -115,6 +115,7 @@ class MainThread(BaseThread):
         self.stopped = Signal()
         self.stop_logging = Log.stop
         self.timers = None
+        self.shutdown_locker = allocate_lock()
 
     def stop(self):
         """
@@ -151,13 +152,16 @@ class MainThread(BaseThread):
         if join_errors:
             Log.error("Problem while stopping {{name|quote}}", name=self.name, cause=unwraplist(join_errors))
 
-        self.stop_logging()
-        self.timers.stop()
-        self.timers.join()
+        with self.shutdown_locker:
+            if self.stopped:
+                return
+            self.stop_logging()
+            self.timers.stop()
+            self.timers.join()
 
-        write_profiles(self.cprofiler)
-        DEBUG and Log.note("Thread {{name|quote}} now stopped", name=self.name)
-        self.stopped.go()
+            write_profiles(self.cprofiler)
+            DEBUG and Log.note("Thread {{name|quote}} now stopped", name=self.name)
+            self.stopped.go()
 
     def wait_for_shutdown_signal(
         self,
@@ -416,14 +420,14 @@ def register_thread(func):
     return output
 
 
-def stop_main_thread(*args):
+def stop_main_thread(signum=0, frame=None) -> None:
     """
     CLEAN OF ALL THREADS CREATED WITH THIS LIBRARY
     """
     try:
-        if len(args) and args[0] != _signal.SIGTERM:
-            Log.warning("exit with {{value}}", value=_describe_exit_codes.get(args[0], args[0]))
-    except Exception as _:
+        if signum != _signal.SIGTERM:
+            Log.warning("exit with {{value}}", value=_describe_exit_codes.get(signum, signum))
+    except Exception:
         pass
     finally:
         MAIN_THREAD.please_stop.go()
@@ -436,6 +440,7 @@ _describe_exit_codes = {
 
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
+
 
 def _wait_for_exit(please_stop):
     """
@@ -451,13 +456,7 @@ def _wait_for_exit(please_stop):
     cr_count = 0  # COUNT NUMBER OF BLANK LINES
 
     try:
-        # NO LONGER NEEDED, THE HAPPY PATH WILL EXIT
-        _signal.signal(_signal.SIGTERM, _signal.default_int_handler)
-        _signal.signal(_signal.SIGINT, _signal.default_int_handler)
-
         while not please_stop:
-
-
             # DEBUG and Log.note("inside wait-for-shutdown loop")
             if cr_count > 30:
                 (Till(seconds=3) | please_stop).wait()
@@ -506,13 +505,11 @@ def _wait_for_exit_on_windows(please_stop):
 
 
 def _wait_for_interrupt(please_stop):
-    DEBUG and Log.note("inside wait-for-shutdown loop")
+    DEBUG and Log.note("wait for stop signal")
     try:
         please_stop.wait()
-    except KeyboardInterrupt as k:
-        pass
-    except Exception as e:
-        pass
+    except:
+        please_stop.go()
 
 
 MAIN_THREAD = MainThread()
