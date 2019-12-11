@@ -113,7 +113,7 @@ class TestThreads(FuzzyTestCase):
         """
         CAN WE CATCH A SIGINT?
         """
-        p = Process("waiting", ["python", "-u", "tests/exit_test1.py"], debug=True)
+        p = Process("waiting", ["python", "-u", "tests/programs/exit_test1.py"], debug=True)
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         k = Process("killer", ["kill", "-SIGINT", p.pid])
@@ -125,7 +125,7 @@ class TestThreads(FuzzyTestCase):
         """
         CAN WE CATCH A SIGINT?
         """
-        p = Process("waiting", ["python", "-u", "tests/exit_test2.py"], debug=True)
+        p = Process("waiting", ["python", "-u", "tests/programs/exit_test2.py"], debug=True)
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         k = Process("killer", ["kill", "-SIGINT", p.pid])
@@ -134,7 +134,7 @@ class TestThreads(FuzzyTestCase):
 
     @skipIf(IS_WINDOWS, "the keyboard input and stdin are different")
     def test_exit(self):
-        p = Process("waiting", ["python", "-u", "tests/exit_test1.py"], debug=True)
+        p = Process("waiting", ["python", "-u", "tests/programs/exit_test1.py"], debug=True)
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         p.stdin.add("exit\n")

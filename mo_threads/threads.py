@@ -420,17 +420,9 @@ def register_thread(func):
     return output
 
 
-def stop_main_thread(signum=0, frame=None) -> None:
-    """
-    CLEAN OF ALL THREADS CREATED WITH THIS LIBRARY
-    """
-    try:
-        if signum != _signal.SIGTERM:
-            Log.warning("exit with {{value}}", value=_describe_exit_codes.get(signum, signum))
-    except Exception:
-        pass
-    finally:
-        MAIN_THREAD.please_stop.go()
+def stop_main_thread(signum=0, frame=None):
+    MAIN_THREAD.please_stop.go()
+    raise KeyboardInterrupt()
 
 
 _describe_exit_codes = {
@@ -508,7 +500,7 @@ def _wait_for_interrupt(please_stop):
     DEBUG and Log.note("wait for stop signal")
     try:
         please_stop.wait()
-    except:
+    finally:
         please_stop.go()
 
 

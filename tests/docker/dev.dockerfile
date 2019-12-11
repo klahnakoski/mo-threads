@@ -1,10 +1,12 @@
 FROM python:3.7.2
 
-ADD . /app
 WORKDIR /app
+RUN mkdir tests
+COPY requirements.txt /app
+COPY tests/requirements.txt /app/tests
+RUN python -m pip install -r requirements.txt \
+    && python -m pip install -r tests/requirements.txt
 
-RUN python -m pip --no-cache-dir install --user -r requirements.txt \
-    && python -m pip --no-cache-dir install --user -r tests/requirements.txt
-
+ADD . /app
 CMD export PYTHONPATH=.:vendor \
-    && python -m unittest discover tests
+    && python -m unittest -k tests.test_python_process

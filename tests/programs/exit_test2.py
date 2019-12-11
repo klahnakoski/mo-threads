@@ -18,10 +18,13 @@ from __future__ import unicode_literals
 
 from mo_logs import Log
 
-import tests.programs as _
-from mo_threads import MAIN_THREAD
+from mo_threads import MAIN_THREAD, Thread
+from tests.programs import timeout
 
-keep_import = _
+Log.start(settings={"trace": True})
+
+Thread.run("timeout", target=timeout)
+
 
 try:
     MAIN_THREAD.wait_for_shutdown_signal(allow_exit=False, wait_forever=False)
