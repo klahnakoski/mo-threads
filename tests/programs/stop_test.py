@@ -19,12 +19,16 @@ from mo_threads.till import Till
 
 please_stop = Signal()
 
+
 def timeout(please_stop):
-    (Till(seconds=5) | please_stop).wait()
+    (Till(seconds=1) | please_stop).wait()
     stop_main_thread()
 
 
 Thread.run("timeout", target=timeout, please_stop=please_stop)
 
 Log.note("test if sys.exit() will send TERM signal")
-MAIN_THREAD.wait_for_shutdown_signal(allow_exit=False, wait_forever=True, please_stop=please_stop)
+MAIN_THREAD.wait_for_shutdown_signal(
+    allow_exit=False, wait_forever=True, please_stop=please_stop
+)
+Log.note("EXIT DETECTED")
