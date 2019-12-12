@@ -74,7 +74,6 @@ class TestThreads(FuzzyTestCase):
         for i in range(NUM):
             self.assertTrue(i in phase1, "expecting "+text(i))
             self.assertTrue(i in phase2, "expecting "+text(i))
-        Log.note("done")
 
     def test_thread_wait_till(self):
         phase1 = []
@@ -91,7 +90,6 @@ class TestThreads(FuzzyTestCase):
 
         self.assertEqual(phase1, [0], "expecting ordered list")
         self.assertEqual(phase2, [0], "expecting ordered list")
-        Log.note("done")
 
     def test_timeout(self):
         def test(please_stop):
@@ -102,14 +100,12 @@ class TestThreads(FuzzyTestCase):
         Till(seconds=0.5).wait()
         thread.stop()
         self.assertGreater(now.unix+1, Date.now().unix, "Expecting quick stop")
-        Log.note("done")
 
     def test_sleep(self):
         Till(seconds=0.5).wait()
-        Log.note("done")
 
     @skipIf(IS_WINDOWS, "Can not SIGINT on Windows")
-    def test_interrupt1(self):
+    def test_sigint(self):
         """
         CAN WE CATCH A SIGINT?
         """
@@ -120,15 +116,15 @@ class TestThreads(FuzzyTestCase):
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
-    @skipIf(IS_WINDOWS, "Can not SIGINT on Windows")
-    def test_interrupt2(self):
+    @skipIf(IS_WINDOWS, "Can not SIGTERM on Windows")
+    def test_sigterm(self):
         """
         CAN WE CATCH A SIGINT?
         """
         p = Process("waiting", ["python", "-u", "tests/programs/exit_test2.py"], debug=True)
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
-        k = Process("killer", ["kill", "-SIGINT", p.pid])
+        k = Process("killer", ["kill", "-SIGTERM", p.pid])
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 

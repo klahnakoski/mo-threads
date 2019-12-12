@@ -9,4 +9,4 @@ RUN python -m pip install -r requirements.txt \
 
 ADD . /app
 CMD export PYTHONPATH=.:vendor \
-    && python -m unittest -k tests.test_python_process
+    && python -m unittest discover tests
