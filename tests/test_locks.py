@@ -13,7 +13,6 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import gc
-import json
 import os
 import platform
 import threading
@@ -22,21 +21,20 @@ from unittest import skip
 
 import objgraph
 import psutil
-import requests
-
-import mo_threads
 from mo_collections.queue import Queue
 from mo_future import allocate_lock as _allocate_lock, text, PY2, PY3
 from mo_logs import Log, machine_metadata
 from mo_math.randoms import Random
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till, till
-from mo_threads.busy_lock import BusyLock
 from mo_times.timer import Timer
 
-ACTIVEDATA_URL = "https://activedata.allizom.org/query"
+import mo_threads
+from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
+from mo_threads.busy_lock import BusyLock
+
 USE_PYTHON_THREADS = False
 DEBUG_SHOW_BACKREFS = False
+
 
 class TestLocks(FuzzyTestCase):
     @classmethod
@@ -59,9 +57,8 @@ class TestLocks(FuzzyTestCase):
         a.go()
         self.assertEqual(bool(a), True)
 
-
     def test_lock_speed(self):
-        SCALE = 1000*100
+        SCALE = 1000 * 100
 
         with Timer("create"):
             locks = [_allocate_lock() for _ in range(SCALE)]
@@ -83,7 +80,7 @@ class TestLocks(FuzzyTestCase):
         self._test_queue_speed(test=True)
 
     def _test_queue_speed(self, test=False):
-        SCALE = 1000*10
+        SCALE = 1000 * 10
 
         done = Signal("done")
         slow = Queue()
@@ -107,9 +104,13 @@ class TestLocks(FuzzyTestCase):
             Log.note("Done insert")
             done.wait()
 
-        Log.note("{{num}} items through queue in {{seconds|round(3)}} seconds", num=SCALE, seconds=timer.duration.seconds)
+        Log.note(
+            "{{num}} items through queue in {{seconds|round(3)}} seconds",
+            num=SCALE,
+            seconds=timer.duration.seconds,
+        )
         if PY2 and "windows" not in platform.system().lower():
-            expected_time = 10  # LINUX PY2 IS CRAZY SLOW
+            expected_time = 15  # LINUX PY2 IS CRAZY SLOW
         elif PY3 and "windows" not in platform.system().lower():
             expected_time = 6  # LINUX PY3 IS SLOW
         else:
@@ -118,7 +119,9 @@ class TestLocks(FuzzyTestCase):
             self.assertLess(
                 timer.duration.seconds,
                 expected_time,
-                "Expecting queue to be fast, not " + text(timer.duration.seconds) + " seconds"
+                "Expecting queue to be fast, not "
+                + text(timer.duration.seconds)
+                + " seconds",
             )
 
     def test_lock_and_till(self):
@@ -128,6 +131,7 @@ class TestLocks(FuzzyTestCase):
         b_is_ready = Signal("b lock")
 
         Log.note("begin")
+
         def loop(is_ready, please_stop):
             with locker:
                 while not got_signal:
@@ -137,6 +141,7 @@ class TestLocks(FuzzyTestCase):
                 Log.note("outside loop")
                 locker.wait()
                 Log.note("thread is expected to get here")
+
         thread_a = Thread.run("a", loop, a_is_ready)
         thread_b = Thread.run("b", loop, b_is_ready)
 
@@ -148,7 +153,9 @@ class TestLocks(FuzzyTestCase):
             Log.note("leaving")
             pass
         with locker:
-            Log.note("leaving again")  # a AND b SHOULD BE TRIGGERED OUT OF locker.wait()
+            Log.note(
+                "leaving again"
+            )  # a AND b SHOULD BE TRIGGERED OUT OF locker.wait()
             pass
         Log.note("wait a second")
         Till(seconds=1).wait()
@@ -169,11 +176,16 @@ class TestLocks(FuzzyTestCase):
         thread = Thread.run("test", loop, please_stop=ps)
         thread.stopped.wait()
 
-        self.assertGreater(len(tills), 60000, "Till objects must be created faster: " + text(len(tills)) + " per second is too slow")
+        self.assertGreater(
+            len(tills),
+            60000,
+            "Till objects must be created faster: "
+            + text(len(tills))
+            + " per second is too slow",
+        )
         Log.note("{{num}} new Tills in one second", num=len(tills))
 
     def test_till_in_loop(self):
-
         def loop(please_stop):
             counter = 0
             while not please_stop:
@@ -182,12 +194,14 @@ class TestLocks(FuzzyTestCase):
                 Log.note("{{count}}", count=counter)
             Log.note("loop done")
 
-        please_stop=Signal("please_stop")
+        please_stop = Signal("please_stop")
         Thread.run("loop", loop, please_stop=please_stop)
         Till(seconds=1).wait()
         with please_stop.lock:
             q = please_stop.job_queue
-            self.assertLessEqual(0 if q is None else len(q), 1, "Expecting only one pending job on go")
+            self.assertLessEqual(
+                0 if q is None else len(q), 1, "Expecting only one pending job on go"
+            )
         please_stop.go()
         Log.note("test done")
 
@@ -204,16 +218,18 @@ class TestLocks(FuzzyTestCase):
         for t in threads:
             t.join()
 
-        self.assertEqual(counter[0], 100*50, "Expecting lock to work")
+        self.assertEqual(counter[0], 100 * 50, "Expecting lock to work")
 
     def test_memory_cleanup_with_till(self):
         objgraph.growth()
 
         root = Signal()
         for i in range(100000):
+            if i % 1000 == 0:
+                Log.note("at {{num}} tills", num=i)
             root = root | Till(seconds=100000)
             mid_mem = psutil.Process(os.getpid()).memory_info().rss
-            if mid_mem > 1.5 * 1000 * 1000 * 1000:
+            if mid_mem > 1000 * 1000 * 1000:
                 Log.note("{{num}} Till triggers created", num=i)
                 break
         trigger = Signal()
@@ -228,7 +244,9 @@ class TestLocks(FuzzyTestCase):
         for _ in range(0, 20):
             try:
                 Till(seconds=0.1).wait()  # LET TIMER DAEMON CLEANUP
-                current = [(t, objgraph.count(t), objgraph.count(t)-c) for t, c, d in growth]
+                current = [
+                    (t, objgraph.count(t), objgraph.count(t) - c) for t, c, d in growth
+                ]
                 Log.note("Object count\n{{current}}", current=current)
 
                 # NUMBER OF OBJECTS CLEANED UP SHOULD MATCH NUMBER OF OBJECTS CREATED
@@ -259,7 +277,9 @@ class TestLocks(FuzzyTestCase):
 
         main.go()  # NOT NEEDED, BUT INTERESTING
 
-        self.assertLess(end_mem, (start_mem+mid_mem)/2, "end memory should be closer to start")
+        self.assertLess(
+            end_mem, (start_mem + mid_mem) / 2, "end memory should be closer to start"
+        )
 
     @skip("takes too long")
     def test_memory_cleanup_with_signal(self):
@@ -284,7 +304,7 @@ class TestLocks(FuzzyTestCase):
 
         def _producer(t, please_stop=None):
             for i in range(2):
-                queue.add(str(t)+":"+str(i))
+                queue.add(str(t) + ":" + str(i))
                 Till(seconds=0.01).wait()
 
         consumer = Thread.run("", _consumer)
@@ -296,7 +316,9 @@ class TestLocks(FuzzyTestCase):
             mid_mem = psutil.Process(os.getpid()).memory_info().rss
             Log.note("{{group}} memory {{mem|comma}}", group=g, mem=mid_mem)
             if USE_PYTHON_THREADS:
-                threads = [threading.Thread(target=_producer, args=(i,)) for i in range(500)]
+                threads = [
+                    threading.Thread(target=_producer, args=(i,)) for i in range(500)
+                ]
                 for t in threads:
                     t.start()
             else:
@@ -313,7 +335,7 @@ class TestLocks(FuzzyTestCase):
             else:
                 if DEBUG_SHOW_BACKREFS:
                     for typ, count, delta in results:
-                        Log.note('%-*s%9d %+9d\n' % (18, typ, count, delta))
+                        Log.note("%-*s%9d %+9d\n" % (18, typ, count, delta))
                         obj_list = objgraph.by_type(typ)
                         if obj_list:
                             obj = obj_list[-1]
@@ -324,29 +346,6 @@ class TestLocks(FuzzyTestCase):
         consumer.please_stop.go()
         consumer.join()
 
-        self.assertGreater(no_change, NUM_CYCLES/2)  # IF MOST CYCLES DO NOT HAVE MORE OBJCETS, WE ASSUME THERE IS NO LEAK
-
-
-def query_activedata(suite, platforms=None):
-    query = json.dumps({
-        "from": "unittest",
-        "limit": 200000,
-        "groupby": ["result.test"],
-        "select": {"value": "result.duration", "aggregate": "average"},
-        "where": {"and": [
-            {"eq": {"suite": suite,
-                    "build.platform": platforms
-                    }},
-            {"gt": {"run.timestamp": {"date": "today-week"}}}
-        ]},
-        "format": "list"
-    })
-
-    response = requests.post(
-        ACTIVEDATA_URL,
-        data=query,
-        stream=True
-    )
-    response.raise_for_status()
-    data = response.json()["data"]
-    return data
+        self.assertGreater(
+            no_change, NUM_CYCLES / 2
+        )  # IF MOST CYCLES DO NOT HAVE MORE OBJCETS, WE ASSUME THERE IS NO LEAK

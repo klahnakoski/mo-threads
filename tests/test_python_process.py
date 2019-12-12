@@ -12,16 +12,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import platform
 from unittest import skipIf
 
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
 from mo_threads.python import Python
+from tests import IS_WINDOWS
 
 
-@skipIf("windows" not in platform.system().lower(), "problems on linux")
+@skipIf(not IS_WINDOWS, "problems on linux")
 class TestLocks(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):

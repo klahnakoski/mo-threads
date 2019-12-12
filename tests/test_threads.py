@@ -12,8 +12,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import os
-from unittest import skipIf, skip
+from unittest import skipIf
 
 from mo_future import text
 from mo_logs import Log
@@ -23,6 +22,7 @@ from mo_times.durations import SECOND
 
 from mo_threads import Lock, Thread, Signal, Till, till
 from mo_threads import Process
+from tests import IS_WINDOWS
 
 
 class TestThreads(FuzzyTestCase):
@@ -41,7 +41,7 @@ class TestThreads(FuzzyTestCase):
             with locker:
                 locker.wait(Till(seconds=1))
                 locker.wait(Till(seconds=1))
-                locker.wait(Till(till=(Date.now()+SECOND).unix))
+                locker.wait(Till(till=(Date.now() + SECOND).unix))
 
         t = Thread.run("take lock", take_lock)
         t.join()
@@ -69,12 +69,11 @@ class TestThreads(FuzzyTestCase):
         for t in threads:
             t.join()
 
-        self.assertEqual(len(phase1), NUM, "expecting "+text(NUM)+" items")
-        self.assertEqual(len(phase2), NUM, "expecting "+text(NUM)+" items")
+        self.assertEqual(len(phase1), NUM, "expecting " + text(NUM) + " items")
+        self.assertEqual(len(phase2), NUM, "expecting " + text(NUM) + " items")
         for i in range(NUM):
-            self.assertTrue(i in phase1, "expecting "+text(i))
-            self.assertTrue(i in phase2, "expecting "+text(i))
-        Log.note("done")
+            self.assertTrue(i in phase1, "expecting " + text(i))
+            self.assertTrue(i in phase2, "expecting " + text(i))
 
     def test_thread_wait_till(self):
         phase1 = []
@@ -91,7 +90,6 @@ class TestThreads(FuzzyTestCase):
 
         self.assertEqual(phase1, [0], "expecting ordered list")
         self.assertEqual(phase2, [0], "expecting ordered list")
-        Log.note("done")
 
     def test_timeout(self):
         def test(please_stop):
@@ -101,33 +99,10 @@ class TestThreads(FuzzyTestCase):
         thread = Thread.run("sleeper", test)
         Till(seconds=0.5).wait()
         thread.stop()
-        self.assertGreater(now.unix+1, Date.now().unix, "Expecting quick stop")
-        Log.note("done")
+        self.assertGreater(now.unix + 1, Date.now().unix, "Expecting quick stop")
 
     def test_sleep(self):
         Till(seconds=0.5).wait()
-        Log.note("done")
-
-    @skipIf(os.name == "nt", "Can not SIGINT on Windows")
-    def test_interrupt(self):
-        """
-        CAN WE CATCH A SIGINT?
-        """
-        p = Process("waiting", ["python", "-u", "tests/exit_test.py"], debug=True)
-        p.stdout.pop()  # WAIT FOR PROCESS TO START
-        Till(seconds=2).wait()
-        k = Process("killer", ["kill", "-SIGINT", p.pid])
-        p.join()
-        self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
-
-    @skip("the keyboard input and stdin are different")
-    def test_exit(self):
-        p = Process("waiting", ["python", "-u", "tests/exit_test.py"], debug=True)
-        p.stdout.pop()  # WAIT FOR PROCESS TO START
-        Till(seconds=2).wait()
-        p.stdin.add("exit\n")
-        p.join()
-        self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
     def test_loop(self):
         acc = []
@@ -141,14 +116,19 @@ class TestThreads(FuzzyTestCase):
 
         worker = Thread.run("loop", work)
         started.wait()
-        while len(acc)<10:
+        while len(acc) < 10:
             Till(seconds=0.1).wait()
         worker.stop()
         worker.join()
 
         # We expect 10, but 9 is good enough
         num = len(acc)
-        self.assertGreater(num, 9, "Expecting some reasonable number of entries to prove there was looping, not "+text(num))
+        self.assertGreater(
+            num,
+            9,
+            "Expecting some reasonable number of entries to prove there was looping, not "
+            + text(num),
+        )
 
     def test_or_signal_timeout(self):
         acc = []
@@ -181,7 +161,6 @@ class TestThreads(FuzzyTestCase):
 
         self.assertEqual(acc, ["worker", "done"])
 
-
     def test_and_signals(self):
         acc = []
         locker = Lock()
@@ -189,6 +168,7 @@ class TestThreads(FuzzyTestCase):
         def worker(please_stop):
             with locker:
                 acc.append("worker")
+
         a = Thread.run("a", worker)
         b = Thread.run("b", worker)
         c = Thread.run("c", worker)
