@@ -12,20 +12,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import os
 from unittest import skipIf
 
-from mo_future import text
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from mo_times.dates import Date
-from mo_times.durations import SECOND
 
-from mo_threads import Lock, Thread, Signal, Till, till
 from mo_threads import Process
+from mo_threads import Till
 from tests import IS_WINDOWS
 
 
-class TestThreads(FuzzyTestCase):
+class TestProcesses(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):
         Log.start()
@@ -34,13 +32,24 @@ class TestThreads(FuzzyTestCase):
     def tearDownClass(cls):
         Log.stop()
 
+    @skipIf(IS_WINDOWS, "the keyboard input and stdin are different")
+    def test_exit(self):
+        p = Process(
+            "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
+        )
+        p.stdout.pop()  # WAIT FOR PROCESS TO START
+        Till(seconds=2).wait()
+        p.stdin.add("exit\n")
+        p.join()
+        self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
+
     @skipIf(IS_WINDOWS, "Can not SIGINT on Windows")
-    def test_sigint(self):
+    def test_sigint_no_exit(self):
         """
         CAN WE CATCH A SIGINT?
         """
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/exit_test1.py"], debug=True
+            "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
@@ -48,28 +57,45 @@ class TestThreads(FuzzyTestCase):
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
+    def test_sigint(self):
+        """
+        CAN WE CATCH A SIGINT?
+        """
+        p = Process(
+            "waiting", ["python", "-u", "tests/programs/sigint_test.py"], debug=True
+        )
+        p.stdout.pop()  # WAIT FOR PROCESS TO START
+        Till(seconds=2).wait()
+        if IS_WINDOWS:
+            os.kill(p.pid)
+        else:
+            Process("killer", ["kill", "-SIGINT", p.pid])
+        p.join()
+        self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
+
+    def test_no_sigint(self):
+        """
+        DO WE STILL EXIT WITHOUT SIGINT?
+        """
+        p = Process(
+            "waiting", ["python", "-u", "tests/programs/sigint_test.py"], debug=True
+        )
+        p.stdout.pop()  # WAIT FOR PROCESS TO START
+        Till(seconds=2).wait()
+        p.join()
+        self.assertTrue(not any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
+
     @skipIf(IS_WINDOWS, "Can not SIGTERM on Windows")
     def test_sigterm(self):
         """
         CAN WE CATCH A SIGINT?
         """
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/exit_test2.py"], debug=True
+            "waiting", ["python", "-u", "tests/programs/sigint_test.py"], debug=True
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         k = Process("killer", ["kill", "-SIGTERM", p.pid])
-        p.join()
-        self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
-
-    @skipIf(IS_WINDOWS, "the keyboard input and stdin are different")
-    def test_exit(self):
-        p = Process(
-            "waiting", ["python", "-u", "tests/programs/exit_test1.py"], debug=True
-        )
-        p.stdout.pop()  # WAIT FOR PROCESS TO START
-        Till(seconds=2).wait()
-        p.stdin.add("exit\n")
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
