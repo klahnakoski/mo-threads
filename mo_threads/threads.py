@@ -5,7 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-# Author: Kyle Lahnakoski (kyle@lahnakoski.com)
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 # THIS THREADING MODULE IS PERMEATED BY THE please_stop SIGNAL.
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
@@ -30,7 +30,6 @@ from mo_future import (
     PY3,
 )
 from mo_logs import Except, Log
-
 from mo_threads.lock import Lock
 from mo_threads.profiles import CProfiler, write_profiles
 from mo_threads.signals import AndSignals, Signal
@@ -94,7 +93,7 @@ class AllThread(object):
 
 
 class BaseThread(object):
-    __slots__ = ["id", "name", "children", "child_locker", "cprofiler"]
+    __slots__ = ["id", "name", "children", "child_locker", "cprofiler", "trace_func"]
 
     def __init__(self, ident):
         self.id = ident
@@ -103,6 +102,7 @@ class BaseThread(object):
         self.child_locker = allocate_lock()
         self.children = []
         self.cprofiler = None
+        self.trace_func = sys.gettrace()
 
     def add_child(self, child):
         with self.child_locker:
@@ -257,6 +257,7 @@ class Thread(BaseThread):
             )
 
         self.thread = None
+        self.join_attempt = Signal("joining with " + self.name)
         self.stopped = Signal("stopped signal for " + self.name)
 
         if PARENT_THREAD in kwargs:
@@ -299,15 +300,15 @@ class Thread(BaseThread):
         DEBUG and Log.note("Thread {{name|quote}} got request to stop", name=self.name)
 
     def _run(self):
+        # if self.trace_func:
+        #     sys.settrace(self.trace_func)
+        #     self.trace_func = None
         self.id = get_ident()
         with RegisterThread(self):
             try:
                 if self.target is not None:
                     a, k, self.args, self.kwargs = self.args, self.kwargs, None, None
                     self.end_of_thread.response = self.target(*a, **k)
-                    self.parent.remove_child(
-                        self
-                    )  # IF THREAD ENDS OK, THEN FORGET ABOUT IT
             except Exception as e:
                 e = Except.wrap(e)
                 with self.synch_lock:
@@ -359,8 +360,30 @@ class Thread(BaseThread):
                         "problem with thread {{name|quote}}", cause=e, name=self.name
                     )
                 finally:
+                    (Till(seconds=60) | self.join_attempt).wait()
                     self.stopped.go()
-                    DEBUG and Log.note("thread {{name|quote}} is done", name=self.name)
+                    DEBUG and Log.note("thread {{name|quote}} is done, wait for join", name=self.name)
+
+                    if not self.join_attempt:
+                        if self.end_of_thread.exception:
+                            # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
+                            try:
+                                Log.error(
+                                    "Problem in thread {{name|quote}}", name=self.name, cause=e
+                                )
+                            except Exception:
+                                sys.stderr.write(
+                                    str("ERROR in thread: " + self.name + " " + text(e) + "\n")
+                                )
+                        elif self.end_of_thread.response != None:
+                            Log.warning(
+                                "Thread {{thread}} returned a response, but was not joined with {{parent}} after 10min",
+                                thread=self.name,
+                                parent=self.parent.name
+                            )
+                        else:
+                            # IF THREAD ENDS OK, AND NOTHING RETURNED, THEN FORGET ABOUT IT
+                            self.parent.remove_child(self)
 
     def is_alive(self):
         return not self.stopped
@@ -382,6 +405,7 @@ class Thread(BaseThread):
             parent=Thread.current().name,
             child=self.name,
         )
+        self.join_attempt.go()
         (self.stopped | till).wait()
         if self.stopped:
             self.parent.remove_child(self)
@@ -454,6 +478,13 @@ class RegisterThread(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.thread.cprofiler.__exit__(exc_type, exc_val, exc_tb)
+        with self.thread.child_locker:
+            if self.thread.children:
+                Log.error(
+                    "Thread {{thread|quote}} has not joined with child threads {{children|json}}",
+                    children=[c.name for c in self.thread.children],
+                    thread=self.thread.name
+                )
         with ALL_LOCK:
             del ALL[self.thread.id]
 

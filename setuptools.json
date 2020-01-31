@@ -2,6 +2,8 @@
     "author": "Kyle Lahnakoski",
     "author_email": "kyle@lahnakoski.com",
     "classifiers": [
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.7",
         "Development Status :: 4 - Beta",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
@@ -9,7 +11,7 @@
     ],
     "description": "More Threads! Simpler and faster threading.",
     "include_package_data": true,
-    "install_requires": ["mo-dots>=3.22.19344", "mo-future>=3.17.19324", "mo-logs>=3.21.19344"],
+    "install_requires": ["mo-dots>=3.41.20031", "mo-future>=3.40.20031", "mo-logs>=3.38.20029"],
     "license": "MPL 2.0",
     "long_description": {
         "$concat": [
@@ -199,6 +201,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "3.23.19346",
+    "version": "3.42.20031",
     "zip_safe": false
 }
