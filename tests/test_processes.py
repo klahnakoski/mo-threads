@@ -62,7 +62,7 @@ class TestProcesses(FuzzyTestCase):
         Till(seconds=2).wait()
         print("start killer")
         k = Process("killer", ["kill", "-SIGINT", p.pid], shell=True)
-        k.join()
+        k.join(raise_on_error=True)
         print("done killer")
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
