@@ -46,15 +46,12 @@ waiting for disk writes or remote logging posts. Please note, this level of
 speed improvement can only be realized if there is no serialization happening
 at the multi-threaded queue.  
 
-### Async vs. Actors
+### Do not use Async
 
-My personal belief is that [actors](http://en.wikipedia.org/wiki/Actor_model)
-are easier to reason about than [async tasks](https://docs.python.org/3/library/asyncio-task.html).
-Mixing regular methods and co-routines (with their `yield from` pollution) is
-dangerous because:
+[Actors](http://en.wikipedia.org/wiki/Actor_model) are easier to reason about than [async tasks](https://docs.python.org/3/library/asyncio-task.html). Mixing regular methods and co-routines (with their `yield from` pollution) is dangerous because:
 
 1. calling styles between synchronous and asynchronous methods can be easily confused
-2. actors can use blocking methods, co-routines can not
+2. actors can use blocking methods, async can not
 3. there is no way to manage resource priority with co-routines.
 4. stack traces are lost with co-routines
 5. async scope easily escapes lexical scope, which promotes bugs 
@@ -141,10 +138,12 @@ return is_done
 You may also wait on a `Signal`, which will block the current thread until the `Signal` is a go
 
 ```python
-is_done = worker_thread.stopped
-is_done.wait()
-is_done = print("worker thread is done")
+is_done = worker_thread.stopped.wait()
+print("worker thread is done")
 ```
+
+> Waiting on the `stopped` signal is different than `join()`; the latter will return the thread state (or throw an exception)
+
 
 `Signals` are first class, they can be passed around and combined with other Signals. For example, using the `__or__` operator (`|`):  `either = lhs | rhs`; `either` will be triggered when `lhs` or `rhs` is triggered.
 
