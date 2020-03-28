@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import os
+import sys
 from unittest import skipIf
 
 from mo_future import PY3
@@ -68,11 +69,8 @@ class TestProcesses(FuzzyTestCase):
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         if IS_WINDOWS:
-            if PY3:
-                from signal import CTRL_C_EVENT
-                os.kill(p.pid, CTRL_C_EVENT)
-            else:
-                os.kill(p.pid)
+            import signal
+            os.kill(p.pid, signal.CTRL_C_EVENT)
         else:
             Process("killer", ["kill", "-SIGINT", p.pid])
         p.join()

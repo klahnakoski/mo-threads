@@ -21,7 +21,7 @@ from tests.programs.utils import timeout
 
 Log.start(settings={"trace": True})
 
-Thread.run("timeout", target=timeout)
+Thread.run("timeout", target=timeout).release()
 
 
 try:
