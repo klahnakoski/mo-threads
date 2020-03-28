@@ -16,8 +16,6 @@ import os
 import signal
 from unittest import skipIf
 
-from mo_future import PY3
-from mo_json import value2json
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
@@ -74,7 +72,6 @@ class TestProcesses(FuzzyTestCase):
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         if IS_WINDOWS:
-            import signal
             os.kill(p.pid, signal.CTRL_C_EVENT)
         else:
             os.kill(p.pid, signal.SIGINT)
