@@ -167,9 +167,9 @@ class TestThreads(FuzzyTestCase):
             with locker:
                 acc.append("worker")
 
-        a = Thread.run("a", worker)
-        b = Thread.run("b", worker)
-        c = Thread.run("c", worker)
+        a = Thread.run("a", worker).release()
+        b = Thread.run("b", worker).release()
+        c = Thread.run("c", worker).release()
 
         (a.stopped & b.stopped & c.stopped).wait()
         acc.append("done")
