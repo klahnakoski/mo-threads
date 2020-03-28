@@ -518,14 +518,6 @@ def _wait_for_exit(please_stop):
     """
     /dev/null PIPED TO sys.stdin SPEWS INFINITE LINES, DO NOT POLL AS OFTEN
     """
-    try:
-        import msvcrt
-
-        _wait_for_exit_on_windows(please_stop)
-        return
-    except:
-        pass
-
     cr_count = 0  # COUNT NUMBER OF BLANK LINES
 
     try:
@@ -558,23 +550,6 @@ def _wait_for_exit(please_stop):
         if please_stop:
             Log.note("please_stop has been requested")
         Log.note("done waiting for exit")
-
-
-def _wait_for_exit_on_windows(please_stop):
-    import msvcrt
-
-    line = ""
-    while not please_stop:
-        if msvcrt.kbhit():
-            chr = msvcrt.getche()
-            if ord(chr) == 13:
-                if line == "exit":
-                    Log.alert("'exit' Detected!  Stopping...")
-                    return
-            elif ord(chr) > 32:
-                line += chr
-        else:
-            sleep(1)
 
 
 def _wait_for_interrupt(please_stop):

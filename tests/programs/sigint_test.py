@@ -14,14 +14,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import os
-print(os.environ['PYTHONPATH'])
-print(os.getcwd())
-
 from mo_logs import Log
 
-from mo_threads import MAIN_THREAD, Thread
-from tests.programs.utils import timeout
+from mo_threads import MAIN_THREAD, Thread, Till
+
+
+def timeout(please_stop):
+    Log.note("begin waiting")
+    (Till(seconds=10) | please_stop).wait()
+    if please_stop:
+        Log.note("EXIT DETECTED")
+    else:
+        Log.note("timeout detected")
 
 Log.start(settings={"trace": True})
 
