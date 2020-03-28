@@ -57,7 +57,7 @@ class TestProcesses(FuzzyTestCase):
         print("saw output")
         Till(seconds=2).wait()
         print("start killer")
-        k = Process("killer", ["kill", "-SIGINT", p.pid])
+        k = Process("killer", ["kill", "-SIGINT", p.pid], shell=True)
         k.join()
         print("done killer")
         p.join()
