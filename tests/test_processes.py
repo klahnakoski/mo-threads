@@ -16,6 +16,8 @@ import os
 import signal
 from unittest import skipIf
 
+from mo_future import PY3
+from mo_json import value2json
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
@@ -55,13 +57,19 @@ class TestProcesses(FuzzyTestCase):
         p = Process(
             "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
         )
+        print("wait for start")
         p.stdout.pop()  # WAIT FOR PROCESS TO START
+        print("saw output")
         Till(seconds=2).wait()
-        print("start kill")
-        os.kill(p.pid, signal.SIGINT)
-        print("done kill")
+        print("self pid = "+str(os.getpid()))
+        print("child pid = "+str(p.pid))
+        print("start killer")
+        command = ["kill",  "-s", "int", p.pid]
+        print(value2json(command))
+        k = Process("killer", command, shell=True)
+        k.join(raise_on_error=True)
+        print("done killer")
         p.join()
-
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
     def test_sigint(self):
@@ -74,9 +82,10 @@ class TestProcesses(FuzzyTestCase):
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         if IS_WINDOWS:
+            import signal
             os.kill(p.pid, signal.CTRL_C_EVENT)
         else:
-            os.kill(p.pid, signal.SIGINT)
+            Process("killer", ["kill", SIGINT, p.pid])
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
@@ -102,8 +111,7 @@ class TestProcesses(FuzzyTestCase):
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
-        print("start kill")
-        os.kill(p.pid, signal.SIGTERM)
+        k = Process("killer", ["kill", "-SIGTERM", p.pid])
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
@@ -117,3 +125,7 @@ class TestProcesses(FuzzyTestCase):
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
+if PY3:
+    SIGINT = "-"+str(signal.SIGINT.value)
+else:
+    SIGINT = "-"+str(signal.SIGINT)
