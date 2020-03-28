@@ -64,7 +64,7 @@ class TestProcesses(FuzzyTestCase):
         print("self pid = "+str(os.getpid()))
         print("child pid = "+str(p.pid))
         print("start killer")
-        command = ["kill",  SIGINT, p.pid]
+        command = ["kill",  "-s", "SIGINT", p.pid]
         print(value2json(command))
         k = Process("killer", command, shell=True)
         k.join(raise_on_error=True)
