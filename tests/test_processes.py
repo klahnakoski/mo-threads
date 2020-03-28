@@ -60,6 +60,8 @@ class TestProcesses(FuzzyTestCase):
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         print("saw output")
         Till(seconds=2).wait()
+        print("self pid = "+str(os.getpid()))
+        print("child pid = "+str(p.pid))
         print("start killer")
         k = Process("killer", ["kill", "-SIGINT", p.pid], shell=True)
         k.join(raise_on_error=True)

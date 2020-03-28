@@ -398,7 +398,7 @@ class Thread(BaseThread):
         PARENT THREAD WILL STILL ENSURE self HAS STOPPED PROPERLY
         """
         self.ready_to_stop.go()
-
+        return self
 
     def join(self, till=None):
         """
