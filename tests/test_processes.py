@@ -34,7 +34,7 @@ class TestProcesses(FuzzyTestCase):
     def tearDownClass(cls):
         Log.stop()
 
-    @skipIf(IS_WINDOWS, "the keyboard input and stdin are different")
+    @skipIf(not IS_WINDOWS, "the keyboard input and stdin are different")
     def test_exit(self):
         p = Process(
             "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
