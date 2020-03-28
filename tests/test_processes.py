@@ -13,8 +13,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import os
-import sys
-from signal import SIGINT
+import signal
 from unittest import skipIf
 
 from mo_future import PY3
@@ -65,7 +64,7 @@ class TestProcesses(FuzzyTestCase):
         print("self pid = "+str(os.getpid()))
         print("child pid = "+str(p.pid))
         print("start killer")
-        command = ["kill",  "-"+str(SIGINT), p.pid]
+        command = ["kill",  SIGINT, p.pid]
         print(value2json(command))
         k = Process("killer", command, shell=True)
         k.join(raise_on_error=True)
@@ -86,7 +85,7 @@ class TestProcesses(FuzzyTestCase):
             import signal
             os.kill(p.pid, signal.CTRL_C_EVENT)
         else:
-            Process("killer", ["kill", "-"+str(SIGINT), p.pid])
+            Process("killer", ["kill", SIGINT, p.pid])
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
@@ -125,3 +124,8 @@ class TestProcesses(FuzzyTestCase):
         )
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
+
+if PY3:
+    SIGINT = "-"+str(signal.SIGINT.value)
+else:
+    SIGINT = "-"+str(signal.SIGINT)
