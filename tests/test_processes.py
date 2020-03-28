@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import os
+from signal import CTRL_C_EVENT
 from unittest import skipIf
 
 from mo_logs import Log
@@ -67,7 +68,7 @@ class TestProcesses(FuzzyTestCase):
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         if IS_WINDOWS:
-            os.kill(p.pid)
+            os.kill(p.pid, CTRL_C_EVENT)
         else:
             Process("killer", ["kill", "-SIGINT", p.pid])
         p.join()
@@ -82,7 +83,7 @@ class TestProcesses(FuzzyTestCase):
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
-        p.join()
+        p.join(raise_on_error=True)
         self.assertTrue(not any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
     @skipIf(IS_WINDOWS, "Can not SIGTERM on Windows")

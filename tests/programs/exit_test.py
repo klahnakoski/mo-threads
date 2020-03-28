@@ -17,7 +17,7 @@ from __future__ import unicode_literals
 from mo_logs import Log
 
 from mo_threads import MAIN_THREAD, Thread
-from tests.programs import timeout
+from tests.programs.utils import timeout
 
 Log.start(settings={"trace": True})
 

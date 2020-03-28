@@ -1,12 +1,10 @@
 /build
 /dist
 *.egg-info
-/mo_threads/*.pyc
-/mo_threads/__pycache__/*.pyc
-/tests/__pycache__/*.pyc
-/tests/*.pyc
+*.pyc
 /.coverage
 .svn
 .idea
 /mo-threads.iml
 /vendor
+__pycache__

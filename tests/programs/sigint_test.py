@@ -14,15 +14,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
+import os
+print(os.environ['PYTHONPATH'])
+print(os.getcwd())
+
 from mo_logs import Log
 
 from mo_threads import MAIN_THREAD, Thread
-from tests.programs import timeout
+from tests.programs.utils import timeout
 
 Log.start(settings={"trace": True})
 
-Thread.run("timeout", target=timeout)
-
+t = Thread.run("timeout", target=timeout)
+t.release()
 
 try:
     MAIN_THREAD.wait_for_shutdown_signal(allow_exit=False, wait_forever=False)

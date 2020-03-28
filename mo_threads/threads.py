@@ -95,9 +95,9 @@ class AllThread(object):
 class BaseThread(object):
     __slots__ = ["id", "name", "children", "child_locker", "cprofiler", "trace_func"]
 
-    def __init__(self, ident):
+    def __init__(self, ident, name=None):
         self.id = ident
-        self.name = None
+        self.name = name
         if ident != -1:
             self.name = "Unknown Thread " + text(ident)
         self.child_locker = allocate_lock()
@@ -242,8 +242,7 @@ class Thread(BaseThread):
     num_threads = 0
 
     def __init__(self, name, target, *args, **kwargs):
-        BaseThread.__init__(self, -1)
-        self.name = coalesce(name, "thread_" + text(object.__hash__(self)))
+        BaseThread.__init__(self, -1, coalesce(name, "thread_" + text(object.__hash__(self))))
         self.target = target
         self.end_of_thread = Data()
         self.synch_lock = Lock("response synch lock")
@@ -301,9 +300,6 @@ class Thread(BaseThread):
         DEBUG and Log.note("Thread {{name|quote}} got request to stop", name=self.name)
 
     def _run(self):
-        # if self.trace_func:
-        #     sys.settrace(self.trace_func)
-        #     self.trace_func = None
         self.id = get_ident()
         with RegisterThread(self):
             try:
@@ -361,9 +357,16 @@ class Thread(BaseThread):
                         "problem with thread {{name|quote}}", cause=e, name=self.name
                     )
                 finally:
-                    (Till(seconds=60) | self.join_attempt).wait()
+                    if not self.join_attempt:
+                        DEBUG and Log.note("thread {{name|quote}} is done, wait for join", name=self.name)
+                        # WHERE DO WE PUT THE THREAD RESULT?
+                        # IF NO THREAD JOINS WITH THIS, THEN WHAT DO WE DO WITH THE RESULT?
+                        # HOW LONG DO WE WAIT FOR ANOTHER TO ACCEPT THE RESULT?
+                        #
+                        # WAIT 60seconds, THEN SEND RESULT TO LOGGER
+                        (Till(seconds=60) | self.join_attempt).wait()
+
                     self.stopped.go()
-                    DEBUG and Log.note("thread {{name|quote}} is done, wait for join", name=self.name)
 
                     if not self.join_attempt:
                         if self.end_of_thread.exception:
@@ -388,6 +391,13 @@ class Thread(BaseThread):
 
     def is_alive(self):
         return not self.stopped
+
+    def release(self):
+        """
+        THREAD CAN EXPECT TO NEVER JOIN
+        """
+        self.join_attempt.go()
+
 
     def join(self, till=None):
         """
@@ -467,9 +477,8 @@ class RegisterThread(object):
 
     def __init__(self, thread=None, name=None):
         if thread is None:
-            thread = BaseThread(get_ident())
+            thread = BaseThread(get_ident(), name)
         self.thread = thread
-        thread.name = name
 
     def __enter__(self):
         with ALL_LOCK:
@@ -503,20 +512,6 @@ def register_thread(func):
             return func(*args, **kwargs)
 
     return output
-
-
-def stop_main_thread(signum=0, frame=None):
-    MAIN_THREAD.please_stop.go()
-    if signum == 0:
-        return
-    elif signum == _signal.SIGTERM:
-        raise SystemExit()
-    else:
-        raise KeyboardInterrupt()
-
-
-_signal.signal(_signal.SIGTERM, stop_main_thread)
-_signal.signal(_signal.SIGINT, stop_main_thread)
 
 
 def _wait_for_exit(please_stop):
@@ -593,6 +588,14 @@ def _wait_for_interrupt(please_stop):
 
 
 MAIN_THREAD = MainThread()
+
+
+def stop_main_thread(signum=0, frame=None):
+    MAIN_THREAD.please_stop.go()
+
+
+_signal.signal(_signal.SIGTERM, stop_main_thread)
+_signal.signal(_signal.SIGINT, stop_main_thread)
 
 ALL_LOCK = allocate_lock()
 ALL = dict()

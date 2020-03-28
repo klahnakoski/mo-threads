@@ -86,6 +86,7 @@ class TestThreads(FuzzyTestCase):
                 phase2.append(value)
 
         worker = Thread.run("worker", work, 0)
+        worker.join()
         worker.stopped.wait()
 
         self.assertEqual(phase1, [0], "expecting ordered list")
@@ -139,6 +140,7 @@ class TestThreads(FuzzyTestCase):
             acc.append("worker")
 
         w = Thread.run("worker", worker, self)
+        w.join()
         w.stopped.wait()
         acc.append("done")
 
