@@ -34,7 +34,6 @@ class TestProcesses(FuzzyTestCase):
     def tearDownClass(cls):
         Log.stop()
 
-    @skipIf(not IS_WINDOWS, "the keyboard input and stdin are different")
     def test_exit(self):
         p = Process(
             "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
@@ -53,9 +52,14 @@ class TestProcesses(FuzzyTestCase):
         p = Process(
             "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
         )
+        print("wait for start")
         p.stdout.pop()  # WAIT FOR PROCESS TO START
+        print("saw output")
         Till(seconds=2).wait()
+        print("start killer")
         k = Process("killer", ["kill", "-SIGINT", p.pid])
+        k.join()
+        print("done killer")
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
