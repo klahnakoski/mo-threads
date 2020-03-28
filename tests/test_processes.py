@@ -17,6 +17,7 @@ import sys
 from unittest import skipIf
 
 from mo_future import PY3
+from mo_json import value2json
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
@@ -63,6 +64,8 @@ class TestProcesses(FuzzyTestCase):
         print("self pid = "+str(os.getpid()))
         print("child pid = "+str(p.pid))
         print("start killer")
+        command = ["kill", "-SIGINT", p.pid]
+        print(value2json(command))
         k = Process("killer", ["kill", "-SIGINT", p.pid], shell=True)
         k.join(raise_on_error=True)
         print("done killer")
