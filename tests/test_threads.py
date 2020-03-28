@@ -12,8 +12,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from unittest import skipIf
-
 from mo_future import text
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
@@ -21,8 +19,6 @@ from mo_times.dates import Date
 from mo_times.durations import SECOND
 
 from mo_threads import Lock, Thread, Signal, Till, till
-from mo_threads import Process
-from tests import IS_WINDOWS
 
 
 class TestThreads(FuzzyTestCase):
