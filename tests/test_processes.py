@@ -57,19 +57,11 @@ class TestProcesses(FuzzyTestCase):
         p = Process(
             "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
         )
-        print("wait for start")
         p.stdout.pop()  # WAIT FOR PROCESS TO START
-        print("saw output")
         Till(seconds=2).wait()
-        print("self pid = "+str(os.getpid()))
-        print("child pid = "+str(p.pid))
-        print("start killer")
-        command = ["kill",  "-s", "SIGINT", p.pid]
-        print(value2json(command))
-        k = Process("killer", command, shell=True)
-        k.join(raise_on_error=True)
-        print("done killer")
+        os.kill(p.pid, signal.SIGINT)
         p.join()
+
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
     def test_sigint(self):
@@ -85,7 +77,7 @@ class TestProcesses(FuzzyTestCase):
             import signal
             os.kill(p.pid, signal.CTRL_C_EVENT)
         else:
-            Process("killer", ["kill", SIGINT, p.pid])
+            os.kill(p.pid, signal.SIGINT)
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
@@ -125,7 +117,3 @@ class TestProcesses(FuzzyTestCase):
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
-if PY3:
-    SIGINT = "-"+str(signal.SIGINT.value)
-else:
-    SIGINT = "-"+str(signal.SIGINT)
