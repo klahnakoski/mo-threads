@@ -38,9 +38,13 @@ class TestProcesses(FuzzyTestCase):
         p = Process(
             "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
         )
+        print("wait for start")
         p.stdout.pop()  # WAIT FOR PROCESS TO START
+        print("saw output")
         Till(seconds=2).wait()
+        print("start exit")
         p.stdin.add("exit\n")
+        print("done exit")
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
