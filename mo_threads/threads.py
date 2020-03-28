@@ -257,7 +257,7 @@ class Thread(BaseThread):
             )
 
         self.thread = None
-        self.join_attempt = Signal("joining with " + self.name)
+        self.ready_to_stop = Signal("joining with " + self.name)
         self.stopped = Signal("stopped signal for " + self.name)
 
         if PARENT_THREAD in kwargs:
@@ -357,18 +357,18 @@ class Thread(BaseThread):
                         "problem with thread {{name|quote}}", cause=e, name=self.name
                     )
                 finally:
-                    if not self.join_attempt:
+                    if not self.ready_to_stop:
                         DEBUG and Log.note("thread {{name|quote}} is done, wait for join", name=self.name)
                         # WHERE DO WE PUT THE THREAD RESULT?
                         # IF NO THREAD JOINS WITH THIS, THEN WHAT DO WE DO WITH THE RESULT?
                         # HOW LONG DO WE WAIT FOR ANOTHER TO ACCEPT THE RESULT?
                         #
                         # WAIT 60seconds, THEN SEND RESULT TO LOGGER
-                        (Till(seconds=60) | self.join_attempt).wait()
+                        (Till(seconds=60) | self.ready_to_stop).wait()
 
                     self.stopped.go()
 
-                    if not self.join_attempt:
+                    if not self.ready_to_stop:
                         if self.end_of_thread.exception:
                             # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
                             try:
@@ -394,9 +394,12 @@ class Thread(BaseThread):
 
     def release(self):
         """
-        THREAD CAN EXPECT TO NEVER JOIN
+        RELEASE THREAD TO FEND FOR ITSELF. THREAD CAN EXPECT TO NEVER
+        JOIN. WILL SEND RESULTS TO LOGS WHEN DONE.
+
+        PARENT THREAD WILL STILL ENSURE self HAS STOPPED PROPERLY
         """
-        self.join_attempt.go()
+        self.ready_to_stop.go()
 
 
     def join(self, till=None):
@@ -416,7 +419,7 @@ class Thread(BaseThread):
             parent=Thread.current().name,
             child=self.name,
         )
-        self.join_attempt.go()
+        self.ready_to_stop.go()
         (self.stopped | till).wait()
         if self.stopped:
             self.parent.remove_child(self)
