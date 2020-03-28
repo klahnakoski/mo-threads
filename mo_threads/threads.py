@@ -245,7 +245,6 @@ class Thread(BaseThread):
         BaseThread.__init__(self, -1, coalesce(name, "thread_" + text(object.__hash__(self))))
         self.target = target
         self.end_of_thread = Data()
-        self.synch_lock = Lock("response synch lock")
         self.args = args
 
         # ENSURE THERE IS A SHARED please_stop SIGNAL
@@ -308,8 +307,7 @@ class Thread(BaseThread):
                     self.end_of_thread.response = self.target(*a, **k)
             except Exception as e:
                 e = Except.wrap(e)
-                with self.synch_lock:
-                    self.end_of_thread.exception = e
+                self.end_of_thread.exception = e
                 with self.parent.child_locker:
                     emit_problem = self not in self.parent.children
                 if emit_problem:
