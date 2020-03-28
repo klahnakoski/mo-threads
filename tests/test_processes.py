@@ -57,7 +57,9 @@ class TestProcesses(FuzzyTestCase):
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
+        print("start kill")
         os.kill(p.pid, signal.SIGINT)
+        print("done kill")
         p.join()
 
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
