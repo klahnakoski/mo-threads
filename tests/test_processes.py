@@ -13,17 +13,16 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import os
-import signal
 from unittest import skipIf
 
-from mo_future import PY3
-from mo_json import value2json
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
 from mo_threads import Process
 from mo_threads import Till
 from tests import IS_WINDOWS
+
+IS_TRAVIS = bool(os.environ.get('TRAVIS'))
 
 
 class TestProcesses(FuzzyTestCase):
@@ -39,17 +38,13 @@ class TestProcesses(FuzzyTestCase):
         p = Process(
             "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
         )
-        print("wait for start")
         p.stdout.pop()  # WAIT FOR PROCESS TO START
-        print("saw output")
         Till(seconds=2).wait()
-        print("start exit")
         p.stdin.add("exit\n")
-        print("done exit")
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
-    @skipIf(IS_WINDOWS, "Can not SIGINT on Windows")
+    @skipIf(IS_TRAVIS or IS_WINDOWS, "Can not SIGINT on Windows")
     def test_sigint_no_exit(self):
         """
         CAN WE CATCH A SIGINT?
@@ -57,21 +52,15 @@ class TestProcesses(FuzzyTestCase):
         p = Process(
             "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
         )
-        print("wait for start")
         p.stdout.pop()  # WAIT FOR PROCESS TO START
-        print("saw output")
         Till(seconds=2).wait()
-        print("self pid = "+str(os.getpid()))
-        print("child pid = "+str(p.pid))
-        print("start killer")
         command = ["kill",  "-s", "int", p.pid]
-        print(value2json(command))
         k = Process("killer", command, shell=True)
         k.join(raise_on_error=True)
-        print("done killer")
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
+    @skipIf(IS_TRAVIS, "travis can not kill")
     def test_sigint(self):
         """
         CAN WE CATCH A SIGINT?
@@ -85,7 +74,7 @@ class TestProcesses(FuzzyTestCase):
             import signal
             os.kill(p.pid, signal.CTRL_C_EVENT)
         else:
-            Process("killer", ["kill", SIGINT, p.pid])
+            Process("killer", ["kill", "-SIGINT", p.pid]).join()
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
@@ -101,7 +90,7 @@ class TestProcesses(FuzzyTestCase):
         p.join(raise_on_error=True)
         self.assertTrue(not any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
-    @skipIf(IS_WINDOWS, "Can not SIGTERM on Windows")
+    @skipIf(IS_TRAVIS or IS_WINDOWS, "Can not SIGTERM on Windows or Travis")
     def test_sigterm(self):
         """
         CAN WE CATCH A SIGINT?
@@ -111,7 +100,7 @@ class TestProcesses(FuzzyTestCase):
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
-        k = Process("killer", ["kill", "-SIGTERM", p.pid])
+        Process("killer", ["kill", "-SIGTERM", p.pid]).join()
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
@@ -125,7 +114,3 @@ class TestProcesses(FuzzyTestCase):
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
-if PY3:
-    SIGINT = "-"+str(signal.SIGINT.value)
-else:
-    SIGINT = "-"+str(signal.SIGINT)
