@@ -16,13 +16,21 @@ from __future__ import unicode_literals
 
 from mo_logs import Log
 
-from mo_threads import MAIN_THREAD, Thread
-from tests.programs import timeout
+from mo_threads import MAIN_THREAD, Thread, Till
+
+
+def timeout(please_stop):
+    Log.note("begin waiting")
+    (Till(seconds=10) | please_stop).wait()
+    if please_stop:
+        Log.note("EXIT DETECTED")
+    else:
+        Log.note("timeout detected")
 
 Log.start(settings={"trace": True})
 
-Thread.run("timeout", target=timeout)
-
+t = Thread.run("timeout", target=timeout)
+t.release()
 
 try:
     MAIN_THREAD.wait_for_shutdown_signal(allow_exit=False, wait_forever=False)

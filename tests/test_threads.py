@@ -12,8 +12,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-from unittest import skipIf
-
 from mo_future import text
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
@@ -21,8 +19,6 @@ from mo_times.dates import Date
 from mo_times.durations import SECOND
 
 from mo_threads import Lock, Thread, Signal, Till, till
-from mo_threads import Process
-from tests import IS_WINDOWS
 
 
 class TestThreads(FuzzyTestCase):
@@ -86,6 +82,7 @@ class TestThreads(FuzzyTestCase):
                 phase2.append(value)
 
         worker = Thread.run("worker", work, 0)
+        worker.join()
         worker.stopped.wait()
 
         self.assertEqual(phase1, [0], "expecting ordered list")
@@ -139,6 +136,7 @@ class TestThreads(FuzzyTestCase):
             acc.append("worker")
 
         w = Thread.run("worker", worker, self)
+        w.join()
         w.stopped.wait()
         acc.append("done")
 
@@ -169,9 +167,9 @@ class TestThreads(FuzzyTestCase):
             with locker:
                 acc.append("worker")
 
-        a = Thread.run("a", worker)
-        b = Thread.run("b", worker)
-        c = Thread.run("c", worker)
+        a = Thread.run("a", worker).release()
+        b = Thread.run("b", worker).release()
+        c = Thread.run("c", worker).release()
 
         (a.stopped & b.stopped & c.stopped).wait()
         acc.append("done")

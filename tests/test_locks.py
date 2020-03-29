@@ -142,24 +142,26 @@ class TestLocks(FuzzyTestCase):
                 locker.wait()
                 Log.note("thread is expected to get here")
 
-        thread_a = Thread.run("a", loop, a_is_ready)
-        thread_b = Thread.run("b", loop, b_is_ready)
+        thread_a = Thread.run("a", loop, a_is_ready).release()
+        thread_b = Thread.run("b", loop, b_is_ready).release()
 
         a_is_ready.wait()
         b_is_ready.wait()
+        timeout = Till(seconds=1)
         with locker:
             got_signal.go()
-            locker.wait(till=Till(seconds=0.1))
-            Log.note("leaving")
-            pass
-        with locker:
-            Log.note(
-                "leaving again"
-            )  # a AND b SHOULD BE TRIGGERED OUT OF locker.wait()
-            pass
-        Log.note("wait a second")
-        Till(seconds=1).wait()
-        Log.note("verification...")
+            while not thread_a.stopped:
+                # WE MUST CONTINUE TO USE THE locker TO ENSURE THE OTHER THREADS ARE NOT ORPHANED IN THERE
+                locker.wait(till=Till(seconds=0.1))
+                Log.note("wait for a thread")
+            while not thread_b.stopped:
+                # WE MUST CONTINUE TO USE THE locker TO ENSURE THE OTHER THREADS ARE NOT ORPHANED IN THERE
+                locker.wait(till=Till(seconds=0.1))
+                Log.note("wait for b thread")
+        thread_a.join()
+        thread_b.join()
+        if timeout:
+            Log.error("Took too long")
 
         self.assertTrue(bool(thread_a.stopped), "Thread should be done by now")
         self.assertTrue(bool(thread_b.stopped), "Thread should be done by now")
@@ -174,7 +176,7 @@ class TestLocks(FuzzyTestCase):
 
         ps = Till(till=done)
         thread = Thread.run("test", loop, please_stop=ps)
-        thread.stopped.wait()
+        thread.join()
 
         self.assertGreater(
             len(tills),

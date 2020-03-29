@@ -22,6 +22,8 @@ from mo_threads import Process
 from mo_threads import Till
 from tests import IS_WINDOWS
 
+IS_TRAVIS = bool(os.environ.get('TRAVIS'))
+
 
 class TestProcesses(FuzzyTestCase):
     @classmethod
@@ -32,7 +34,6 @@ class TestProcesses(FuzzyTestCase):
     def tearDownClass(cls):
         Log.stop()
 
-    @skipIf(IS_WINDOWS, "the keyboard input and stdin are different")
     def test_exit(self):
         p = Process(
             "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
@@ -43,7 +44,7 @@ class TestProcesses(FuzzyTestCase):
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
-    @skipIf(IS_WINDOWS, "Can not SIGINT on Windows")
+    @skipIf(IS_TRAVIS or IS_WINDOWS, "Can not SIGINT on Windows")
     def test_sigint_no_exit(self):
         """
         CAN WE CATCH A SIGINT?
@@ -53,10 +54,13 @@ class TestProcesses(FuzzyTestCase):
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
-        k = Process("killer", ["kill", "-SIGINT", p.pid])
+        command = ["kill",  "-s", "int", p.pid]
+        k = Process("killer", command, shell=True)
+        k.join(raise_on_error=True)
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
+    @skipIf(IS_TRAVIS, "travis can not kill")
     def test_sigint(self):
         """
         CAN WE CATCH A SIGINT?
@@ -67,9 +71,10 @@ class TestProcesses(FuzzyTestCase):
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         if IS_WINDOWS:
-            os.kill(p.pid)
+            import signal
+            os.kill(p.pid, signal.CTRL_C_EVENT)
         else:
-            Process("killer", ["kill", "-SIGINT", p.pid])
+            Process("killer", ["kill", "-SIGINT", p.pid]).join()
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
@@ -82,10 +87,10 @@ class TestProcesses(FuzzyTestCase):
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
-        p.join()
+        p.join(raise_on_error=True)
         self.assertTrue(not any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
-    @skipIf(IS_WINDOWS, "Can not SIGTERM on Windows")
+    @skipIf(IS_TRAVIS or IS_WINDOWS, "Can not SIGTERM on Windows or Travis")
     def test_sigterm(self):
         """
         CAN WE CATCH A SIGINT?
@@ -95,7 +100,7 @@ class TestProcesses(FuzzyTestCase):
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
-        k = Process("killer", ["kill", "-SIGTERM", p.pid])
+        Process("killer", ["kill", "-SIGTERM", p.pid]).join()
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
@@ -108,3 +113,4 @@ class TestProcesses(FuzzyTestCase):
         )
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
+
