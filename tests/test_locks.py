@@ -142,18 +142,22 @@ class TestLocks(FuzzyTestCase):
                 locker.wait()
                 Log.note("thread is expected to get here")
 
-        thread_a = Thread.run("a", loop, a_is_ready)
-        thread_b = Thread.run("b", loop, b_is_ready)
+        thread_a = Thread.run("a", loop, a_is_ready).release()
+        thread_b = Thread.run("b", loop, b_is_ready).release()
 
         a_is_ready.wait()
         b_is_ready.wait()
         timeout = Till(seconds=1)
         with locker:
             got_signal.go()
-            while not thread_a.stopped or not thread_b.stopped:
+            while not thread_a.stopped:
                 # WE MUST CONTINUE TO USE THE locker TO ENSURE THE OTHER THREADS ARE NOT ORPHANED IN THERE
                 locker.wait(till=Till(seconds=0.1))
-                Log.note("wait for threads")
+                Log.note("wait for a thread")
+            while not thread_b.stopped:
+                # WE MUST CONTINUE TO USE THE locker TO ENSURE THE OTHER THREADS ARE NOT ORPHANED IN THERE
+                locker.wait(till=Till(seconds=0.1))
+                Log.note("wait for b thread")
         thread_a.join()
         thread_b.join()
         if timeout:
