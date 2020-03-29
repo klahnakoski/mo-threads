@@ -63,6 +63,39 @@ Python's async efforts are still immature; a re-invention of threading functiona
 * Fibers were an async experiment using a stack, as opposed to the state-machine-based async Python uses now. It does not apply to my argument, but is an interesting read: [[Fibers are] not an appropriate solution for writing scalable concurrent software](http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2018/p1364r0.pdf)
 
 
+## Usage
+
+Most threads will be declared and run in a single line. It is much like Python's threading library, except it demands a name for the thread: 
+
+    thread = Thread.run("name", function, p1, p2, ...)
+    
+Sometimes you want to separate creation from starting:
+
+    thread = Thread("name", function, p1, p2, ...)
+    thread.start()
+    
+### `join()` vs `release()`
+
+Once a thread is created, one of two actions can be performed.
+
+* `join()` - Join on `thread` will make the caller thread wait until `thread` has stopped. Then, return the resulting value or to re-raise `thread`'s exception in the caller.
+
+      result = thread.join()     # may raise exception
+
+* `release()` - Will ignore any return value, and post any exception to logging. Tracking is still performed; released threads are still properly stopped.  You may still `join()` on a released thread, but you risk being too late: The thread will have already completed and logged it's failure.
+
+      thread.release()     # release thread resources asap
+  
+### Registering Threads
+
+Threads created without this module can call your code; You want to ensure these "alien" threads have finished their work, released the locks, and exited your code before stopping. If you register alien threads, then `mo-threads` will ensure the alien work is done for a clean stop. 
+
+    def my_method():
+        with RegisterThread():
+            t = Thread.current()   # we can now use this library on this thread 
+            print(t.name)          # a name is always given to the alien thread 
+
+
 ### Synchronization Primitives
 
 There are three major aspects of a synchronization primitive:
