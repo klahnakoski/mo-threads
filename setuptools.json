@@ -11,7 +11,7 @@
     ],
     "description": "More Threads! Simpler and faster threading.",
     "include_package_data": true,
-    "install_requires": ["mo-dots>=3.53.20059", "mo-future>=3.51.20059", "mo-logs>=3.57.20089"],
+    "install_requires": ["mo-dots>=3.74.20189", "mo-future>=3.71.20168", "mo-logs>=3.75.20189"],
     "license": "MPL 2.0",
     "long_description": {
         "$concat": [
@@ -44,7 +44,7 @@
             "  children get the `please_stop` signal, and are dead, before stopping ",
             "  themselves. This responsibility is baked into the thread spawning process, ",
             "  so you need not deal with it unless you want.",
-            "3. Uses [**Signals**](#signal-class) to simplify logical ",
+            "3. Uses [**Signals**](#signal-class) (much like [Events](https://docs.python.org/2/library/threading.html#event-objects)) to simplify logical ",
             "dependencies among multiple threads, events, and timeouts.",
             "4. **Logging and Profiling is Integrated** - Logging and exception handling ",
             "is seamlessly integrated: This means logs are centrally handled, and thread ",
@@ -233,6 +233,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "3.57.20089",
+    "version": "3.75.20189",
     "zip_safe": false
 }
