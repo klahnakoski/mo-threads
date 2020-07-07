@@ -27,7 +27,7 @@ its own terms, but is expected to do so expediently.
   children get the `please_stop` signal, and are dead, before stopping 
   themselves. This responsibility is baked into the thread spawning process, 
   so you need not deal with it unless you want.
-3. Uses [**Signals**](#signal-class) to simplify logical 
+3. Uses [**Signals**](#signal-class) (much like [Events](https://docs.python.org/2/library/threading.html#event-objects)) to simplify logical 
 dependencies among multiple threads, events, and timeouts.
 4. **Logging and Profiling is Integrated** - Logging and exception handling 
 is seamlessly integrated: This means logs are centrally handled, and thread 
