@@ -1,3 +1,3 @@
 mo-future>3
-mo-dots>3
+mo-dots>=3.74.20189
 mo-logs>3
