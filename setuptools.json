@@ -11,7 +11,7 @@
     ],
     "description": "More Threads! Simpler and faster threading.",
     "include_package_data": true,
-    "install_requires": ["mo-dots>=3.74.20189", "mo-future>=3.71.20168", "mo-logs>=3.75.20189"],
+    "install_requires": ["mo-dots>=3.78.20194", "mo-future>=3.71.20168", "mo-logs>=3.78.20194"],
     "license": "MPL 2.0",
     "long_description": {
         "$concat": [
@@ -233,6 +233,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "3.75.20189",
+    "version": "3.78.20194",
     "zip_safe": false
 }
