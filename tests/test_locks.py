@@ -200,7 +200,7 @@ class TestLocks(FuzzyTestCase):
         with please_stop.lock:
             q = please_stop.job_queue
             self.assertLessEqual(
-                0 if q is None else len(q), 1, "Expecting only one pending job on go"
+                0 if q is None else len(q), 1, "Expecting only one pending job on go, got "+text(len(q))
             )
         please_stop.go()
         Log.note("test done")

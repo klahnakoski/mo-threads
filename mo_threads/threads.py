@@ -253,7 +253,6 @@ class Thread(BaseThread):
             self.please_stop = self.kwargs[PLEASE_STOP] = Signal(
                 "please_stop for " + self.name
             )
-        self.please_stop.then(self.start)
 
         self.thread = None
         self.ready_to_stop = Signal("joining with " + self.name)
