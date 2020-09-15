@@ -301,6 +301,7 @@ class Thread(BaseThread):
         DEBUG and Log.note("Thread {{name|quote}} got request to stop", name=self.name)
 
     def _run(self):
+        self.please_stop.remove_go(self.start)
         self.id = get_ident()
         with RegisterThread(self):
             try:
