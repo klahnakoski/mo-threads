@@ -253,6 +253,7 @@ class Thread(BaseThread):
             self.please_stop = self.kwargs[PLEASE_STOP] = Signal(
                 "please_stop for " + self.name
             )
+        self.please_stop.then(self.start)
 
         self.thread = None
         self.ready_to_stop = Signal("joining with " + self.name)
@@ -300,6 +301,7 @@ class Thread(BaseThread):
         DEBUG and Log.note("Thread {{name|quote}} got request to stop", name=self.name)
 
     def _run(self):
+        self.please_stop.remove_go(self.start)
         self.id = get_ident()
         with RegisterThread(self):
             try:
