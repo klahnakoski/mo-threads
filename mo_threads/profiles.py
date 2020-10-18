@@ -94,5 +94,6 @@ def write_profiles(main_thread_profile):
 
     tab = stats2tab(acc)
 
-    stats_file = File(FILENAME).add_suffix(Date.now().format("_%Y%m%d_%H%M%S")).write(tab)
+    stats_file = File(FILENAME).add_suffix(Date.now().format("_%Y%m%d_%H%M%S"))
+    stats_file.write(tab)
     Log.note("profile written to {{filename}}", filename=stats_file.abspath)
