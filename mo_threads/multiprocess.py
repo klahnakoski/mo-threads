@@ -24,7 +24,7 @@ from mo_threads.threads import THREAD_STOP, Thread
 from mo_threads.till import Till
 from mo_times import Timer
 
-DEBUG = True
+DEBUG = False
 
 
 class Process(object):

@@ -69,10 +69,11 @@ class TestProcesses(FuzzyTestCase):
             "waiting", ["python", "-u", "tests/programs/sigint_test.py"], debug=True
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
-        Till(seconds=2).wait()
         if IS_WINDOWS:
+            # Process("killer", ["TASKKILL", "/F", "/PID", p.pid], shell=True)
             import signal
             os.kill(p.pid, signal.CTRL_C_EVENT)
+            # Log.note("sent ctrl-c to {{pid}}", pid=p.pid)
         else:
             Process("killer", ["kill", "-SIGINT", p.pid]).join()
         p.join()
