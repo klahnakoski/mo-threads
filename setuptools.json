@@ -236,6 +236,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "3.113.20292",
+    "version": "3.114.20292",
     "zip_safe": false
 }
