@@ -13,7 +13,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import os
-from unittest import skipIf
+from unittest import skipIf, skip
 
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase
@@ -60,7 +60,7 @@ class TestProcesses(FuzzyTestCase):
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
-    @skipIf(IS_TRAVIS, "travis can not kill")
+    @skip("travis can not kill, problem on windows")
     def test_sigint(self):
         """
         CAN WE CATCH A SIGINT?
