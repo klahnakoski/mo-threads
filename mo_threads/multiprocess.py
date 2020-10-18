@@ -13,6 +13,7 @@ import platform
 import subprocess
 
 from mo_dots import set_default, to_data, Null
+from mo_files import File
 from mo_future import text
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
@@ -23,7 +24,7 @@ from mo_threads.threads import THREAD_STOP, Thread
 from mo_threads.till import Till
 from mo_times import Timer
 
-DEBUG = True
+DEBUG = False
 
 
 class Process(object):
@@ -207,11 +208,14 @@ WINDOWS_ESCAPE_DCT = {
 
 PROMPT = "READY_FOR_MORE"
 
-if "windows" in platform.system().lower():
-    # def cmd_escape(v):
-    #     return "".join(WINDOWS_ESCAPE_DCT.get(c, c) for c in v)
-    cmd_escape = strings.quote
 
+def cmd_escape(value):
+    if isinstance(value, File):
+        return value.abspath
+    return strings.quote(value)
+
+
+if "windows" in platform.system().lower():
     def set_prompt():
         return "prompt "+PROMPT+"$g"
 
@@ -222,8 +226,6 @@ if "windows" in platform.system().lower():
         return value.decode("latin1")
 
 else:
-    cmd_escape = strings.quote
-
     def set_prompt():
         return "set prompt="+cmd_escape(PROMPT+">")
 
