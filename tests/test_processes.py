@@ -60,7 +60,7 @@ class TestProcesses(FuzzyTestCase):
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
-    @skip("travis can not kill, problem on windows")
+    @skipIf(IS_TRAVIS or IS_WINDOWS, "travis can not kill, Python can not send ctrl-c on Windows")
     def test_sigint(self):
         """
         CAN WE CATCH A SIGINT?
@@ -70,10 +70,8 @@ class TestProcesses(FuzzyTestCase):
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         if IS_WINDOWS:
-            # Process("killer", ["TASKKILL", "/F", "/PID", p.pid], shell=True)
             import signal
             os.kill(p.pid, signal.CTRL_C_EVENT)
-            # Log.note("sent ctrl-c to {{pid}}", pid=p.pid)
         else:
             Process("killer", ["kill", "-SIGINT", p.pid]).join()
         p.join()
