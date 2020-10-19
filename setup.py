@@ -15,6 +15,6 @@ setup(
     name='mo-threads',
     packages=["mo_threads"],
     url='https://github.com/klahnakoski/mo-threads',
-    version='3.114.20293',
+    version='3.115.20293',
     zip_safe=False
 )
