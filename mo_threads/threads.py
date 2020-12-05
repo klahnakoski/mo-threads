@@ -47,10 +47,10 @@ THREAD_TIMEOUT = "TIMEOUT"
 
 datetime.strptime("2012-01-01", "%Y-%m-%d")  # http://bugs.python.org/issue7980
 
-if PY3:
+try:
     STDOUT = sys.stdout.buffer
     STDIN = sys.stdin.buffer
-else:
+except Exception:
     STDOUT = sys.stdout
     STDIN = sys.stdin
 
@@ -376,9 +376,9 @@ class Thread(BaseThread):
                                 Log.error(
                                     "Problem in thread {{name|quote}}", name=self.name, cause=e
                                 )
-                            except Exception:
+                            except Exception as cause:
                                 sys.stderr.write(
-                                    str("ERROR in thread: " + self.name + " " + text(e) + "\n")
+                                    str("ERROR in thread: " + self.name + " " + text(cause) + "\n")
                                 )
                         elif self.end_of_thread.response != None:
                             Log.warning(

@@ -12,8 +12,8 @@
     "description": "More Threads! Simpler and faster threading.",
     "include_package_data": true,
     "install_requires": [
-          "mo-dots>=3.93.20259", "mo-future>=3.89.20246",  "mo-logs>=3.118.20293",
-          "mo-math>=3.91.20246",  "mo-times>=3.76.20190"
+            "mo-dots==4.2.20340", "mo-future==3.147.20327",     "mo-logs==4.3.20340",
+            "mo-math==4.4.20340",   "mo-times==3.76.20190"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -131,7 +131,7 @@
             "These three aspects can be combined to give us 8 synchronization primitives:",
             "",
             "* `- - -` - Semaphore",
-            "* `- B -` - Binary Semaphore",
+            "* `- B -` - Event",
             "* `R - -` - Monitor",
             "* `R B -` - **[Lock](#lock-class)**",
             "* `- - I` - Iterator/generator",
@@ -236,6 +236,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "3.123.20293",
+    "version": "4.4.20340",
     "zip_safe": false
 }

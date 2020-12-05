@@ -111,7 +111,7 @@ we can allow threads to poll for progress, or be notified of progress.
 These three aspects can be combined to give us 8 synchronization primitives:
 
 * `- - -` - Semaphore
-* `- B -` - Binary Semaphore
+* `- B -` - Event
 * `R - -` - Monitor
 * `R B -` - **[Lock](#lock-class)**
 * `- - I` - Iterator/generator

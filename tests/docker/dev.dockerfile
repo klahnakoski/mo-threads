@@ -4,9 +4,8 @@ WORKDIR /app
 RUN mkdir tests
 COPY requirements.txt /app
 COPY tests/requirements.txt /app/tests
-RUN python -m pip install -r requirements.txt \
-    && python -m pip install -r tests/requirements.txt
+RUN pip install -r tests/requirements.txt \
+    && pip install .
 
 ADD . /app
-CMD export PYTHONPATH=.:vendor \
-    && python -m unittest discover tests
+CMD python -m unittest discover tests
