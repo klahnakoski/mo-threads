@@ -15,6 +15,7 @@ import pstats
 from mo_logs import Log
 from mo_threads.profile_utils import stats2tab
 
+DEBUG = False
 FILENAME = "profile.tab"
 
 cprofiler_stats = None  # ACCUMULATION OF STATS FROM ALL THREADS
@@ -32,7 +33,7 @@ class CProfiler(object):
 
     def __enter__(self):
         if cprofiler_stats is not None:
-            Log.note("starting cprofile")
+            DEBUG and Log.note("starting cprofile")
             self.cprofiler = cProfile.Profile()
             self.cprofiler.enable()
 
@@ -41,7 +42,7 @@ class CProfiler(object):
             self.cprofiler.disable()
             cprofiler_stats.add(pstats.Stats(self.cprofiler))
             del self.cprofiler
-            Log.note("done cprofile")
+            DEBUG and Log.note("done cprofile")
 
     def enable(self):
         if self.cprofiler is not None:
@@ -71,10 +72,10 @@ def enable_profilers(filename):
     for t in threads:
         t.cprofiler = CProfiler()
         if t is current_thread:
-            Log.note("starting cprofile for thread {{name}}", name=t.name)
+            DEBUG and Log.note("starting cprofile for thread {{name}}", name=t.name)
             t.cprofiler.__enter__()
         else:
-            Log.note("cprofiler not started for thread {{name}} (already running)", name=t.name)
+            DEBUG and Log.note("cprofiler not started for thread {{name}} (already running)", name=t.name)
 
 
 def write_profiles(main_thread_profile):
@@ -87,7 +88,7 @@ def write_profiles(main_thread_profile):
     cprofiler_stats.add(pstats.Stats(main_thread_profile.cprofiler))
     stats = cprofiler_stats.pop_all()
 
-    Log.note("aggregating {{num}} profile stats", num=len(stats))
+    DEBUG and Log.note("aggregating {{num}} profile stats", num=len(stats))
     acc = stats[0]
     for s in stats[1:]:
         acc.add(s)
@@ -96,4 +97,4 @@ def write_profiles(main_thread_profile):
 
     stats_file = File(FILENAME).add_suffix(Date.now().format("_%Y%m%d_%H%M%S"))
     stats_file.write(tab)
-    Log.note("profile written to {{filename}}", filename=stats_file.abspath)
+    DEBUG and Log.note("profile written to {{filename}}", filename=stats_file.abspath)

@@ -13,20 +13,18 @@
 
 from __future__ import absolute_import, division, unicode_literals
 
-import random
 from weakref import ref
 
 from mo_future import allocate_lock as _allocate_lock, text
 from mo_logs import Log
+from mo_dots import is_null
 
 DEBUG = False
-DEBUG_SIGNAL = False
-SEED = random.Random()
 
 
 class Signal(object):
     """
-    SINGLE-USE THREAD SAFE SIGNAL
+    SINGLE-USE THREAD SAFE SIGNAL (aka EVENT)
 
     go() - ACTIVATE SIGNAL (DOES NOTHING IF SIGNAL IS ALREADY ACTIVATED)
     wait() - PUT THREAD IN WAIT STATE UNTIL SIGNAL IS ACTIVATED
@@ -36,7 +34,7 @@ class Signal(object):
     __slots__ = ["_name", "lock", "_go", "job_queue", "waiting_threads", "__weakref__"]
 
     def __init__(self, name=None):
-        (DEBUG and name) and Log.note("New signal {{name|quote}}", name=name)
+        DEBUG and name and Log.note("New signal {{name|quote}}", name=name)
         self._name = name
         self.lock = _allocate_lock()
         self._go = False
@@ -93,7 +91,9 @@ class Signal(object):
         threads, self.waiting_threads = self.waiting_threads, None
 
         if threads:
-            DEBUG and self._name and Log.note("Release {{num}} threads", num=len(threads))
+            DEBUG and self._name and Log.note(
+                "Release {{num}} threads", num=len(threads)
+            )
             for t in threads:
                 t.release()
 
@@ -101,8 +101,8 @@ class Signal(object):
             for j in jobs:
                 try:
                     j()
-                except Exception as e:
-                    Log.warning("Trigger on Signal.go() failed!", cause=e)
+                except Exception as cause:
+                    Log.warning("Trigger on Signal.go() failed!", cause=cause)
 
     def then(self, target):
         """
@@ -113,7 +113,9 @@ class Signal(object):
 
         with self.lock:
             if not self._go:
-                DEBUG and self._name and Log.note("Adding target to signal {{name|quote}}", name=self.name)
+                DEBUG and self._name and Log.note(
+                    "Adding target to signal {{name|quote}}", name=self.name
+                )
 
                 if not self.job_queue:
                     self.job_queue = [target]
@@ -121,7 +123,10 @@ class Signal(object):
                     self.job_queue.append(target)
                 return
 
-        (DEBUG_SIGNAL) and Log.note("Signal {{name|quote}} already triggered, running job immediately", name=self.name)
+        DEBUG and Log.note(
+            "Signal {{name|quote}} already triggered, running job immediately",
+            name=self.name,
+        )
         target()
 
     def remove_go(self, target):
@@ -149,7 +154,7 @@ class Signal(object):
         return text(repr(self._go))
 
     def __or__(self, other):
-        if other == None:
+        if is_null(other):
             return self
         if not isinstance(other, Signal):
             Log.error("Expecting OR with other signal")
@@ -164,7 +169,7 @@ class Signal(object):
         return self.__or__(other)
 
     def __and__(self, other):
-        if other == None or other:
+        if is_null(other) or other:
             return self
         if not isinstance(other, Signal):
             Log.error("Expecting OR with other signal")
@@ -209,6 +214,7 @@ class OrSignal(object):
     A SELF-REFERENTIAL CLUSTER OF SIGNALING METHODS TO IMPLEMENT __or__()
     MANAGE SELF-REMOVAL UPON NOT NEEDING THE signal OBJECT ANY LONGER
     """
+
     __slots__ = ["signal", "dependencies"]
 
     def __init__(self, signal, dependencies):

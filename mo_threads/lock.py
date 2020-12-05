@@ -68,15 +68,15 @@ class Lock(object):
         if self.waiting:
             self.debug and _Log.note("signaling {{num}} waiters on {{name|quote}}", name=self.name, num=len(self.waiting))
             # TELL ANOTHER THAT THE LOCK IS READY SOON
-            other = self.waiting.pop()
-            other.go()
+            waiter = self.waiting.pop()
+            waiter.go()
         self.lock.release()
         self.debug and _Log.note("released lock {{name|quote}}", name=self.name)
 
     def wait(self, till=None):
         """
         THE ASSUMPTION IS wait() WILL ALWAYS RETURN WITH THE LOCK ACQUIRED
-        :param till: WHEN TO GIVE UP WAITING FOR ANOTHER THREAD TO SIGNAL
+        :param till: WHEN TO GIVE UP WAITING FOR ANOTHER THREAD TO SIGNAL, LOCK IS STILL ACQUIRED
         :return: True IF SIGNALED TO GO, False IF till WAS SIGNALED
         """
         waiter = Signal()
