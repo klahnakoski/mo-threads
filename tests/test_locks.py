@@ -70,7 +70,7 @@ class TestLocks(FuzzyTestCase):
                 locks[i].release()
 
     def test_queue_speed(self):
-        if "PyPy" in machine_metadata.python:
+        if "PyPy" in machine_metadata().python:
             # PyPy requires some warmup time
             self._test_queue_speed()
             self._test_queue_speed()
