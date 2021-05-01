@@ -363,7 +363,6 @@ class Command(object):
                 Log.error("unexpected problem processing stdout", cause=e)
 
             try:
-                self.stderr.add(THREAD_STOP)
                 self.stderr_thread.please_stop.go()
                 self.stderr_thread.join(till=till)
                 DEBUG_COMMAND and Log.note("stderr IS DONE {{params}}", params=value2json(self.params))
@@ -396,12 +395,8 @@ class Command(object):
 
         try:
             while not please_stop:
-                timeout = Till(seconds=100)
-                value = source.pop(till=please_stop | timeout)
+                value = source.pop(till=please_stop)
                 if value is None:
-                    if timeout:
-                        DEBUG_COMMAND and Log.note("timeout check, ABORT")
-                        return
                     continue
                 elif value is THREAD_STOP:
                     DEBUG_COMMAND and Log.note("got thread stop")
