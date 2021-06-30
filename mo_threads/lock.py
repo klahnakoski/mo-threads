@@ -117,6 +117,7 @@ def locked(func):
     WRAP func WITH A Lock, TO ENSURE JUST ONE THREAD AT A TIME
     """
     lock = Lock()
+
     @decorate(func)
     def output(*args, **kwargs):
         with lock:
