@@ -221,3 +221,8 @@ Till(till=Date("21 Jan 2016").unix).wait()
 Use `Till` rather than `sleep()` because you can combine `Till` objects with other `Signals`. 
 
 **Beware that all `Till` objects will be triggered before expiry when the main thread is asked to shutdown**
+
+
+## `Command` Class
+
+ 
