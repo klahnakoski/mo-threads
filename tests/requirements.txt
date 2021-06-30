@@ -1,7 +1,7 @@
-mo-future>3
-mo-dots>3
-mo-logs>3
-mo-testing>3
-jx-python>3
+mo-future
+mo-dots
+mo-logs
+mo-testing
+jx-python
 psutil
 objgraph

@@ -11,6 +11,7 @@ from __future__ import absolute_import, division, unicode_literals
 import os
 import platform
 import subprocess
+from _thread import allocate_lock
 
 from mo_json import value2json
 
@@ -30,9 +31,11 @@ from mo_threads.till import Till
 DEBUG_PROCESS = False
 DEBUG_COMMAND = False
 
+next_process_id_locker = allocate_lock()
+next_process_id = 0
+
 
 class Process(object):
-    next_process_id = 0
 
     def __init__(
         self, name, params, cwd=None, env=None, debug=False, shell=False, bufsize=-1
@@ -52,9 +55,12 @@ class Process(object):
         :param shell: true to run as command line
         :param bufsize: if you want to screw stuff up
         """
+        global next_process_id_locker, next_process_id
+        with next_process_id_locker:
+            self.process_id = next_process_id
+            next_process_id += 1
+
         self.debug = debug or DEBUG_PROCESS
-        self.process_id = Process.next_process_id
-        Process.next_process_id += 1
         self.name = name + " (" + text(self.process_id) + ")"
         self.service_stopped = Signal("stopped signal for " + strings.quote(name))
         self.stdin = Queue(
@@ -330,56 +336,62 @@ class Command(object):
         )
         self.stdout = Queue("stdout for " + name, max=max_stdout)
         self.stderr = Queue("stderr for " + name, max=max_stdout)
-
+        self.process = None
         with Command.available_locker:
             avail = Command.available_process.setdefault(self.key, [])
-        if not avail:
+            if avail:
+                self.process = avail.pop()
+                DEBUG_COMMAND and Log.note("Reuse process {{process}} for {{command}}", process=self.process.name, command=name)
+
+        if not self.process:
             self.process = Process(
                 "command shell", [cmd()], cwd, env, debug, shell, bufsize
             )
             self.process.stdin.add(set_prompt())
             self.process.stdin.add("echo %errorlevel%")
+            DEBUG_COMMAND and Log.note("New process {{process}} for {{command}}", process=self.process.name, command=name)
             _wait_for_start(self.process.stdout, Null)
-        else:
-            self.process = avail.pop()
 
         self.process.stdin.add(" ".join(cmd_escape(p) for p in params))
         self.process.stdin.add("echo %errorlevel%")
         self.stdout_thread = Thread.run(
-            "", self._stream_relay, "stdout", self.process.stdout, self.stdout
+            name+" stdout", self._stream_relay, "stdout", self.process.stdout, self.stdout
         )
         self.stderr_thread = Thread.run(
-            "", self._stream_relay, "stderr", self.process.stderr, self.stderr
+            name+" stderr", self._stream_relay, "stderr", self.process.stderr, self.stderr
         )
+        self.stderr_thread.stopped.then(self._cleanup)
         self.returncode = None
+
+    def _cleanup(self):
+        with Command.available_locker:
+            if any(self.process == p for p in Command.available_process[self.key]):
+                Log.error("Not expected")
+            Command.available_process[self.key].append(self.process)
 
     def join(self, raise_on_error=False, till=None):
         try:
-            try:
-                # WAIT FOR COMMAND LINE RESPONSE ON stdout
-                self.stdout_thread.join(till=till)
-                DEBUG_COMMAND and Log.note("stdout IS DONE {{params}}", params=value2json(self.params))
-            except Exception as e:
-                Log.error("unexpected problem processing stdout", cause=e)
+            # WAIT FOR COMMAND LINE RESPONSE ON stdout
+            self.stdout_thread.join(till=till)
+            DEBUG_COMMAND and Log.note("stdout IS DONE {{params}}", params=value2json(self.params))
+        except Exception as e:
+            Log.error("unexpected problem processing stdout", cause=e)
 
-            try:
-                self.stderr_thread.please_stop.go()
-                self.stderr_thread.join(till=till)
-                DEBUG_COMMAND and Log.note("stderr IS DONE {{params}}", params=value2json(self.params))
-            except Exception as e:
-                Log.error("unexpected problem processing stderr", cause=e)
+        try:
+            self.stderr_thread.please_stop.go()
+            self.stderr_thread.join(till=till)
+            DEBUG_COMMAND and Log.note("stderr IS DONE {{params}}", params=value2json(self.params))
+        except Exception as e:
+            Log.error("unexpected problem processing stderr", cause=e)
 
-            if raise_on_error and self.returncode != 0:
-                Log.error(
-                    "{{process}} FAIL: returncode={{code}}\n{{stderr}}",
-                    process=self.name,
-                    code=self.returncode,
-                    stderr=list(self.stderr),
-                )
-            return self
-        finally:
-            with Command.available_locker:
-                Command.available_process[self.key].append(self.process)
+        if raise_on_error and self.returncode != 0:
+            Log.error(
+                "{{process}} FAIL: returncode={{code}}\n{{stderr}}",
+                process=self.name,
+                code=self.returncode,
+                stderr=list(self.stderr),
+            )
+        return self
 
     def _stream_relay(self, name, source, destination, please_stop=None):
         """

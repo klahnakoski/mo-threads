@@ -469,6 +469,11 @@ class Thread(BaseThread):
             return thread
         return output
 
+    @staticmethod
+    def join_all(threads):
+        for t in threads:
+            t.join()
+
 
 class RegisterThread(object):
     """
