@@ -78,7 +78,7 @@ class Python(object):
             if line == THREAD_STOP:
                 break
             try:
-                data = json2value(line)
+                data = to_data(json2value(line))
                 if "log" in data:
                     Log.main_log.write(*data.log)
                 elif "out" in data:

@@ -10,7 +10,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 from copy import copy
 
-from mo_dots import is_list
+from mo_dots import is_list, to_data
 from mo_dots import listwrap, coalesce
 from mo_future import is_text, text
 from json import dumps as value2json, loads as json2value
@@ -35,7 +35,7 @@ def command_loop(local):
     while not please_stop:
         line = STDIN.readline()
         try:
-            command = json2value(line.decode("utf8"))
+            command = to_data(json2value(line.decode("utf8")))
             DEBUG and Log.note("got {{command}}", command=command)
 
             if "import" in command:
@@ -124,7 +124,7 @@ class RawLogger(StructuredLogger):
 def start():
     try:
         line = STDIN.readline().decode("utf8")
-        config = json2value(line)
+        config = to_data(json2value(line))
         constants.set(config.constants)
         Log.start(config.debug)
         Log.set_logger(RawLogger())
