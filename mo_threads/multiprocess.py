@@ -440,7 +440,7 @@ class Command(object):
 
 
 def _wait_for_start(source, destination):
-    prompt = PROMPT + ">"
+    prompt = PROMPT + ">echo %"
 
     while True:
         value = source.pop()
