@@ -24,7 +24,7 @@ from mo_threads.threads import ALL_LOCK, ALL, Thread
 try:
     from mo_files import File
 except ImportError:
-    Log.error("please `pip install mo-files` to use profiling")
+    raise Log.error("please `pip install mo-files` to use profiling")
 
 
 DEBUG = False

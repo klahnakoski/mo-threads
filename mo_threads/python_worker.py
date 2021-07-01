@@ -13,12 +13,16 @@ from copy import copy
 from mo_dots import is_list, to_data
 from mo_dots import listwrap, coalesce
 from mo_future import is_text, text
-from json import dumps as value2json, loads as json2value
 from mo_logs import Log, constants, Except
 from mo_logs.log_usingNothing import StructuredLogger
 
 from mo_threads import Signal
 from mo_threads.threads import STDOUT, STDIN
+
+try:
+    from mo_json import value2json, json2value
+except ImportError:
+    raise Log.error("Please `pip import mo-json` to use python sub processes")
 
 context = copy(globals())
 del context["copy"]
@@ -35,7 +39,7 @@ def command_loop(local):
     while not please_stop:
         line = STDIN.readline()
         try:
-            command = to_data(json2value(line.decode("utf8")))
+            command = json2value(line.decode("utf8"))
             DEBUG and Log.note("got {{command}}", command=command)
 
             if "import" in command:

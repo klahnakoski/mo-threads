@@ -8,3 +8,5 @@
 /mo-threads.iml
 /vendor
 __pycache__
+/htmlcov
+/.coveragerc
