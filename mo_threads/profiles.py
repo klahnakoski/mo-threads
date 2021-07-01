@@ -12,13 +12,20 @@ from __future__ import absolute_import, division, unicode_literals
 import cProfile
 import pstats
 
-from mo_files import File
+
 from mo_logs import Log
 from mo_times import Date
 
 from mo_threads.profile_utils import stats2tab
 from mo_threads.queues import Queue
 from mo_threads.threads import ALL_LOCK, ALL, Thread
+
+
+try:
+    from mo_files import File
+except ImportError:
+    Log.error("please `pip install mo-files` to use profiling")
+
 
 DEBUG = False
 FILENAME = "profile.tab"

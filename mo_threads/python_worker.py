@@ -13,7 +13,7 @@ from copy import copy
 from mo_dots import is_list
 from mo_dots import listwrap, coalesce
 from mo_future import is_text, text
-from mo_json import json2value, value2json
+from json import dumps as value2json, loads as json2value
 from mo_logs import Log, constants, Except
 from mo_logs.log_usingNothing import StructuredLogger
 

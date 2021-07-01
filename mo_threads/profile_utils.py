@@ -1,3 +1,15 @@
+# encoding: utf-8
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this file,
+# You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
+#
+
+from json import dumps as value2json
+
+
 def stats2tab(acc, separator="\t"):
     stats = [
         {
@@ -17,8 +29,6 @@ def stats2tab(acc, separator="\t"):
 
 
 def list2tab(rows, separator="\t"):
-    from mo_json import value2json
-
     columns = set()
     for r in rows:
         columns |= set(r.keys())
