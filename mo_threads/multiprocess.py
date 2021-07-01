@@ -446,7 +446,11 @@ def _wait_for_start(source, destination):
         value = source.pop()
         if value.startswith(prompt):
             # GET THE ERROR LEVEL
-            returncode = int(source.pop())
+            line = source.pop()
+            try:
+                returncode = int(line)
+            except Exception:
+                Log.error("not an int ({line})", line=line)
             destination.add(THREAD_STOP)
             return
         destination.add(value)
