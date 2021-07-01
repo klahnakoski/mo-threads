@@ -27,25 +27,24 @@ from mo_future import (
     start_new_thread,
     text,
     decorate,
-    PY3,
 )
 from mo_logs import Except, Log
-from mo_threads.profiles import CProfiler, write_profiles
 from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till
 
 DEBUG = False
 
-PLEASE_STOP = str("please_stop")  # REQUIRED thread PARAMETER TO SIGNAL STOP
-PARENT_THREAD = str(
-    "parent_thread"
-)  # OPTIONAL PARAMETER TO ASSIGN THREAD TO SOMETHING OTHER THAN CURRENT THREAD
+PLEASE_STOP = "please_stop"  # REQUIRED thread PARAMETER TO SIGNAL STOP
+PARENT_THREAD = "parent_thread" # OPTIONAL PARAMETER TO ASSIGN THREAD TO SOMETHING OTHER THAN CURRENT THREAD
 MAX_DATETIME = datetime(2286, 11, 20, 17, 46, 39)
 DEFAULT_WAIT_TIME = timedelta(minutes=10)
 THREAD_STOP = "stop"
 THREAD_TIMEOUT = "TIMEOUT"
 
 datetime.strptime("2012-01-01", "%Y-%m-%d")  # http://bugs.python.org/issue7980
+
+cprofiler_stats = None  # ACCUMULATION OF STATS FROM ALL THREADS
+
 
 try:
     STDOUT = sys.stdout.buffer
@@ -176,7 +175,9 @@ class MainThread(BaseThread):
             self.timers.stop()
             self.timers.join()
 
-            write_profiles(self.cprofiler)
+            if cprofiler_stats is not None:
+                from mo_threads.profiles import write_profiles
+                write_profiles(self.cprofiler)
             DEBUG and Log.note("Thread {{name|quote}} now stopped", name=self.name)
             self.stopped.go()
 
@@ -459,8 +460,10 @@ class Thread(BaseThread):
 
         if output is None:
             thread = BaseThread(ident)
-            thread.cprofiler = CProfiler()
-            thread.cprofiler.__enter__()
+            if cprofiler_stats is not None:
+                from mo_threads.profiles import CProfiler
+                thread.cprofiler = CProfiler()
+                thread.cprofiler.__enter__()
             with ALL_LOCK:
                 ALL[ident] = thread
             Log.warning(
@@ -492,8 +495,10 @@ class RegisterThread(object):
     def __enter__(self):
         with ALL_LOCK:
             ALL[self.thread.id] = self.thread
-        cprofiler = self.thread.cprofiler = CProfiler()
-        cprofiler.__enter__()
+        if cprofiler_stats is not None:
+            from mo_threads.profiles import CProfiler
+            cprofiler = self.thread.cprofiler = CProfiler()
+            cprofiler.__enter__()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -501,7 +506,8 @@ class RegisterThread(object):
         all_lock = ALL_LOCK
         all = ALL
 
-        self.thread.cprofiler.__exit__(exc_type, exc_val, exc_tb)
+        if cprofiler_stats is not None:
+            self.thread.cprofiler.__exit__(exc_type, exc_val, exc_tb)
         with self.thread.child_locker:
             if self.thread.children:
                 Log.error(

@@ -12,13 +12,16 @@ from __future__ import absolute_import, division, unicode_literals
 import cProfile
 import pstats
 
+from mo_files import File
 from mo_logs import Log
+from mo_times import Date
+
 from mo_threads.profile_utils import stats2tab
+from mo_threads.queues import Queue
+from mo_threads.threads import ALL_LOCK, ALL, Thread
 
 DEBUG = False
 FILENAME = "profile.tab"
-
-cprofiler_stats = None  # ACCUMULATION OF STATS FROM ALL THREADS
 
 
 class CProfiler(object):
@@ -29,28 +32,23 @@ class CProfiler(object):
     __slots__ = ["cprofiler"]
 
     def __init__(self):
-        self.cprofiler = None
+        self.cprofiler = cProfile.Profile()
 
     def __enter__(self):
-        if cprofiler_stats is not None:
-            DEBUG and Log.note("starting cprofile")
-            self.cprofiler = cProfile.Profile()
-            self.cprofiler.enable()
+        DEBUG and Log.note("starting cprofile")
+        self.cprofiler.enable()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.cprofiler is not None:
-            self.cprofiler.disable()
-            cprofiler_stats.add(pstats.Stats(self.cprofiler))
-            del self.cprofiler
-            DEBUG and Log.note("done cprofile")
+        self.cprofiler.disable()
+        cprofiler_stats.add(pstats.Stats(self.cprofiler))
+        del self.cprofiler
+        DEBUG and Log.note("done cprofile")
 
     def enable(self):
-        if self.cprofiler is not None:
-            return self.cprofiler.enable()
+        return self.cprofiler.enable()
 
     def disable(self):
-        if self.cprofiler is not None:
-            return self.cprofiler.disable()
+        return self.cprofiler.disable()
 
 
 def enable_profilers(filename):
@@ -62,8 +60,6 @@ def enable_profilers(filename):
     if filename:
         FILENAME = filename
 
-    from mo_threads.threads import ALL_LOCK, ALL, Thread
-    from mo_threads.queues import Queue
     cprofiler_stats = Queue("cprofiler stats")
 
     current_thread = Thread.current()
@@ -79,12 +75,6 @@ def enable_profilers(filename):
 
 
 def write_profiles(main_thread_profile):
-    if cprofiler_stats is None:
-        return
-
-    from mo_files import File
-    from mo_times import Date
-
     cprofiler_stats.add(pstats.Stats(main_thread_profile.cprofiler))
     stats = cprofiler_stats.pop_all()
 

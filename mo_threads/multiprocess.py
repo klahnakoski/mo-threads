@@ -13,10 +13,7 @@ import platform
 import subprocess
 from _thread import allocate_lock
 
-from mo_json import value2json
-
 from mo_dots import set_default, Null, Data, is_null
-from mo_files import File
 from mo_future import text
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
@@ -275,8 +272,8 @@ PROMPT = "READY_FOR_MORE"
 
 
 def cmd_escape(value):
-    if isinstance(value, File):
-        return value.abspath
+    if hasattr(value, "abspath"):
+        return strings.quote(value.abspath)
     return strings.quote(value)
 
 
@@ -373,14 +370,14 @@ class Command(object):
         try:
             # WAIT FOR COMMAND LINE RESPONSE ON stdout
             self.stdout_thread.join(till=till)
-            DEBUG_COMMAND and Log.note("stdout IS DONE {{params}}", params=value2json(self.params))
+            DEBUG_COMMAND and Log.note("stdout IS DONE {{params}}", params=self.params)
         except Exception as e:
             Log.error("unexpected problem processing stdout", cause=e)
 
         try:
             self.stderr_thread.please_stop.go()
             self.stderr_thread.join(till=till)
-            DEBUG_COMMAND and Log.note("stderr IS DONE {{params}}", params=value2json(self.params))
+            DEBUG_COMMAND and Log.note("stderr IS DONE {{params}}", params=self.params)
         except Exception as e:
             Log.error("unexpected problem processing stderr", cause=e)
 
