@@ -270,7 +270,6 @@ WINDOWS_ESCAPE_DCT = {
 
 PROMPT = "READY_FOR_MORE"
 
-
 def cmd_escape(value):
     if hasattr(value, "abspath"):
         quoted = strings.quote(value.abspath)
@@ -285,6 +284,7 @@ def cmd_escape(value):
 
 
 if "windows" in platform.system().lower():
+    LAST_RETURN_CODE = "echo $?"
 
     def set_prompt():
         return "prompt " + PROMPT + "$g"
@@ -295,8 +295,8 @@ if "windows" in platform.system().lower():
     def to_text(value):
         return value.decode("latin1")
 
-
 else:
+    LAST_RETURN_CODE = "echo %errorlevel%"
 
     def set_prompt():
         return "set prompt=" + cmd_escape(PROMPT + ">")
@@ -352,12 +352,12 @@ class Command(object):
                 "command shell", [cmd()], cwd, env, debug, shell, bufsize
             )
             self.process.stdin.add(set_prompt())
-            self.process.stdin.add("echo %errorlevel%")
+            self.process.stdin.add(LAST_RETURN_CODE)
             DEBUG_COMMAND and Log.note("New process {{process}} for {{command}}", process=self.process.name, command=name)
             _wait_for_start(self.process.stdout, Null)
 
         self.process.stdin.add(" ".join(cmd_escape(p) for p in params))
-        self.process.stdin.add("echo %errorlevel%")
+        self.process.stdin.add(LAST_RETURN_CODE)
         self.stdout_thread = Thread.run(
             name+" stdout", self._stream_relay, "stdout", self.process.stdout, self.stdout
         )
@@ -440,7 +440,7 @@ class Command(object):
 
 
 def _wait_for_start(source, destination):
-    prompt = PROMPT + ">echo %"
+    prompt = PROMPT + ">" + LAST_RETURN_CODE
 
     while True:
         value = source.pop()
