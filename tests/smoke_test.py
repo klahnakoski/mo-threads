@@ -1,5 +1,5 @@
 from mo_threads import Command, MAIN_THREAD
 
-Command("test", ["echo"]).join()
+Command("test", ["python", "-c", "print('test')"]).join()
 
 MAIN_THREAD.stop()

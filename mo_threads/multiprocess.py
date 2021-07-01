@@ -273,8 +273,15 @@ PROMPT = "READY_FOR_MORE"
 
 def cmd_escape(value):
     if hasattr(value, "abspath"):
-        return strings.quote(value.abspath)
-    return strings.quote(value)
+        quoted = strings.quote(value.abspath)
+    else:
+        quoted = strings.quote(value)
+
+    if quoted == '"'+value+'"':
+        # SIMPLE
+        quoted = value
+
+    return quoted
 
 
 if "windows" in platform.system().lower():
