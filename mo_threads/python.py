@@ -11,8 +11,8 @@ from __future__ import absolute_import, division, unicode_literals
 import os
 import platform
 
-from mo_dots import set_default, to_data
-from mo_json import json2value, value2json
+from mo_dots import set_default, to_data, from_data
+from json import dumps as value2json, loads as json2value
 from mo_logs import Except, Log
 
 from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, DONE
@@ -38,7 +38,7 @@ class Python(object):
             cwd=os.getcwd(),
             shell=shell
         )
-        self.process.stdin.add(value2json(set_default({}, config, {"debug": {"trace": True}})))
+        self.process.stdin.add(value2json(from_data(config | {"debug": {"trace": True}})))
         status = self.process.stdout.pop()
         if status != '{"out":"ok"}':
             Log.error("could not start python\n{{error|indent}}", error=self.process.stderr.pop_all()+[status]+self.process.stdin.pop_all())
@@ -78,7 +78,7 @@ class Python(object):
             if line == THREAD_STOP:
                 break
             try:
-                data = json2value(line)
+                data = to_data(json2value(line))
                 if "log" in data:
                     Log.main_log.write(*data.log)
                 elif "out" in data:

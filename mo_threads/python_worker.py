@@ -10,15 +10,19 @@ from __future__ import absolute_import, division, unicode_literals
 
 from copy import copy
 
-from mo_dots import is_list
+from mo_dots import is_list, to_data
 from mo_dots import listwrap, coalesce
 from mo_future import is_text, text
-from mo_json import json2value, value2json
 from mo_logs import Log, constants, Except
 from mo_logs.log_usingNothing import StructuredLogger
 
 from mo_threads import Signal
 from mo_threads.threads import STDOUT, STDIN
+
+try:
+    from mo_json import value2json, json2value
+except ImportError:
+    raise Log.error("Please `pip import mo-json` to use python sub processes")
 
 context = copy(globals())
 del context["copy"]
@@ -124,7 +128,7 @@ class RawLogger(StructuredLogger):
 def start():
     try:
         line = STDIN.readline().decode("utf8")
-        config = json2value(line)
+        config = to_data(json2value(line))
         constants.set(config.constants)
         Log.start(config.debug)
         Log.set_logger(RawLogger())

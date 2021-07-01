@@ -16,7 +16,7 @@ from __future__ import absolute_import, division, unicode_literals
 from mo_threads import till
 from mo_threads.futures import Future
 from mo_threads.lock import Lock
-from mo_threads.multiprocess import Process
+from mo_threads.multiprocess import Process, Command
 from mo_threads.queues import Queue, ThreadedQueue
 from mo_threads.signals import Signal, DONE
 from mo_threads.threads import (
@@ -38,6 +38,7 @@ keep_import = (
     Till,
     Lock,
     Process,
+    Command,
     Queue,
     ThreadedQueue,
     Signal,
