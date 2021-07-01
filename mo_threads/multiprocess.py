@@ -450,7 +450,7 @@ def _wait_for_start(source, destination):
             try:
                 returncode = int(line)
             except Exception:
-                Log.error("not an int ({line})", line=line)
+                Log.error("not an int ({{line}})", line=line)
             destination.add(THREAD_STOP)
             return
         destination.add(value)
