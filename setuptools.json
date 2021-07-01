@@ -12,8 +12,8 @@
     "description": "More Threads! Simpler and faster threading.",
     "include_package_data": true,
     "install_requires": [
-           "mo-dots==4.22.21108", "mo-future==3.147.20327",    "mo-logs==4.23.21108",
-           "mo-math==4.23.21108",   "mo-times==4.23.21108"
+          "mo-dots==5.22.21182", "mo-future==5.17.21182",   "mo-logs==5.23.21182",
+          "mo-math==5.23.21182",  "mo-times==5.24.21182"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -241,7 +241,11 @@
             "Use `Till` rather than `sleep()` because you can combine `Till` objects with other `Signals`. ",
             "",
             "**Beware that all `Till` objects will be triggered before expiry when the main thread is asked to shutdown**",
-            ""
+            "",
+            "",
+            "## `Command` Class",
+            "",
+            " "
         ],
         "separator": "\n"
     },
@@ -249,6 +253,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "4.33.21121",
+    "version": "5.24.21182",
     "zip_safe": false
 }
