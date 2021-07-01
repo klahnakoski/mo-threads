@@ -284,7 +284,7 @@ def cmd_escape(value):
 
 
 if "windows" in platform.system().lower():
-    LAST_RETURN_CODE = "echo $?"
+    LAST_RETURN_CODE = "echo %errorlevel%"
 
     def set_prompt():
         return "prompt " + PROMPT + "$g"
@@ -296,7 +296,7 @@ if "windows" in platform.system().lower():
         return value.decode("latin1")
 
 else:
-    LAST_RETURN_CODE = "echo %errorlevel%"
+    LAST_RETURN_CODE = "echo $?"
 
     def set_prompt():
         return "set prompt=" + cmd_escape(PROMPT + ">")
