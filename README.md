@@ -80,7 +80,7 @@ Once a thread is created, a few actions can be performed.
 
       result = thread.join()     # may raise exception
 
-* `release()` - Will ignore any return value, and post any exception to logging. Tracking is still performed; released threads are still properly stopped.  You may still `join()` on a released thread, but you risk being too late: The thread will have already completed and logged it's failure.
+* `release()` - Will ignore any return value, and post any exception to logging. Tracking is still performed; released threads are still properly stopped.  You may still `join()` to guarantee the caller will wait for thread completion, but you risk being too late: The thread may have already completed and logged it's failure.
 
       thread.release()     # release thread resources asap, when done
   
@@ -224,5 +224,7 @@ Use `Till` rather than `sleep()` because you can combine `Till` objects with oth
 
 
 ## `Command` Class
+
+If you find process creation is too slow, the `Command` class can be used to recycle existing processes.  It has the same interface as `Process`, yet it manages a `bash` (or `cmd.exe`) session for you in the background.
 
  
