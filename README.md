@@ -4,8 +4,8 @@
 
 |Branch      |Status   |
 |------------|---------|
-|master      | [![Build Status](https://travis-ci.org/klahnakoski/mo-threads.svg?branch=master)](https://travis-ci.org/klahnakoski/mo-threads) |
-|dev         | [![Build Status](https://travis-ci.org/klahnakoski/mo-threads.svg?branch=dev)](https://travis-ci.org/klahnakoski/mo-threads)  [![Coverage Status](https://coveralls.io/repos/github/klahnakoski/mo-threads/badge.svg?branch=dev)](https://coveralls.io/github/klahnakoski/mo-threads?branch=dev)  |
+|master      | [![Build Status](https://app.travis-ci.com/klahnakoski/mo-threads.svg?branch=master)](https://travis-ci.com/github/klahnakoski/mo-threads) |
+|dev         | [![Build Status](https://app.travis-ci.com/klahnakoski/mo-threads.svg?branch=dev)](https://travis-ci.com/github/klahnakoski/mo-threads)  [![Coverage Status](https://coveralls.io/repos/github/klahnakoski/mo-threads/badge.svg?branch=dev)](https://coveralls.io/github/klahnakoski/mo-threads?branch=dev)  |
 
 ## Module `threads`
 
