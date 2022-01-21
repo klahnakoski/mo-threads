@@ -139,6 +139,7 @@ class Process(object):
     def stop(self):
         self.stdin.add(THREAD_STOP)  # ONE MORE SEND
         self.please_stop.go()
+        return self
 
     def join(self, raise_on_error=False):
         self.service_stopped.wait()

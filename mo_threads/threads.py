@@ -180,6 +180,7 @@ class MainThread(BaseThread):
                 write_profiles(self.cprofiler)
             DEBUG and Log.note("Thread {{name|quote}} now stopped", name=self.name)
             self.stopped.go()
+        return self
 
     def wait_for_shutdown_signal(
         self,
@@ -300,6 +301,7 @@ class Thread(BaseThread):
         self.please_stop.go()
 
         DEBUG and Log.note("Thread {{name|quote}} got request to stop", name=self.name)
+        return self
 
     def _run(self):
         self.please_stop.remove_go(self.start)

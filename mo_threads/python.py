@@ -132,3 +132,4 @@ class Python(object):
         self.process.join()
         self.daemon.stop()
         self.errors.stop()
+        return self

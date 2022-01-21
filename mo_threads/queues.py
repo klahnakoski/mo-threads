@@ -546,5 +546,7 @@ class ThreadedQueue(Queue):
     def stop(self):
         self.add(THREAD_STOP)
         self.thread.join()
+        return self
+
 
 
