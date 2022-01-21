@@ -389,7 +389,9 @@ class Thread(BaseThread):
                             )
                         else:
                             # IF THREAD ENDS OK, AND NOTHING RETURNED, THEN FORGET ABOUT IT
-                            self.parent.remove_child(self)
+                            if isinstance(self.parent, Thread):
+                                # SOMETIMES parent IS NOT A THREAD
+                                self.parent.remove_child(self)
 
     def is_alive(self):
         return not self.stopped

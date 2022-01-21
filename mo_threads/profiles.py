@@ -29,11 +29,19 @@ except ImportError:
 
 DEBUG = False
 FILENAME = "profile.tab"
+cprofiler_stats = None
 
 
 class CProfiler(object):
     """
     cProfiler CONTEXT MANAGER WRAPPER
+
+    Single threaded example:
+
+        with CProfile():
+            # some code
+        write_profiles()
+
     """
 
     __slots__ = ["cprofiler"]
@@ -42,7 +50,11 @@ class CProfiler(object):
         self.cprofiler = cProfile.Profile()
 
     def __enter__(self):
+        global cprofiler_stats
+
         DEBUG and Log.note("starting cprofile")
+        if not cprofiler_stats:
+            enable_profilers()
         self.cprofiler.enable()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -58,7 +70,7 @@ class CProfiler(object):
         return self.cprofiler.disable()
 
 
-def enable_profilers(filename):
+def enable_profilers(filename=None):
     global FILENAME
     global cprofiler_stats
 
@@ -81,8 +93,9 @@ def enable_profilers(filename):
             DEBUG and Log.note("cprofiler not started for thread {{name}} (already running)", name=t.name)
 
 
-def write_profiles(main_thread_profile):
-    cprofiler_stats.add(pstats.Stats(main_thread_profile.cprofiler))
+def write_profiles(main_thread_profile=None):
+    if main_thread_profile:
+        cprofiler_stats.add(pstats.Stats(main_thread_profile.cprofiler))
     stats = cprofiler_stats.pop_all()
 
     DEBUG and Log.note("aggregating {{num}} profile stats", num=len(stats))

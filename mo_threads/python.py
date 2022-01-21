@@ -64,7 +64,7 @@ class Python(object):
 
             try:
                 if self.current_error:
-                    Log.error("problem with process call", cause=Except.new_instance(self.current_error))
+                    Log.error("problem with process call", cause=Except(**self.current_error))
                 else:
                     return self.current_response
             finally:
