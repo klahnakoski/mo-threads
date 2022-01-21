@@ -87,7 +87,7 @@ class Python(object):
                 elif "err" in data:
                     self.current_error = data.err
                     self.current_task.go()
-            except Exception as e:
+            except Exception as cause:
                 Log.note("non-json line: {{line}}", line=line)
         DEBUG and Log.note("stdout reader is done")
 
@@ -99,8 +99,8 @@ class Python(object):
                     please_stop.go()
                     break
                 Log.note("Error line from {{name}}({{pid}}): {{line}}", line=line, name=self.process.name, pid=self.process.pid)
-            except Exception as e:
-                Log.error("could not process line", cause=e)
+            except Exception as cause:
+                Log.error("could not process line", cause=cause)
 
     def import_module(self, module_name, var_names=None):
         if var_names is None:

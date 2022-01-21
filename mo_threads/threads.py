@@ -74,8 +74,8 @@ class AllThread(object):
         for t in self.threads:
             try:
                 t.join()
-            except Exception as e:
-                exceptions.append(e)
+            except Exception as cause:
+                exceptions.append(cause)
 
         if exceptions:
             Log.error("Problem in child threads", cause=exceptions)
@@ -145,8 +145,8 @@ class MainThread(BaseThread):
             DEBUG and c.name and Log.note("Stopping thread {{name|quote}}", name=c.name)
             try:
                 c.stop()
-            except Exception as e:
-                join_errors.append(e)
+            except Exception as cause:
+                join_errors.append(cause)
 
         for c in children:
             DEBUG and c.name and Log.note(
@@ -154,8 +154,8 @@ class MainThread(BaseThread):
             )
             try:
                 c.join()
-            except Exception as e:
-                join_errors.append(e)
+            except Exception as cause:
+                join_errors.append(cause)
 
             DEBUG and c.name and Log.note(
                 "Done join on thread {{name|quote}}", name=c.name
@@ -285,8 +285,8 @@ class Thread(BaseThread):
                 return
             self.thread = start_new_thread(Thread._run, (self,))
             return self
-        except Exception as e:
-            Log.error("Can not start thread", e)
+        except Exception as cause:
+            Log.error("Can not start thread", cause)
 
     def stop(self):
         """
@@ -309,20 +309,20 @@ class Thread(BaseThread):
                 if self.target is not None:
                     a, k, self.args, self.kwargs = self.args, self.kwargs, None, None
                     self.end_of_thread.response = self.target(*a, **k)
-            except Exception as e:
-                e = Except.wrap(e)
-                self.end_of_thread.exception = e
+            except Exception as cause:
+                cause = Except.wrap(cause)
+                self.end_of_thread.exception = cause
                 with self.parent.child_locker:
                     emit_problem = self not in self.parent.children
                 if emit_problem:
                     # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
                     try:
                         Log.error(
-                            "Problem in thread {{name|quote}}", name=self.name, cause=e
+                            "Problem in thread {{name|quote}}", name=self.name, cause=cause
                         )
-                    except Exception:
+                    except Exception as cause:
                         sys.stderr.write(
-                            str("ERROR in thread: " + self.name + " " + text(e) + "\n")
+                            str("ERROR in thread: " + self.name + " " + text(cause) + "\n")
                         )
             finally:
                 try:
@@ -332,31 +332,31 @@ class Thread(BaseThread):
                         try:
                             DEBUG and Log.note("Stopping thread " + c.name + "\n")
                             c.stop()
-                        except Exception as e:
+                        except Exception as cause:
                             Log.warning(
                                 "Problem stopping thread {{thread}}",
                                 thread=c.name,
-                                cause=e,
+                                cause=cause,
                             )
 
                     for c in children:
                         try:
                             DEBUG and Log.note("Joining on thread " + c.name + "\n")
                             c.join()
-                        except Exception as e:
+                        except Exception as cause:
                             Log.warning(
                                 "Problem joining thread {{thread}}",
                                 thread=c.name,
-                                cause=e,
+                                cause=cause,
                             )
                         finally:
                             DEBUG and Log.note("Joined on thread " + c.name + "\n")
 
                     del self.target, self.args, self.kwargs
                     DEBUG and Log.note("thread {{name|quote}} stopping", name=self.name)
-                except Exception as e:
+                except Exception as cause:
                     DEBUG and Log.warning(
-                        "problem with thread {{name|quote}}", cause=e, name=self.name
+                        "problem with thread {{name|quote}}", cause=cause, name=self.name
                     )
                 finally:
                     if not self.ready_to_stop:
@@ -547,9 +547,9 @@ def _wait_for_exit(please_stop):
             try:
                 # line = ""
                 line = STDIN.readline()
-            except Exception as e:
-                Except.wrap(e)
-                if "Bad file descriptor" in e:
+            except Exception as cause:
+                Except.wrap(cause)
+                if "Bad file descriptor" in cause:
                     Log.note("can not read from stdin")
                     _wait_for_interrupt(please_stop)
                     break
@@ -563,8 +563,8 @@ def _wait_for_exit(please_stop):
             if line.strip() == b"exit":
                 Log.alert("'exit' Detected!  Stopping...")
                 return
-    except Exception as e:
-        Log.warning("programming error", cause=e)
+    except Exception as cause:
+        Log.warning("programming error", cause=cause)
     finally:
         if please_stop:
             Log.note("please_stop has been requested")

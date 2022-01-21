@@ -93,12 +93,12 @@ def daemon(please_stop):
             if later > 0:
                 try:
                     sleep(min(later, INTERVAL))
-                except Exception as e:
+                except Exception as cause:
                     Log.warning(
                         "Call to sleep failed with ({{later}}, {{interval}})",
                         later=later,
                         interval=INTERVAL,
-                        cause=e
+                        cause=cause
                     )
                 continue
 
@@ -137,8 +137,8 @@ def daemon(please_stop):
                         if s is not None:
                             s.go()
 
-    except Exception as e:
-        Log.warning("unexpected timer shutdown", cause=e)
+    except Exception as cause:
+        Log.warning("unexpected timer shutdown", cause=cause)
     finally:
         DEBUG and Log.alert("TIMER SHUTDOWN")
         enabled = Signal()

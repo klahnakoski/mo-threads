@@ -34,5 +34,5 @@ t.release()
 
 try:
     MAIN_THREAD.wait_for_shutdown_signal(allow_exit=False, wait_forever=False)
-except Exception as e:
-    Log.error("can not wait", cause=e)
+except Exception as cause:
+    Log.error("can not wait", cause=cause)

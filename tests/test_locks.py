@@ -253,7 +253,7 @@ class TestLocks(FuzzyTestCase):
                 for (_, _, cd), (_, _, gd) in zip(current, growth):
                     self.assertAlmostEqual(-cd, gd, places=2)
                 return
-            except Exception as e:
+            except Exception as cause:
                 pass
         Log.error("object counts did not go down")
 

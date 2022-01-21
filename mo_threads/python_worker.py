@@ -101,9 +101,9 @@ def command_loop(local):
                         )
                     STDOUT.write(value2json({"out": local["_return"]}).encode("utf8"))
                     STDOUT.write(b"\n")
-        except Exception as e:
-            e = Except.wrap(e)
-            STDOUT.write(value2json({"err": e}).encode("utf8"))
+        except Exception as cause:
+            cause = Except.wrap(cause)
+            STDOUT.write(value2json({"err": cause}).encode("utf8"))
             STDOUT.write(b"\n")
         finally:
             STDOUT.flush()
