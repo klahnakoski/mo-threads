@@ -121,8 +121,8 @@ class Process(object):
                 ),
                 Thread.run(self.name + " waiter", self._monitor, parent_thread=self),
             ]
-        except Exception as e:
-            Log.error("Can not call", e)
+        except Exception as cause:
+            Log.error("Can not call", cause)
 
         self.debug and Log.note(
             "{{process}} START: {{command}}",
@@ -139,6 +139,7 @@ class Process(object):
     def stop(self):
         self.stdin.add(THREAD_STOP)  # ONE MORE SEND
         self.please_stop.go()
+        return self
 
     def join(self, raise_on_error=False):
         self.service_stopped.wait()
@@ -378,15 +379,15 @@ class Command(object):
             # WAIT FOR COMMAND LINE RESPONSE ON stdout
             self.stdout_thread.join(till=till)
             DEBUG_COMMAND and Log.note("stdout IS DONE {{params}}", params=self.params)
-        except Exception as e:
-            Log.error("unexpected problem processing stdout", cause=e)
+        except Exception as cause:
+            Log.error("unexpected problem processing stdout", cause=cause)
 
         try:
             self.stderr_thread.please_stop.go()
             self.stderr_thread.join(till=till)
             DEBUG_COMMAND and Log.note("stderr IS DONE {{params}}", params=self.params)
-        except Exception as e:
-            Log.error("unexpected problem processing stderr", cause=e)
+        except Exception as cause:
+            Log.error("unexpected problem processing stderr", cause=cause)
 
         if raise_on_error and self.returncode != 0:
             Log.error(

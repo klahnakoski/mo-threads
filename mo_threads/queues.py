@@ -68,8 +68,8 @@ class Queue(object):
                     break
                 if value is not None:
                     yield value
-        except Exception as e:
-            Log.warning("Tell me about what happened here", e)
+        except Exception as cause:
+            Log.warning("Tell me about what happened here", cause)
 
     def add(self, value, timeout=None, force=False):
         """
@@ -277,8 +277,8 @@ class PriorityQueue(Queue):
                     break
                 if value is not None:
                     yield value
-        except Exception as e:
-            Log.warning("Tell me about what happened here", e)
+        except Exception as cause:
+            Log.warning("Tell me about what happened here", cause)
 
         if not self.silent:
             Log.note("queue iterator is done")
@@ -469,11 +469,11 @@ class ThreadedQueue(Queue):
                     _post_push_functions.append(item)
                 elif item is not None:
                     _buffer.append(item)
-            except Exception as e:
-                e = Except.wrap(e)
+            except Exception as cause:
+                cause = Except.wrap(cause)
                 if error_target:
                     try:
-                        error_target(e, _buffer)
+                        error_target(cause, _buffer)
                     except Exception as f:
                         Log.warning(
                             "`error_target` should not throw, just deal",
@@ -484,7 +484,7 @@ class ThreadedQueue(Queue):
                     Log.warning(
                         "Unexpected problem",
                         name=self.name,
-                        cause=e
+                        cause=cause
                     )
 
             try:
@@ -493,11 +493,11 @@ class ThreadedQueue(Queue):
                         push_to_queue()
                         last_push = now = time()
                     next_push = Till(till=now + period)
-            except Exception as e:
-                e = Except.wrap(e)
+            except Exception as cause:
+                cause = Except.wrap(cause)
                 if error_target:
                     try:
-                        error_target(e, _buffer)
+                        error_target(cause, _buffer)
                     except Exception as f:
                         Log.warning(
                             "`error_target` should not throw, just deal",
@@ -509,7 +509,7 @@ class ThreadedQueue(Queue):
                         "Problem with {{name}} pushing {{num}} items to data sink",
                         name=self.name,
                         num=len(_buffer),
-                        cause=e
+                        cause=cause
                     )
 
         if _buffer:
@@ -546,5 +546,7 @@ class ThreadedQueue(Queue):
     def stop(self):
         self.add(THREAD_STOP)
         self.thread.join()
+        return self
+
 
 

@@ -95,10 +95,10 @@ class Lock(object):
             self.debug and _Log.note("out of lock {{name|quote}}", name=self.name)
             (waiter | till).wait()
             self.debug and _Log.note("done minimum wait (for signal {{till|quote}})", till=till.name if till else "", name=self.name)
-        except Exception as e:
+        except Exception as cause:
             if not _Log:
                 _late_import()
-            _Log.warning("problem", cause=e)
+            _Log.warning("problem", cause=cause)
         finally:
             self.lock.acquire()
             self.debug and _Log.note("re-acquired lock {{name|quote}}", name=self.name)
