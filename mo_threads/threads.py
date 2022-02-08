@@ -15,6 +15,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 import signal as _signal
 import sys
+import threading
 from copy import copy
 from datetime import datetime, timedelta
 from time import sleep
@@ -102,6 +103,9 @@ class BaseThread(object):
         self.children = []
         self.cprofiler = None
         self.trace_func = sys.gettrace()
+
+        threading.current_thread().name
+
 
     def add_child(self, child):
         with self.child_locker:
