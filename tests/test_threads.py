@@ -182,10 +182,14 @@ class TestThreads(FuzzyTestCase):
         till.enabled.go()
 
     def test_start_stopped_thread(self):
+        """
+        We often spawn threads to do work; ensure the thread is at-least started,
+        let the thread decide how to balance please_stop and the work to be done
+        """
         def worker(please_stop):
-            Log.info("never here")
+            Log.info("started")
 
         please_stop = Signal()
         please_stop.go()
         Thread.run("work", worker, please_stop=please_stop)
-        self.assertEqual(len(Log.main_log.lines), 0)
+        self.assertEqual(Log.main_log.lines[0], "started")
