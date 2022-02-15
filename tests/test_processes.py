@@ -7,11 +7,6 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
-
 import os
 from unittest import skipIf
 
@@ -22,7 +17,7 @@ from mo_threads import Process
 from mo_threads import Till
 from tests import IS_WINDOWS
 
-IS_TRAVIS = bool(os.environ.get('TRAVIS'))
+IS_TRAVIS = bool(os.environ.get("TRAVIS"))
 
 
 class TestProcesses(FuzzyTestCase):
@@ -54,13 +49,16 @@ class TestProcesses(FuzzyTestCase):
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
-        command = ["kill",  "-s", "int", p.pid]
+        command = ["kill", "-s", "int", p.pid]
         k = Process("killer", command, shell=True)
         k.join(raise_on_error=True)
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
-    @skipIf(IS_TRAVIS or IS_WINDOWS, "travis can not kill, Python can not send ctrl-c on Windows")
+    @skipIf(
+        IS_TRAVIS or IS_WINDOWS,
+        "travis can not kill, Python can not send ctrl-c on Windows",
+    )
     def test_sigint(self):
         """
         CAN WE CATCH A SIGINT?
@@ -71,6 +69,7 @@ class TestProcesses(FuzzyTestCase):
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         if IS_WINDOWS:
             import signal
+
             os.kill(p.pid, signal.CTRL_C_EVENT)
         else:
             Process("killer", ["kill", "-SIGINT", p.pid]).join()
@@ -112,4 +111,3 @@ class TestProcesses(FuzzyTestCase):
         )
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
-

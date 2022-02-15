@@ -21,7 +21,7 @@ from mo_threads.python import Python
 class TestLocks(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):
-        Log.start({"trace":True})
+        Log.start({"trace": True})
 
     @classmethod
     def tearDownClass(cls):
@@ -43,4 +43,3 @@ class TestLocks(FuzzyTestCase):
         p.execute_script("temp = add(1, 2)")
         result = p.get("temp")
         self.assertEqual(result, 3)
-

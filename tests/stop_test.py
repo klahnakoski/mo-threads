@@ -30,4 +30,6 @@ def timeout(please_stop):
 Thread.run("timeout", target=timeout, please_stop=please_stop)
 
 Log.note("test if sys.exit() will send TERM signal")
-MAIN_THREAD.wait_for_shutdown_signal(allow_exit=False, wait_forever=True, please_stop=please_stop)
+MAIN_THREAD.wait_for_shutdown_signal(
+    allow_exit=False, wait_forever=True, please_stop=please_stop
+)

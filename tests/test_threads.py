@@ -19,16 +19,15 @@ from mo_times.dates import Date
 from mo_times.durations import SECOND
 
 from mo_threads import Lock, Thread, Signal, Till, till
+from tests import StructuredLogger_usingList
 
 
 class TestThreads(FuzzyTestCase):
-    @classmethod
-    def setUpClass(cls):
-        Log.start()
+    def setUp(self):
+        self.old, Log.main_log = Log.main_log, StructuredLogger_usingList()
 
-    @classmethod
-    def tearDownClass(cls):
-        Log.stop()
+    def tearDown(self):
+        self.logs, Log.main_log = Log.main_log, self.old
 
     def test_lock_wait_timeout(self):
         locker = Lock("test")
@@ -123,7 +122,8 @@ class TestThreads(FuzzyTestCase):
         self.assertGreater(
             num,
             9,
-            "Expecting some reasonable number of entries to prove there was looping, not "
+            "Expecting some reasonable number of entries to prove there was looping,"
+            " not "
             + text(num),
         )
 
@@ -180,3 +180,12 @@ class TestThreads(FuzzyTestCase):
         t = Till(seconds=10000000)  # ALL NEW TIMING SIGNALS ARE A go()!
         t.wait()
         till.enabled.go()
+
+    def test_start_stopped_thread(self):
+        def worker(please_stop):
+            Log.info("never here")
+
+        please_stop = Signal()
+        please_stop.go()
+        Thread.run("work", worker, please_stop=please_stop)
+        self.assertEqual(len(Log.main_log.lines), 0)

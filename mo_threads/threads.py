@@ -30,6 +30,7 @@ from mo_future import (
     decorate,
 )
 from mo_logs import Except, Log
+
 from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till
 
@@ -105,7 +106,6 @@ class BaseThread(object):
         self.trace_func = sys.gettrace()
 
         threading.current_thread().name
-
 
     def add_child(self, child):
         with self.child_locker:
@@ -254,13 +254,8 @@ class Thread(BaseThread):
 
         # ENSURE THERE IS A SHARED please_stop SIGNAL
         self.kwargs = copy(kwargs)
-        self.please_stop = self.kwargs.get(PLEASE_STOP)
-        if self.please_stop is None:
-            self.please_stop = self.kwargs[PLEASE_STOP] = Signal(
-                "please_stop for " + self.name
-            )
-        self.please_stop.then(self.start)
-
+        self.please_stop = self.kwargs.get(PLEASE_STOP) or Signal("please_stop for " + self.name)
+        self.kwargs[PLEASE_STOP] = self.please_stop
         self.thread = None
         self.ready_to_stop = Signal("joining with " + self.name)
         self.stopped = Signal("stopped signal for " + self.name)
@@ -271,6 +266,7 @@ class Thread(BaseThread):
         else:
             self.parent = Thread.current()
             self.parent.add_child(self)
+        self.please_stop.then(self.start)
 
     def __enter__(self):
         return self

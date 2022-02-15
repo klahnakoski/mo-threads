@@ -27,6 +27,7 @@ def timeout(please_stop):
     else:
         Log.note("timeout detected")
 
+
 Log.start(settings={"trace": True})
 
 t = Thread.run("timeout", target=timeout)
