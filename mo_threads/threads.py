@@ -430,7 +430,10 @@ class Thread(BaseThread):
         self.ready_to_stop.go()
         (self.stopped | till).wait()
         if self.stopped:
-            self.parent.remove_child(self)
+            try:
+                self.parent.remove_child(self)
+            except Exception as cause:
+                Log.warning("parents of children must have remove_child() method", cause=cause)
             if not self.end_of_thread.exception:
                 return self.end_of_thread.response
             else:
