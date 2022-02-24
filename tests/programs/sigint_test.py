@@ -16,7 +16,7 @@ from __future__ import unicode_literals
 
 from mo_logs import Log
 
-from mo_threads import MAIN_THREAD, Thread, Till
+from mo_threads import Thread, Till, wait_for_shutdown_signal
 
 
 def timeout(please_stop):
@@ -34,6 +34,6 @@ t = Thread.run("timeout", target=timeout)
 t.release()
 
 try:
-    MAIN_THREAD.wait_for_shutdown_signal(allow_exit=False, wait_forever=False)
+    wait_for_shutdown_signal(allow_exit=False, wait_forever=False)
 except Exception as cause:
     Log.error("can not wait", cause=cause)
