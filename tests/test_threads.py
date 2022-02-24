@@ -14,11 +14,14 @@ from __future__ import unicode_literals
 
 from mo_future import text
 from mo_logs import Log
+from mo_logs.log_usingNothing import StructuredLogger
+from mo_logs.strings import expand_template
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.dates import Date
 from mo_times.durations import SECOND
 
-from mo_threads import Lock, Thread, Signal, Till, till
+from mo_threads import Lock, Thread, Signal, Till, till, threads, stop_main_thread, MainThread
+from mo_threads.threads import wait_for_shutdown_signal
 from tests import StructuredLogger_usingList
 
 
@@ -193,3 +196,40 @@ class TestThreads(FuzzyTestCase):
         please_stop.go()
         Thread.run("work", worker, please_stop=please_stop)
         self.assertEqual(Log.main_log.lines[0], "started")
+
+    def test_failure_during_wait_for_shutdown(self):
+        list_logger = StructuredLogger_usingList()
+        old_logger, Log.main_log = Log.main_log, list_logger
+
+        Thread.run("test failure", bad_worker)
+
+        with self.assertRaises("bad worker failure"):
+            wait_for_shutdown_signal(None, False, False)
+        self.assertGreater(len(list_logger.lines), 1)
+        self.assertIn("logger stopped", list_logger.lines)
+        self.assertIn("ERROR", list_logger.lines[-2])
+        self.assertEqual(bool(threads.MAIN_THREAD.timers.stopped), True)
+
+        start_main_thread()
+
+
+def start_main_thread():
+    till.enabled = Signal()
+    main = threads.MAIN_THREAD = MainThread()
+    main.timers = Thread.run("timers daemon", till.daemon, parent_thread=None)
+    till.enabled.wait()
+
+
+def bad_worker(please_stop):
+    raise Exception("bad worker failure")
+
+
+class StructuredLogger_usingList(StructuredLogger):
+    def __init__(self):
+        self.lines = []
+
+    def write(self, template, params):
+        self.lines.append(expand_template(template, params))
+
+    def stop(self):
+        self.lines.append("logger stopped")

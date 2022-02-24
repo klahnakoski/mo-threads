@@ -29,7 +29,8 @@ from mo_future import (
     text,
     decorate,
 )
-from mo_logs import Except, Log
+from mo_logs import Except, Log, raise_from_none
+from mo_logs.exceptions import ERROR
 
 from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till
@@ -166,10 +167,11 @@ class MainThread(BaseThread):
             )
 
         if join_errors:
-            Log.error(
+            Log.warning(
                 "Problem while stopping {{name|quote}}",
                 name=self.name,
-                cause=unwraplist(join_errors),
+                cause=join_errors,
+                log_context=ERROR
             )
 
         with self.shutdown_locker:
@@ -184,58 +186,16 @@ class MainThread(BaseThread):
                 write_profiles(self.cprofiler)
             DEBUG and Log.note("Thread {{name|quote}} now stopped", name=self.name)
             self.stopped.go()
-        return self
 
-    def wait_for_shutdown_signal(
-        self,
-        please_stop=False,  # ASSIGN SIGNAL TO STOP EARLY
-        allow_exit=False,  # ALLOW "exit" COMMAND ON CONSOLE TO ALSO STOP THE APP
-        wait_forever=True,  # IGNORE CHILD THREADS, NEVER EXIT.  False => IF NO CHILD THREADS LEFT, THEN EXIT
-    ):
-        """
-        FOR USE BY PROCESSES THAT NEVER DIE UNLESS EXTERNAL SHUTDOWN IS REQUESTED
-
-        CALLING THREAD WILL SLEEP UNTIL keyboard interrupt, OR please_stop, OR "exit"
-
-        :param please_stop:
-        :param allow_exit:
-        :param wait_forever:: Assume all needed threads have been launched. When done
-        :return:
-        """
-        self_thread = Thread.current()
-        if self_thread != MAIN_THREAD or self_thread != self:
-            Log.error(
-                "Only the main thread can sleep forever (waiting for KeyboardInterrupt)"
+        if join_errors:
+            raise Except(
+                context=ERROR,
+                template="Problem while stopping {{name|quote}}",
+                name=self.name,
+                cause=unwraplist(join_errors),
             )
 
-        if isinstance(please_stop, Signal):
-            # MUTUAL SIGNALING MAKES THESE TWO EFFECTIVELY THE SAME SIGNAL
-            self.please_stop.then(please_stop.go)
-            please_stop.then(self.please_stop.go)
-        else:
-            please_stop = self.please_stop
-
-        if not wait_forever:
-            # TRIGGER SIGNAL WHEN ALL CHILDREN THREADS ARE DONE
-            with self_thread.child_locker:
-                pending = copy(self_thread.children)
-            children_done = AndSignals(self.please_stop, len(pending))
-            children_done.signal.then(self.please_stop.go)
-            for p in pending:
-                p.stopped.then(children_done.done)
-
-        try:
-            if allow_exit:
-                _wait_for_exit(self.please_stop)
-            else:
-                _wait_for_interrupt(self.please_stop)
-            Log.alert("Stop requested!  Stopping...")
-        except KeyboardInterrupt as _:
-            Log.alert("SIGINT Detected!  Stopping...")
-        except SystemExit as _:
-            Log.alert("SIGTERM Detected!  Stopping...")
-        finally:
-            self.stop()
+        return self
 
 
 class Thread(BaseThread):
@@ -259,7 +219,7 @@ class Thread(BaseThread):
         else:
             self.please_stop = self.kwargs[PLEASE_STOP] = Signal("please_stop for " + self.name)
         self.thread = None
-        self.ready_to_stop = Signal("joining with " + self.name)
+        self.joiner_is_waiting = Signal("joining with " + self.name)
         self.stopped = Signal("stopped signal for " + self.name)
 
         if PARENT_THREAD in kwargs:
@@ -363,18 +323,18 @@ class Thread(BaseThread):
                         "problem with thread {{name|quote}}", cause=cause, name=self.name
                     )
                 finally:
-                    if not self.ready_to_stop:
+                    self.stopped.go()
+
+                    if not self.joiner_is_waiting:
                         DEBUG and Log.note("thread {{name|quote}} is done, wait for join", name=self.name)
                         # WHERE DO WE PUT THE THREAD RESULT?
                         # IF NO THREAD JOINS WITH THIS, THEN WHAT DO WE DO WITH THE RESULT?
                         # HOW LONG DO WE WAIT FOR ANOTHER TO ACCEPT THE RESULT?
                         #
                         # WAIT 60seconds, THEN SEND RESULT TO LOGGER
-                        (Till(seconds=60) | self.ready_to_stop).wait()
+                        (Till(seconds=60) | self.joiner_is_waiting).wait()
 
-                    self.stopped.go()
-
-                    if not self.ready_to_stop:
+                    if not self.joiner_is_waiting:
                         if self.end_of_thread.exception:
                             # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
                             try:
@@ -407,7 +367,7 @@ class Thread(BaseThread):
 
         PARENT THREAD WILL STILL ENSURE self HAS STOPPED PROPERLY
         """
-        self.ready_to_stop.go()
+        self.joiner_is_waiting.go()
         return self
 
     def join(self, till=None):
@@ -427,7 +387,7 @@ class Thread(BaseThread):
             parent=Thread.current().name,
             child=self.name,
         )
-        self.ready_to_stop.go()
+        self.joiner_is_waiting.go()
         (self.stopped | till).wait()
         if self.stopped:
             try:
@@ -591,6 +551,48 @@ def _wait_for_interrupt(please_stop):
 
 
 MAIN_THREAD = MainThread()
+
+
+def wait_for_shutdown_signal(
+    please_stop=False,  # ASSIGN SIGNAL TO STOP EARLY
+    allow_exit=False,  # ALLOW "exit" COMMAND ON CONSOLE TO ALSO STOP THE APP
+    wait_forever=True,  # IGNORE CHILD THREADS, NEVER EXIT.  False => IF NO CHILD THREADS LEFT, THEN EXIT
+):
+    """
+    FOR USE BY PROCESSES THAT NEVER DIE UNLESS EXTERNAL SHUTDOWN IS REQUESTED
+
+    CALLING THREAD WILL SLEEP UNTIL keyboard interrupt, OR please_stop, OR "exit"
+    """
+    main = Thread.current()
+    if main != MAIN_THREAD:
+        Log.error("Only the main thread can sleep forever (waiting for KeyboardInterrupt)")
+
+    if isinstance(please_stop, Signal):
+        # MUTUAL SIGNALING MAKES THESE TWO EFFECTIVELY THE SAME SIGNAL
+        main.please_stop.then(please_stop.go, raise_from_none)
+        please_stop.then(main.please_stop.go)
+
+    if not wait_forever:
+        # TRIGGER SIGNAL WHEN ALL CHILDREN THREADS ARE DONE
+        with main.child_locker:
+            pending = copy(main.children)
+        children_done = AndSignals(main.please_stop, len(pending))
+        children_done.signal.then(main.please_stop.go)
+        for p in pending:
+            p.stopped.then(children_done.done)
+
+    try:
+        if allow_exit:
+            _wait_for_exit(main.please_stop)
+        else:
+            _wait_for_interrupt(main.please_stop)
+        Log.alert("Stop requested!  Stopping...")
+    except KeyboardInterrupt as _:
+        Log.alert("SIGINT Detected!  Stopping...")
+    except SystemExit as _:
+        Log.alert("SIGTERM Detected!  Stopping...")
+    finally:
+        main.stop()
 
 
 def stop_main_thread(signum=0, frame=None):
