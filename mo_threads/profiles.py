@@ -90,7 +90,10 @@ def enable_profilers(filename=None):
             DEBUG and Log.note("starting cprofile for thread {{name}}", name=t.name)
             t.cprofiler.__enter__()
         else:
-            DEBUG and Log.note("cprofiler not started for thread {{name}} (already running)", name=t.name)
+            DEBUG and Log.note(
+                "cprofiler not started for thread {{name}} (already running)",
+                name=t.name,
+            )
 
 
 def write_profiles(main_thread_profile=None):

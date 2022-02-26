@@ -20,7 +20,7 @@ def stats2tab(acc, separator="\t"):
             "total_time_per_call": d[3] / d[1],
             "file": (f[0] if f[0] != "~" else "").replace("\\", "/"),
             "line": f[1],
-            "method": f[2].lstrip("<").rstrip(">")
+            "method": f[2].lstrip("<").rstrip(">"),
         }
         for f, d, in acc.stats.items()
     ]

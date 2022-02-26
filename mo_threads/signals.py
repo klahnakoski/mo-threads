@@ -15,11 +15,32 @@ from __future__ import absolute_import, division, unicode_literals
 
 from weakref import ref
 
-from mo_future import allocate_lock as _allocate_lock, text
-from mo_logs import Log
 from mo_dots import is_null
+from mo_future import allocate_lock as _allocate_lock
+from mo_logs import Log, Except
+from mo_logs.exceptions import get_stacktrace
 
 DEBUG = False
+TRACE_THEN = True  # GRAB STACK TRACE OF then() CALL FOR BLAME
+
+
+def standard_warning(cause):
+    Log.warning(
+        "Trigger on Signal.go() failed, and no error function provided!",
+        cause=cause,
+        stack_depth=1,
+    )
+
+
+def debug_warning(stacktrace):
+    def warning(cause):
+        Log.warning(
+            "Trigger on Signal.go() failed, and no error function provided!",
+            cause=[cause, Except(template="attached at", trace=stacktrace)],
+            stack_depth=1,
+        )
+
+    return warning
 
 
 class Signal(object):
@@ -40,9 +61,6 @@ class Signal(object):
         self._go = False
         self.job_queue = None
         self.waiting_threads = None
-
-    def __str__(self):
-        return str(self._go)
 
     def __bool__(self):
         return self._go
@@ -98,13 +116,13 @@ class Signal(object):
                 t.release()
 
         if jobs:
-            for j in jobs:
+            for j, e in jobs:
                 try:
                     j()
                 except Exception as cause:
-                    Log.warning("Trigger on Signal.go() failed!", cause=cause)
+                    e(cause)
 
-    def then(self, target):
+    def then(self, target, error=standard_warning):
         """
         RUN target WHEN SIGNALED
         """
@@ -113,21 +131,26 @@ class Signal(object):
 
         with self.lock:
             if not self._go:
+                if TRACE_THEN:
+                    error = debug_warning(get_stacktrace(1))
                 DEBUG and self._name and Log.note(
                     "Adding target to signal {{name|quote}}", name=self.name
                 )
 
                 if not self.job_queue:
-                    self.job_queue = [target]
+                    self.job_queue = [(target, error)]
                 else:
-                    self.job_queue.append(target)
+                    self.job_queue.append((target, error))
                 return
 
         DEBUG and Log.note(
             "Signal {{name|quote}} already triggered, running job immediately",
             name=self.name,
         )
-        target()
+        try:
+            target()
+        except Exception as cause:
+            error(cause)
 
     def remove_go(self, target):
         """
@@ -135,10 +158,10 @@ class Signal(object):
         """
         with self.lock:
             if not self._go:
-                try:
-                    self.job_queue.remove(target)
-                except ValueError:
-                    pass
+                for i, (j, e) in enumerate(self.job_queue):
+                    if j == target:
+                        del self.job_queue[i]
+                        break
 
     @property
     def name(self):
@@ -148,10 +171,10 @@ class Signal(object):
             return self._name
 
     def __str__(self):
-        return self.name.decode(text)
+        return f"{self._go} ({self.name})"
 
     def __repr__(self):
-        return text(repr(self._go))
+        return repr(self._go)
 
     def __or__(self, other):
         if is_null(other):

@@ -14,7 +14,6 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from mo_future import allocate_lock as _allocate_lock, decorate
-from mo_math import randoms
 from mo_threads.signals import Signal
 
 _Log, _Except, _Thread, _extract_stack = [None] * 4
@@ -44,6 +43,7 @@ class Lock(object):
     """
     A NON-RE-ENTRANT LOCK WITH wait()
     """
+
     __slots__ = ["name", "debug", "sample", "lock", "waiting"]
 
     def __init__(self, name="", debug=DEBUG, sample=False):
@@ -56,9 +56,6 @@ class Lock(object):
         self.waiting = None
 
     def __enter__(self):
-        if self.sample and randoms.int(100) == 0:
-            _Log.warning("acquire  lock {{name|quote}}", name=self.name)
-
         self.debug and _Log.note("acquire  lock {{name|quote}}", name=self.name)
         self.lock.acquire()
         self.debug and _Log.note("acquired lock {{name|quote}}", name=self.name)
@@ -66,7 +63,11 @@ class Lock(object):
 
     def __exit__(self, a, b, c):
         if self.waiting:
-            self.debug and _Log.note("signaling {{num}} waiters on {{name|quote}}", name=self.name, num=len(self.waiting))
+            self.debug and _Log.note(
+                "signaling {{num}} waiters on {{name|quote}}",
+                name=self.name,
+                num=len(self.waiting),
+            )
             # TELL ANOTHER THAT THE LOCK IS READY SOON
             waiter = self.waiting.pop()
             waiter.go()
@@ -84,17 +85,28 @@ class Lock(object):
             # TELL ANOTHER THAT THE LOCK IS READY SOON
             other = self.waiting.pop()
             other.go()
-            self.debug and _Log.note("waiting with {{num}} others on {{name|quote}}", num=len(self.waiting), name=self.name, stack_depth=1)
+            self.debug and _Log.note(
+                "waiting with {{num}} others on {{name|quote}}",
+                num=len(self.waiting),
+                name=self.name,
+                stack_depth=1,
+            )
             self.waiting.insert(0, waiter)
         else:
-            self.debug and _Log.note("waiting by self on {{name|quote}}", name=self.name)
+            self.debug and _Log.note(
+                "waiting by self on {{name|quote}}", name=self.name
+            )
             self.waiting = [waiter]
 
         try:
             self.lock.release()
             self.debug and _Log.note("out of lock {{name|quote}}", name=self.name)
             (waiter | till).wait()
-            self.debug and _Log.note("done minimum wait (for signal {{till|quote}})", till=till.name if till else "", name=self.name)
+            self.debug and _Log.note(
+                "done minimum wait (for signal {{till|quote}})",
+                till=till.name if till else "",
+                name=self.name,
+            )
         except Exception as cause:
             if not _Log:
                 _late_import()
@@ -105,7 +117,9 @@ class Lock(object):
 
         try:
             self.waiting.remove(waiter)
-            self.debug and _Log.note("removed own signal from {{name|quote}}", name=self.name)
+            self.debug and _Log.note(
+                "removed own signal from {{name|quote}}", name=self.name
+            )
         except Exception:
             pass
 
@@ -122,4 +136,5 @@ def locked(func):
     def output(*args, **kwargs):
         with lock:
             return func(*args, **kwargs)
+
     return output

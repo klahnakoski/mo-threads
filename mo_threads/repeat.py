@@ -36,15 +36,19 @@ class Repeat(object):
 
         self.thread = None
         if start:
-            self.thread = Thread.run(
-                "repeat",
-                _repeat,
-                self.message,
-                self.every,
-                Date(start),
-                parent_thread=MAIN_THREAD,
-                please_stop=self.please_stop,
-            ).release()
+            self.thread = (
+                Thread
+                .run(
+                    "repeat",
+                    _repeat,
+                    self.message,
+                    self.every,
+                    Date(start),
+                    parent_thread=MAIN_THREAD,
+                    please_stop=self.please_stop,
+                )
+                .release()
+            )
 
     def __enter__(self):
         if self.thread:
@@ -55,7 +59,7 @@ class Repeat(object):
             self.message,
             self.every,
             Date.now(),
-            please_stop=self.please_stop
+            please_stop=self.please_stop,
         )
 
     def __exit__(self, exc_type, exc_val, exc_tb):

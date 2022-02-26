@@ -62,13 +62,9 @@ def command_loop(local):
                 STDOUT.write(DONE)
             elif "get" in command:
                 STDOUT.write(
-                    value2json(
-                        {
-                            "out": coalesce(
-                                local.get(command["get"]), context.get(command["get"])
-                            )
-                        }
-                    ).encode("utf8")
+                    value2json({"out": coalesce(
+                        local.get(command["get"]), context.get(command["get"])
+                    )}).encode("utf8")
                 )
                 STDOUT.write(b"\n")
             elif "stop" in command:

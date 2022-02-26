@@ -29,6 +29,7 @@ from unittest import skip
 import mo_threads
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
 from mo_threads.busy_lock import BusyLock
+from tests import StructuredLogger_usingList
 
 USE_PYTHON_THREADS = False
 DEBUG_SHOW_BACKREFS = False
@@ -42,6 +43,12 @@ class TestLocks(FuzzyTestCase):
     @classmethod
     def tearDownClass(cls):
         Log.stop()
+
+    def setUp(self):
+        self.old, Log.main_log = Log.main_log, StructuredLogger_usingList()
+
+    def tearDown(self):
+        self.logs, Log.main_log = Log.main_log, self.old
 
     def test_signal_is_not_null(self):
         a = Signal()
@@ -200,7 +207,9 @@ class TestLocks(FuzzyTestCase):
         with please_stop.lock:
             q = please_stop.job_queue
             self.assertLessEqual(
-                0 if q is None else len(q), 1, "Expecting only one pending job on go, got "+text(len(q))
+                0 if q is None else len(q),
+                1,
+                "Expecting only one pending job on go, got " + text(len(q)),
             )
         please_stop.go()
         Log.note("test done")
