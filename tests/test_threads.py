@@ -196,7 +196,8 @@ class TestThreads(FuzzyTestCase):
 
         please_stop = Signal()
         please_stop.go()
-        Thread.run("work", worker, please_stop=please_stop)
+        thread = Thread.run("work", worker, please_stop=please_stop)
+        thread.stopped.wait()
         self.assertEqual(Log.main_log.lines[0], "started")
 
     def test_failure_during_wait_for_shutdown(self):
