@@ -190,6 +190,9 @@ class TestThreads(FuzzyTestCase):
         We often spawn threads to do work; ensure the thread is at-least started,
         let the thread decide how to balance please_stop and the work to be done
         """
+        threads.MAIN_THREAD.stop()
+        start_main_thread()
+        Log.trace = False
 
         def worker(please_stop):
             Log.info("started")
