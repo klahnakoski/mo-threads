@@ -22,7 +22,6 @@ DEBUG = True
 
 
 class Python(object):
-
     def __init__(self, name, config, parent_thread=None):
         config = to_data(config)
         if config.debug.logs:
@@ -36,13 +35,20 @@ class Python(object):
             [PYTHON, "-u", "mo_threads" + os.sep + "python_worker.py"],
             debug=False,
             cwd=os.getcwd(),
-            shell=shell
+            shell=shell,
         )
-        self.process.stdin.add(value2json(from_data(config | {"debug": {"trace": True}})))
+        self.process.stdin.add(value2json(from_data(
+            config | {"debug": {"trace": True}}
+        )))
         status = self.process.stdout.pop()
         if status != '{"out":"ok"}':
-            Log.error("could not start python\n{{error|indent}}", error=self.process.stderr.pop_all()+[status]+self.process.stdin.pop_all())
-        self.lock = Lock("wait for response from "+name)
+            Log.error(
+                "could not start python\n{{error|indent}}",
+                error=self.process.stderr.pop_all()
+                + [status]
+                + self.process.stdin.pop_all(),
+            )
+        self.lock = Lock("wait for response from " + name)
         self.current_task = DONE
         self.current_response = None
         self.current_error = None
@@ -64,7 +70,9 @@ class Python(object):
 
             try:
                 if self.current_error:
-                    Log.error("problem with process call", cause=Except(**self.current_error))
+                    Log.error(
+                        "problem with process call", cause=Except(**self.current_error)
+                    )
                 else:
                     return self.current_response
             finally:
@@ -98,7 +106,12 @@ class Python(object):
                 if line == THREAD_STOP:
                     please_stop.go()
                     break
-                Log.note("Error line from {{name}}({{pid}}): {{line}}", line=line, name=self.process.name, pid=self.process.pid)
+                Log.note(
+                    "Error line from {{name}}({{pid}}): {{line}}",
+                    line=line,
+                    name=self.process.name,
+                    pid=self.process.pid,
+                )
             except Exception as cause:
                 Log.error("could not process line", cause=cause)
 
@@ -125,6 +138,7 @@ class Python(object):
                 return self._execute({item: args})
             else:
                 return self._execute({item: kwargs})
+
         return output
 
     def stop(self):

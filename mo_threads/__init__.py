@@ -18,7 +18,6 @@ from mo_threads.multiprocess import Process, Command
 from mo_threads.queues import Queue, ThreadedQueue
 from mo_threads.signals import Signal, DONE
 from mo_threads.threads import (
-    MAIN_THREAD,
     MainThread,
     THREAD_STOP,
     THREAD_TIMEOUT,

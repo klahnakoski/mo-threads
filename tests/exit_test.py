@@ -18,7 +18,7 @@ from __future__ import unicode_literals
 
 from mo_logs import Log
 
-from mo_threads import Thread, Signal, MAIN_THREAD, Till
+from mo_threads import Thread, Till, wait_for_shutdown_signal
 
 
 def timeout(please_stop):

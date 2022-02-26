@@ -557,9 +557,6 @@ def _wait_for_interrupt(please_stop):
         please_stop.go()
 
 
-MAIN_THREAD = MainThread()
-
-
 def wait_for_shutdown_signal(
     please_stop=False,  # ASSIGN SIGNAL TO STOP EARLY
     allow_exit=False,  # ALLOW "exit" COMMAND ON CONSOLE TO ALSO STOP THE APP

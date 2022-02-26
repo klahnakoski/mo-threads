@@ -5,6 +5,7 @@ class Future(object):
     """
     REPRESENT A VALUE THAT MAY NOT BE READY YET
     """
+
     __slots__ = ["is_ready", "value"]
 
     def __init__(self):
@@ -25,4 +26,3 @@ class Future(object):
         """
         self.value = value
         self.is_ready.set()
-

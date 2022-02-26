@@ -32,6 +32,7 @@ class Till(Signal):
     """
     TIMEOUT AS A SIGNAL
     """
+
     __slots__ = []
 
     locker = _allocate_lock()
@@ -62,12 +63,14 @@ class Till(Signal):
         if till != None:
             if not isinstance(till, (float, int)):
                 from mo_logs import Log
+
                 Log.error("Date objects for Till are no longer allowed")
             timeout = till
         elif seconds != None:
             timeout = now + seconds
         else:
             from mo_logs import Log
+
             raise Log.error("Should not happen")
 
         Signal.__init__(self, name=text(timeout))
@@ -98,7 +101,7 @@ def daemon(please_stop):
                         "Call to sleep failed with ({{later}}, {{interval}})",
                         later=later,
                         interval=INTERVAL,
-                        cause=cause
+                        cause=cause,
                     )
                 continue
 
@@ -110,7 +113,9 @@ def daemon(please_stop):
                 if len(new_timers) > 5:
                     Log.note("{{num}} new timers", num=len(new_timers))
                 else:
-                    Log.note("new timers: {{timers}}", timers=[t for t, _ in new_timers])
+                    Log.note(
+                        "new timers: {{timers}}", timers=[t for t, _ in new_timers]
+                    )
 
             sorted_timers.extend(new_timers)
 
@@ -129,7 +134,9 @@ def daemon(please_stop):
                     DEBUG and Log.note(
                         "done: {{timers}}.  Remaining {{pending}}",
                         timers=[t for t, s in work] if len(work) <= 5 else len(work),
-                        pending=[t for t, s in sorted_timers] if len(sorted_timers) <= 5 else len(sorted_timers)
+                        pending=[t for t, s in sorted_timers]
+                        if len(sorted_timers) <= 5
+                        else len(sorted_timers),
                     )
 
                     for t, r in work:

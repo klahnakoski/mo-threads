@@ -33,9 +33,16 @@ next_process_id = 0
 
 
 class Process(object):
-
     def __init__(
-        self, name, params, cwd=None, env=None, debug=False, shell=False, bufsize=-1, parent_thread=None
+        self,
+        name,
+        params,
+        cwd=None,
+        env=None,
+        debug=False,
+        shell=False,
+        bufsize=-1,
+        parent_thread=None,
     ):
         """
         Spawns multiple threads to manage the stdin/stdout/stderr of the child process; communication is done
@@ -255,7 +262,9 @@ class Process(object):
                 return
 
             Log.warning(
-                "Failure to kill process {{process|quote}}", process=self.name, cause=cause
+                "Failure to kill process {{process|quote}}",
+                process=self.name,
+                cause=cause,
             )
 
 
@@ -275,13 +284,14 @@ WINDOWS_ESCAPE_DCT = {
 
 PROMPT = "READY_FOR_MORE"
 
+
 def cmd_escape(value):
     if hasattr(value, "abspath"):
         quoted = strings.quote(value.abspath)
     else:
         quoted = strings.quote(value)
 
-    if quoted == '"'+value+'"':
+    if quoted == '"' + value + '"':
         # SIMPLE
         quoted = value
 
@@ -299,6 +309,7 @@ if "windows" in platform.system().lower():
 
     def to_text(value):
         return value.decode("latin1")
+
 
 else:
     LAST_RETURN_CODE = "echo $?"
@@ -350,7 +361,11 @@ class Command(object):
             avail = Command.available_process.setdefault(self.key, [])
             if avail:
                 self.process = avail.pop()
-                DEBUG_COMMAND and Log.note("Reuse process {{process}} for {{command}}", process=self.process.name, command=name)
+                DEBUG_COMMAND and Log.note(
+                    "Reuse process {{process}} for {{command}}",
+                    process=self.process.name,
+                    command=name,
+                )
 
         if not self.process:
             self.process = Process(
@@ -358,16 +373,28 @@ class Command(object):
             )
             self.process.stdin.add(set_prompt())
             self.process.stdin.add(LAST_RETURN_CODE)
-            DEBUG_COMMAND and Log.note("New process {{process}} for {{command}}", process=self.process.name, command=name)
+            DEBUG_COMMAND and Log.note(
+                "New process {{process}} for {{command}}",
+                process=self.process.name,
+                command=name,
+            )
             _wait_for_start(self.process.stdout, Null)
 
         self.process.stdin.add(" ".join(cmd_escape(p) for p in params))
         self.process.stdin.add(LAST_RETURN_CODE)
         self.stdout_thread = Thread.run(
-            name+" stdout", self._stream_relay, "stdout", self.process.stdout, self.stdout
+            name + " stdout",
+            self._stream_relay,
+            "stdout",
+            self.process.stdout,
+            self.stdout,
         )
         self.stderr_thread = Thread.run(
-            name+" stderr", self._stream_relay, "stderr", self.process.stderr, self.stderr
+            name + " stderr",
+            self._stream_relay,
+            "stderr",
+            self.process.stderr,
+            self.stderr,
         )
         self.stderr_thread.stopped.then(self._cleanup)
         self.returncode = None
@@ -441,7 +468,11 @@ class Command(object):
                     destination.add(value)
         finally:
             destination.add(THREAD_STOP)
-        DEBUG_COMMAND and Log.note("{{name}} done with {{please_stop}}", name=name, please_stop=bool(please_stop))
+        DEBUG_COMMAND and Log.note(
+            "{{name}} done with {{please_stop}}",
+            name=name,
+            please_stop=bool(please_stop),
+        )
 
 
 def _wait_for_start(source, destination):

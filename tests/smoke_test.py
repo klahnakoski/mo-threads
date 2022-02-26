@@ -1,5 +1,5 @@
-from mo_threads import Command, MAIN_THREAD
+from mo_threads import Command, stop_main_thread
 
 Command("test", ["python", "-c", "print('test')"]).join()
 
-MAIN_THREAD.stop()
+stop_main_thread()

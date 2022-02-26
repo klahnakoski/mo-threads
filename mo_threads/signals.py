@@ -31,6 +31,7 @@ def standard_warning(cause):
         stack_depth=1,
     )
 
+
 def debug_warning(stacktrace):
     def warning(cause):
         Log.warning(
@@ -38,7 +39,9 @@ def debug_warning(stacktrace):
             cause=[cause, Except(template="attached at", trace=stacktrace)],
             stack_depth=1,
         )
+
     return warning
+
 
 class Signal(object):
     """
