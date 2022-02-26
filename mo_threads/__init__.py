@@ -25,10 +25,9 @@ from mo_threads.threads import (
     Thread,
     stop_main_thread,
     register_thread,
-    wait_for_shutdown_signal
+    wait_for_shutdown_signal,
+    start_main_thread,
 )
 from mo_threads.till import Till
 
-MAIN_THREAD.timers = Thread.run("timers daemon", till.daemon)
-MAIN_THREAD.children.remove(MAIN_THREAD.timers)
-till.enabled.wait()
+start_main_thread()

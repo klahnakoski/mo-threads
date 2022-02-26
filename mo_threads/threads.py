@@ -15,12 +15,10 @@ from __future__ import absolute_import, division, unicode_literals
 
 import signal as _signal
 import sys
-import threading
-from copy import copy
 from datetime import datetime, timedelta
 from time import sleep
 
-from mo_dots import Data, coalesce, unwraplist
+from mo_dots import Data, coalesce, unwraplist, Null
 from mo_future import (
     allocate_lock,
     get_function_name,
@@ -43,6 +41,7 @@ MAX_DATETIME = datetime(2286, 11, 20, 17, 46, 39)
 DEFAULT_WAIT_TIME = timedelta(minutes=10)
 THREAD_STOP = "stop"
 THREAD_TIMEOUT = "TIMEOUT"
+COVERAGE = False  # LOOK FOR threading._trace_hook AND USE IT
 
 datetime.strptime("2012-01-01", "%Y-%m-%d")  # http://bugs.python.org/issue7980
 
@@ -106,8 +105,6 @@ class BaseThread(object):
         self.cprofiler = None
         self.trace_func = sys.gettrace()
 
-        threading.current_thread().name
-
     def add_child(self, child):
         with self.child_locker:
             self.children.append(child)
@@ -140,12 +137,11 @@ class MainThread(BaseThread):
         if self_thread != MAIN_THREAD or self_thread != self:
             Log.error("Only the main thread can call stop() on main thread")
 
-        DEBUG = True
         self.please_stop.go()
 
         join_errors = []
         with self.child_locker:
-            children = copy(self.children)
+            children = list(self.children)
         for c in reversed(children):
             DEBUG and c.name and Log.note("Stopping thread {{name|quote}}", name=c.name)
             try:
@@ -187,6 +183,11 @@ class MainThread(BaseThread):
             DEBUG and Log.note("Thread {{name|quote}} now stopped", name=self.name)
             self.stopped.go()
 
+        with ALL_LOCK:
+            del ALL[self.id]
+            if ALL:
+                sys.stderr.write("Expecting no further threads")
+
         if join_errors:
             raise Except(
                 context=ERROR,
@@ -213,7 +214,7 @@ class Thread(BaseThread):
         self.args = args
 
         # ENSURE THERE IS A SHARED please_stop SIGNAL
-        self.kwargs = copy(kwargs)
+        self.kwargs = dict(kwargs)
         if PLEASE_STOP in self.kwargs:
             self.please_stop = self.kwargs[PLEASE_STOP]
         else:
@@ -256,7 +257,7 @@ class Thread(BaseThread):
         SEND STOP SIGNAL, DO NOT BLOCK
         """
         with self.child_locker:
-            children = copy(self.children)
+            children = list(self.children)
         for c in children:
             DEBUG and c.name and Log.note("Stopping thread {{name|quote}}", name=c.name)
             c.stop()
@@ -266,6 +267,12 @@ class Thread(BaseThread):
         return self
 
     def _run(self):
+        if COVERAGE:
+            import threading
+            hook = threading._trace_hook
+            if hook:
+                sys.settrace(hook)
+
         self.please_stop.remove_go(self.start)
         self.id = get_ident()
         with RegisterThread(self):
@@ -291,7 +298,7 @@ class Thread(BaseThread):
             finally:
                 try:
                     with self.child_locker:
-                        children = copy(self.children)
+                        children = list(self.children)
                     for c in children:
                         try:
                             DEBUG and Log.note("Stopping thread " + c.name + "\n")
@@ -378,7 +385,7 @@ class Thread(BaseThread):
             Log.error("Thread.join() is not a valid call, use t.join()")
 
         with self.child_locker:
-            children = copy(self.children)
+            children = list(self.children)
         for c in children:
             c.join(till=till)
 
@@ -575,7 +582,7 @@ def wait_for_shutdown_signal(
     if not wait_forever:
         # TRIGGER SIGNAL WHEN ALL CHILDREN THREADS ARE DONE
         with main.child_locker:
-            pending = copy(main.children)
+            pending = list(main.children)
         children_done = AndSignals(main.please_stop, len(pending))
         children_done.signal.then(main.please_stop.go)
         for p in pending:
@@ -599,9 +606,25 @@ def stop_main_thread(signum=0, frame=None):
     MAIN_THREAD.please_stop.go()
 
 
+def start_main_thread():
+    global MAIN_THREAD
+
+    MAIN_THREAD = MainThread()
+
+    with ALL_LOCK:
+        if ALL:
+            raise Exception("failure")
+
+        ALL[get_ident()] = MAIN_THREAD
+
+    # STARTUP TIMERS
+    from mo_threads import till
+    MAIN_THREAD.timers = Thread.run("timers daemon", till.daemon, parent_thread=Null)
+    till.enabled.wait()
+
+
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
 
 ALL_LOCK = allocate_lock()
 ALL = dict()
-ALL[get_ident()] = MAIN_THREAD

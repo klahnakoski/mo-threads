@@ -35,7 +35,7 @@ next_process_id = 0
 class Process(object):
 
     def __init__(
-        self, name, params, cwd=None, env=None, debug=False, shell=False, bufsize=-1
+        self, name, params, cwd=None, env=None, debug=False, shell=False, bufsize=-1, parent_thread=None
     ):
         """
         Spawns multiple threads to manage the stdin/stdout/stderr of the child process; communication is done
@@ -129,6 +129,10 @@ class Process(object):
             process=self.name,
             command=" ".join(map(strings.quote, params)),
         )
+        if not parent_thread:
+            parent_thread = Thread.current()
+        self.parent_thread = parent_thread
+        parent_thread.add_child(self)
 
     def __enter__(self):
         return self
@@ -137,7 +141,7 @@ class Process(object):
         self.join(raise_on_error=True)
 
     def stop(self):
-        self.stdin.add(THREAD_STOP)  # ONE MORE SEND
+        self.stdin.add(THREAD_STOP)
         self.please_stop.go()
         return self
 

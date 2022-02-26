@@ -20,17 +20,18 @@ from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.dates import Date
 from mo_times.durations import SECOND
 
-from mo_threads import Lock, Thread, Signal, Till, till, threads, stop_main_thread, MainThread
+from mo_threads import Lock, Thread, Signal, Till, till, threads, start_main_thread
 from mo_threads.threads import wait_for_shutdown_signal
 from tests import StructuredLogger_usingList
 
 
 class TestThreads(FuzzyTestCase):
     def setUp(self):
-        self.old, Log.main_log = Log.main_log, StructuredLogger_usingList()
+        old_log, Log.main_log = Log.main_log, StructuredLogger_usingList()
+        old_log.stop()
 
     def tearDown(self):
-        self.logs, Log.main_log = Log.main_log, self.old
+        Log.stop()
 
     def test_lock_wait_timeout(self):
         locker = Lock("test")
@@ -198,26 +199,24 @@ class TestThreads(FuzzyTestCase):
         self.assertEqual(Log.main_log.lines[0], "started")
 
     def test_failure_during_wait_for_shutdown(self):
-        list_logger = StructuredLogger_usingList()
-        old_logger, Log.main_log = Log.main_log, list_logger
+        threads.DEBUG = True
+        threads.MAIN_THREAD.stop()
+        start_main_thread()
+        list_log = StructuredLogger_usingList()
+        old_log, Log.main_log = Log.main_log, list_log
+        old_log.stop()
 
-        Thread.run("test failure", bad_worker)
+        Thread.run("test_failure_during_wait_for_shutdown", bad_worker)
 
         with self.assertRaises("bad worker failure"):
             wait_for_shutdown_signal(None, False, False)
-        self.assertGreater(len(list_logger.lines), 1)
-        self.assertIn("logger stopped", list_logger.lines)
-        self.assertIn("ERROR", list_logger.lines[-2])
+
+        self.assertGreater(len(list_log.lines), 1)
+        self.assertIn("logger stopped", list_log.lines)
+        self.assertIn("ERROR", list_log.lines[-2])
         self.assertEqual(bool(threads.MAIN_THREAD.timers.stopped), True)
 
         start_main_thread()
-
-
-def start_main_thread():
-    till.enabled = Signal()
-    main = threads.MAIN_THREAD = MainThread()
-    main.timers = Thread.run("timers daemon", till.daemon, parent_thread=None)
-    till.enabled.wait()
 
 
 def bad_worker(please_stop):

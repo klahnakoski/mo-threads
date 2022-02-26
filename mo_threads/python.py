@@ -10,9 +10,9 @@ from __future__ import absolute_import, division, unicode_literals
 
 import os
 import platform
-
-from mo_dots import set_default, to_data, from_data
 from json import dumps as value2json, loads as json2value
+
+from mo_dots import to_data, from_data
 from mo_logs import Except, Log
 
 from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, DONE
@@ -23,7 +23,7 @@ DEBUG = True
 
 class Python(object):
 
-    def __init__(self, name, config):
+    def __init__(self, name, config, parent_thread=None):
         config = to_data(config)
         if config.debug.logs:
             Log.error("not allowed to configure logging on other process")

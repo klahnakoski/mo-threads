@@ -36,6 +36,7 @@ class TestLocks(FuzzyTestCase):
         p.import_module("tests.simple_module")
         result = p.add(1, 2)
         self.assertEqual(result, 3)
+        p.stop()
 
     def test_assign(self):
         p = Python("test_assign", {})
@@ -43,3 +44,4 @@ class TestLocks(FuzzyTestCase):
         p.execute_script("temp = add(1, 2)")
         result = p.get("temp")
         self.assertEqual(result, 3)
+        p.stop()

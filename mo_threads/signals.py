@@ -125,11 +125,11 @@ class Signal(object):
         """
         if not target:
             Log.error("expecting target")
-        if TRACE_THEN:
-            error = debug_warning(get_stacktrace(1))
 
         with self.lock:
             if not self._go:
+                if TRACE_THEN:
+                    error = debug_warning(get_stacktrace(1))
                 DEBUG and self._name and Log.note(
                     "Adding target to signal {{name|quote}}", name=self.name
                 )
@@ -144,7 +144,10 @@ class Signal(object):
             "Signal {{name|quote}} already triggered, running job immediately",
             name=self.name,
         )
-        target()
+        try:
+            target()
+        except Exception as cause:
+            error(cause)
 
     def remove_go(self, target):
         """
