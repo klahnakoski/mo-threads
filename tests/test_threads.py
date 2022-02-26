@@ -192,7 +192,10 @@ class TestThreads(FuzzyTestCase):
         """
         threads.MAIN_THREAD.stop()
         start_main_thread()
-        Log.trace = False
+        Log.trace = False  # TODO: remove me
+        list_log = StructuredLogger_usingList()
+        old_log, Log.main_log = Log.main_log, list_log
+        old_log.stop()
 
         def worker(please_stop):
             Log.info("started")
