@@ -17,7 +17,7 @@ from mo_logs import Log, constants, Except
 from mo_logs.log_usingNothing import StructuredLogger
 
 from mo_threads import Signal
-from mo_threads.threads import STDOUT, STDIN
+from mo_threads.threads import STDOUT, STDIN, STDERR
 
 try:
     from mo_json import value2json, json2value
@@ -103,6 +103,7 @@ def command_loop(local):
             STDOUT.write(b"\n")
         finally:
             STDOUT.flush()
+            STDERR.flush()
 
 
 num_temps = 0
@@ -118,11 +119,12 @@ def temp_var():
 
 class RawLogger(StructuredLogger):
     def write(self, template, params):
-        STDOUT.write(value2json({"log": {"template": template, "params": params}}))
+        STDOUT.write(value2json({"log": {"template": template, "params": params}}).encode('utf8') + b"\n")
 
 
 def start():
     try:
+        # EXPECTING CONFIGURATION FROM PARENT
         line = STDIN.readline().decode("utf8")
         config = to_data(json2value(line))
         constants.set(config.constants)

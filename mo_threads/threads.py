@@ -51,9 +51,11 @@ cprofiler_stats = None  # ACCUMULATION OF STATS FROM ALL THREADS
 
 try:
     STDOUT = sys.stdout.buffer
+    STDERR = sys.stderr.buffer
     STDIN = sys.stdin.buffer
 except Exception:
     STDOUT = sys.stdout
+    STDERR = sys.stderr
     STDIN = sys.stdin
 
 
@@ -217,10 +219,10 @@ class Thread(BaseThread):
         if PLEASE_STOP in self.kwargs:
             self.please_stop = self.kwargs[PLEASE_STOP]
         else:
-            self.please_stop = self.kwargs[PLEASE_STOP] = Signal("please_stop for " + self.name)
+            self.please_stop = self.kwargs[PLEASE_STOP] = Signal(f"please_stop for {self.name}")
         self.thread = None
-        self.joiner_is_waiting = Signal("joining with " + self.name)
-        self.stopped = Signal("stopped signal for " + self.name)
+        self.joiner_is_waiting = Signal(f"joining with {self.name}")
+        self.stopped = Signal(f"stopped signal for {self.name}")
 
         if PARENT_THREAD in kwargs:
             del self.kwargs[PARENT_THREAD]

@@ -97,7 +97,6 @@ class Process(object):
             )
 
             self.please_stop = Signal()
-            self.please_stop.then(self._kill)
             self.child_locker = Lock()
             self.children = [
                 Thread.run(
@@ -158,13 +157,21 @@ class Process(object):
             child_threads, self.children = self.children, []
         for c in child_threads:
             c.join()
-        if raise_on_error and self.returncode != 0:
-            Log.error(
-                "{{process}} FAIL: returncode={{code}}\n{{stderr}}",
-                process=self.name,
-                code=self.service.returncode,
-                stderr=list(self.stderr),
-            )
+        if self.returncode != 0:
+            if raise_on_error:
+                Log.error(
+                    "{{process}} FAIL: returncode={{code}}\n{{stderr}}",
+                    process=self.name,
+                    code=self.service.returncode,
+                    stderr=list(self.stderr),
+                )
+            else:
+                Log.warning(
+                    "{{process}} FAIL: returncode={{code}}\n{{stderr}}",
+                    process=self.name,
+                    code=self.service.returncode,
+                    stderr=list(self.stderr),
+                )
         return self
 
     def remove_child(self, child):
@@ -229,9 +236,9 @@ class Process(object):
         finally:
             pipe.close()
             receive.add(THREAD_STOP)
-        self.debug and Log.note(
-            "{{process}} ({{name}} is closed)", name=name, process=self.name
-        )
+            self.debug and Log.note(
+                "{{process}} ({{name}} is closed)", name=name, process=self.name
+            )
 
         receive.add(THREAD_STOP)
 
@@ -253,7 +260,7 @@ class Process(object):
     def _kill(self):
         try:
             self.service.kill()
-            Log.note("Service was successfully terminated.")
+            Log.note("{{process}} was successfully terminated.", process=self.name)
         except Exception as cause:
             cause = Except.wrap(cause)
             if "The operation completed successfully" in cause:

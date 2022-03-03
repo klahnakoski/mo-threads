@@ -32,8 +32,8 @@ class Python(object):
         shell = "windows" in platform.system().lower()
         self.process = Process(
             name,
-            [PYTHON, "-u", "mo_threads" + os.sep + "python_worker.py"],
-            debug=False,
+            [PYTHON, "-u", f"mo_threads{os.sep}python_worker.py"],
+            debug=DEBUG,
             cwd=os.getcwd(),
             shell=shell,
         )
@@ -53,12 +53,12 @@ class Python(object):
         self.current_response = None
         self.current_error = None
 
-        self.daemon = Thread.run("", self._daemon)
-        self.errors = Thread.run("", self._stderr)
+        self.watch_stdout = Thread.run(f"watching stdout for {name}", self._watch_stdout)
+        self.watch_stderr = Thread.run(f"watching stderr for {name}", self._watch_stderr)
 
     def _execute(self, command):
         with self.lock:
-            self.current_task.wait()
+            (self.current_task | self.process.service_stopped).wait()
             self.current_task = Signal()
             self.current_response = None
             self.current_error = None
@@ -80,10 +80,12 @@ class Python(object):
                 self.current_response = None
                 self.current_error = None
 
-    def _daemon(self, please_stop):
+    def _watch_stdout(self, please_stop):
         while not please_stop:
             line = self.process.stdout.pop(till=please_stop)
-            if line == THREAD_STOP:
+            DEBUG and Log.note("stdout got {{line}}", line=line)
+            if line is None or line == THREAD_STOP:
+                please_stop.go()
                 break
             try:
                 data = to_data(json2value(line))
@@ -99,11 +101,11 @@ class Python(object):
                 Log.note("non-json line: {{line}}", line=line)
         DEBUG and Log.note("stdout reader is done")
 
-    def _stderr(self, please_stop):
+    def _watch_stderr(self, please_stop):
         while not please_stop:
             try:
                 line = self.process.stderr.pop(till=please_stop)
-                if line == THREAD_STOP:
+                if line is None or line == THREAD_STOP:
                     please_stop.go()
                     break
                 Log.note(
@@ -143,7 +145,13 @@ class Python(object):
 
     def stop(self):
         self._execute({"stop": {}})
+        self.process.stop()
+        self.watch_stdout.stop()
+        self.watch_stderr.stop()
+        return self
+
+    def join(self):
         self.process.join()
-        self.daemon.stop()
-        self.errors.stop()
+        self.watch_stdout.join()
+        self.watch_stderr.join()
         return self
