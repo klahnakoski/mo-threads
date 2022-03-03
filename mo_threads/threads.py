@@ -135,8 +135,10 @@ class MainThread(BaseThread):
         BLOCKS UNTIL ALL KNOWN THREADS, EXCEPT MainThread, HAVE STOPPED
         """
         self_thread = Thread.current()
-        if self_thread != MAIN_THREAD or self_thread != self:
-            Log.error("Only the main thread can call stop() on main thread")
+        if self_thread != MAIN_THREAD:
+            Log.error("Only the main thread can call stop()")
+        if self_thread != self:
+            Log.error("Only the current thread can call stop()")
 
         self.please_stop.go()
 
