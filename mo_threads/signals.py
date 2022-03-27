@@ -16,12 +16,12 @@ from __future__ import absolute_import, division, unicode_literals
 from weakref import ref
 
 from mo_dots import is_null
-from mo_future import allocate_lock as _allocate_lock
+from mo_future import allocate_lock as _allocate_lock, get_function_name
 from mo_logs import Log, Except
 from mo_logs.exceptions import get_stacktrace
 
 DEBUG = False
-TRACE_THEN = True  # GRAB STACK TRACE OF then() CALL FOR BLAME
+TRACE_THEN = False  # GRAB STACK TRACE OF then() CALL FOR BLAME
 
 
 def standard_warning(cause):
@@ -97,11 +97,11 @@ class Signal(object):
         DEBUG and self._name and Log.note("GO! {{name|quote}}", name=self.name)
 
         if self._go:
-            return
+            return self
 
         with self.lock:
             if self._go:
-                return
+                return self
             self._go = True
 
         DEBUG and self._name and Log.note("internal GO! {{name|quote}}", name=self.name)
@@ -121,43 +121,44 @@ class Signal(object):
                     j()
                 except Exception as cause:
                     e(cause)
+        return self
 
     def then(self, target, error=standard_warning):
         """
         RUN target WHEN SIGNALED
         """
-        if not target:
-            Log.error("expecting target")
+        if DEBUG:
+            if not target:
+                Log.error("expecting target")
+            if isinstance(target, Signal):
+                Log.error("expecting a function, not a signal")
 
         with self.lock:
             if not self._go:
                 if TRACE_THEN:
                     error = debug_warning(get_stacktrace(1))
-                DEBUG and self._name and Log.note(
-                    "Adding target to signal {{name|quote}}", name=self.name
-                )
 
                 if not self.job_queue:
                     self.job_queue = [(target, error)]
                 else:
                     self.job_queue.append((target, error))
-                return
+                return self
 
-        DEBUG and Log.note(
-            "Signal {{name|quote}} already triggered, running job immediately",
-            name=self.name,
-        )
         try:
             target()
         except Exception as cause:
             error(cause)
+        return self
 
-    def remove_go(self, target):
+    def remove_then(self, target):
         """
         FOR SAVING MEMORY
         """
+        if self._go:
+            return
+
         with self.lock:
-            if not self._go:
+            if not self._go and self.job_queue:
                 for i, (j, e) in enumerate(self.job_queue):
                     if j == target:
                         del self.job_queue[i]
@@ -184,9 +185,7 @@ class Signal(object):
         if self or other:
             return DONE
 
-        output = Signal(self.name + " | " + other.name)
-        OrSignal(output, (self, other))
-        return output
+        return or_signal(self, other)
 
     def __ror__(self, other):
         return self.__or__(other)
@@ -198,9 +197,9 @@ class Signal(object):
             Log.error("Expecting OR with other signal")
 
         if DEBUG and self._name:
-            output = Signal(self.name + " and " + other.name)
+            output = Signal(self.name + " & " + other.name)
         else:
-            output = Signal(self.name + " and " + other.name)
+            output = Signal(self.name + " & " + other.name)
 
         gen = AndSignals(output, 2)
         self.then(gen.done)
@@ -232,12 +231,17 @@ class AndSignals(object):
             self.signal.go()
 
 
+def or_signal(*dependencies):
+    output = Signal(" | ".join(d.name for d in dependencies))
+    OrSignal(output, dependencies)
+    return output
+
+
 class OrSignal(object):
     """
     A SELF-REFERENTIAL CLUSTER OF SIGNALING METHODS TO IMPLEMENT __or__()
     MANAGE SELF-REMOVAL UPON NOT NEEDING THE signal OBJECT ANY LONGER
     """
-
     __slots__ = ["signal", "dependencies"]
 
     def __init__(self, signal, dependencies):
@@ -247,16 +251,21 @@ class OrSignal(object):
             d.then(self)
         signal.then(self.cleanup)
 
-    def cleanup(self, r=None):
-        for d in self.dependencies:
-            d.remove_go(self)
-        self.dependencies = []
+    def cleanup(self, _=None):
+        self.dependencies, dependencies = [], self.dependencies
+        for d in dependencies:
+            d.remove_then(self)
 
-    def __call__(self, *args, **kwargs):
-        s = self.signal()
-        if s is not None:
-            s.go()
+    def __call__(self):
+        signal = self.signal()
+        if signal is not None:
+            signal.go()
+
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        return id(self) == id(other)
 
 
-DONE = Signal()
-DONE.go()
+DONE = Signal().go()

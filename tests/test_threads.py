@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from mo_future import text
+from mo_json import value2json
 from mo_logs import Log
 from mo_logs.log_usingNothing import StructuredLogger
 from mo_logs.strings import expand_template
@@ -21,7 +22,7 @@ from mo_times.dates import Date
 from mo_times.durations import SECOND
 
 from mo_threads import Lock, Thread, Signal, Till, till, threads, start_main_thread
-from mo_threads.threads import wait_for_shutdown_signal
+from mo_threads.threads import wait_for_shutdown_signal, stop_main_thread
 from tests import StructuredLogger_usingList
 
 
@@ -187,12 +188,12 @@ class TestThreads(FuzzyTestCase):
 
     def test_start_stopped_thread(self):
         """
-        We often spawn threads to do work; ensure the thread is at-least started,
+        We often spawn threads to do work; ensure the thread is at least started,
         let the thread decide how to balance please_stop and the work to be done
         """
-        threads.MAIN_THREAD.stop()
+        stop_main_thread()
+        threads.MAIN_THREAD.stopped.wait()
         start_main_thread()
-        Log.trace = False  # TODO: remove me
         list_log = StructuredLogger_usingList()
         old_log, Log.main_log = Log.main_log, list_log
         old_log.stop()
@@ -204,7 +205,7 @@ class TestThreads(FuzzyTestCase):
         please_stop.go()
         thread = Thread.run("work", worker, please_stop=please_stop)
         thread.stopped.wait()
-        self.assertEqual(Log.main_log.lines[0], "started")
+        self.assertIn("started", Log.main_log.lines)
 
     def test_failure_during_wait_for_shutdown(self):
         threads.DEBUG = True

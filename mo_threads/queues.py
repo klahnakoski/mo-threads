@@ -164,6 +164,9 @@ class Queue(object):
 
         :param timeout:  IN SECONDS
         """
+        if len(self.queue) < self.max:
+            return
+
         wait_time = 5
 
         (

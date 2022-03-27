@@ -45,7 +45,7 @@ class Till(Signal):
             return DONE
         elif till != None:
             return object.__new__(cls)
-        elif is_null(seconds):
+        elif seconds == None:
             return object.__new__(cls)
         elif seconds <= 0:
             return DONE

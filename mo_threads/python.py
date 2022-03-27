@@ -18,7 +18,7 @@ from mo_logs import Except, Log
 from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, DONE
 
 PYTHON = "python"
-DEBUG = True
+DEBUG = False
 
 
 class Python(object):
@@ -38,65 +38,72 @@ class Python(object):
             shell=shell,
         )
         self.process.stdin.add(value2json(from_data(
-            config | {"debug": {"trace": True}}
+            config | {
+                "debug": {"trace": True},
+                "constants": {
+                    "mo_threads": {
+                        "signals": {"DEBUG": False},
+                        "lock": {"DEBUG": False}
+                    }
+                }
+            }
         )))
-        status = self.process.stdout.pop()
-        if status != '{"out":"ok"}':
-            Log.error(
-                "could not start python\n{{error|indent}}",
-                error=self.process.stderr.pop_all()
-                + [status]
-                + self.process.stdin.pop_all(),
-            )
+        while True:
+            line = self.process.stdout.pop()
+            if line == '{"out":"ok"}':
+                break
+            Log.note("waiting to start python: {{line}}", line=line)
         self.lock = Lock("wait for response from " + name)
-        self.current_task = DONE
-        self.current_response = None
-        self.current_error = None
+        self.stop_error = None
+        self.done = DONE
+        self.response = None
+        self.error = None
 
         self.watch_stdout = Thread.run(f"watching stdout for {name}", self._watch_stdout)
         self.watch_stderr = Thread.run(f"watching stderr for {name}", self._watch_stderr)
 
     def _execute(self, command):
-        with self.lock:
-            (self.current_task | self.process.service_stopped).wait()
-            self.current_task = Signal()
-            self.current_response = None
-            self.current_error = None
+        while True:
+            self.done.wait()
+            with self.lock:
+                if self.done:
+                    self.done = Signal()
+                    break
 
-            if self.process.service_stopped:
-                Log.error("python is not running")
-            self.process.stdin.add(value2json(command))
-            (self.current_task | self.process.service_stopped).wait()
-
-            try:
-                if self.current_error:
-                    Log.error(
-                        "problem with process call", cause=Except(**self.current_error)
-                    )
-                else:
-                    return self.current_response
-            finally:
-                self.current_task = DONE
-                self.current_response = None
-                self.current_error = None
+        self.response = None
+        self.error = None
+        self.process.stdin.add(value2json(command), force=True)
+        self.done.wait()
+        try:
+            if self.error:
+                Log.error(
+                    "problem with process call", cause=Except(**self.error)
+                )
+            else:
+                return self.response
+        finally:
+            self.response = None
+            self.error = None
 
     def _watch_stdout(self, please_stop):
         while not please_stop:
             line = self.process.stdout.pop(till=please_stop)
             DEBUG and Log.note("stdout got {{line}}", line=line)
-            if line is None or line == THREAD_STOP:
+            if line == THREAD_STOP:
                 please_stop.go()
                 break
+            elif not line:
+                continue
             try:
                 data = to_data(json2value(line))
                 if "log" in data:
                     Log.main_log.write(*data.log)
                 elif "out" in data:
-                    self.current_response = data.out
-                    self.current_task.go()
+                    self.response = data.out
+                    self.done.go()
                 elif "err" in data:
-                    self.current_error = data.err
-                    self.current_task.go()
+                    self.error = data.err
+                    self.done.go()
             except Exception as cause:
                 Log.note("non-json line: {{line}}", line=line)
         DEBUG and Log.note("stdout reader is done")
@@ -144,13 +151,19 @@ class Python(object):
         return output
 
     def stop(self):
-        self._execute({"stop": {}})
-        self.process.stop()
-        self.watch_stdout.stop()
-        self.watch_stderr.stop()
-        return self
+        try:
+            self._execute({"stop": {}})
+            self.process.stop()
+            self.watch_stdout.stop()
+            self.watch_stderr.stop()
+            return self
+        except Exception as cause:
+            self.stop_error = cause
 
     def join(self):
+        if self.stop_error:
+            Log.error("problem with stop", cause=self.stop_error)
+
         self.process.join()
         self.watch_stdout.join()
         self.watch_stderr.join()

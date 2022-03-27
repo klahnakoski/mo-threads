@@ -34,12 +34,15 @@ please_stop = Signal()
 
 def command_loop(local):
     STDOUT.write(b'{"out":"ok"}\n')
+    STDOUT.flush()
     DEBUG and Log.note("python process running")
 
     while not please_stop:
-        line = STDIN.readline()
+        line = STDIN.readline().decode("utf8").strip()
+        if not line:
+            continue
         try:
-            command = json2value(line.decode("utf8"))
+            command = json2value(line)
             DEBUG and Log.note("got {{command}}", command=command)
 
             if "import" in command:
@@ -55,6 +58,8 @@ def command_loop(local):
                         dummy,
                         context,
                     )
+                STDOUT.write(DONE)
+            elif "ping" in command:
                 STDOUT.write(DONE)
             elif "set" in command:
                 for k, v in command.set.items():
@@ -79,15 +84,13 @@ def command_loop(local):
                 for k, v in command.items():
                     if is_list(v):
                         exec(
-                            "_return = " + k + "(" + ",".join(map(value2json, v)) + ")",
+                            f"_return = {k}(" + ",".join(map(value2json, v)) + ")",
                             context,
                             local,
                         )
                     else:
                         exec(
-                            "_return = "
-                            + k
-                            + "("
+                            f"_return = {k}("
                             + ",".join(
                                 kk + "=" + value2json(vv) for kk, vv in v.items()
                             )

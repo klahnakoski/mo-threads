@@ -82,7 +82,7 @@ class Schedule(object):
 
     def done(self):
         self.last_finished = Date.now()
-        self.terminator.remove_go(self.killer)
+        self.terminator.remove_then(self.killer)
         self.terminator = None
         self.current = None
         self.next_run = self._next_run_time()
