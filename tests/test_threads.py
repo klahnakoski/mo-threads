@@ -197,12 +197,14 @@ class TestThreads(FuzzyTestCase):
         list_log = StructuredLogger_usingList()
         old_log, Log.main_log = Log.main_log, list_log
         old_log.stop()
+        print("ready")
 
         def worker(please_stop):
             Log.info("started")
 
         please_stop = Signal()
         please_stop.go()
+        print("runing")
         thread = Thread.run("work", worker, please_stop=please_stop)
         thread.stopped.wait()
         self.assertIn("started", Log.main_log.lines)
