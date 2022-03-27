@@ -19,7 +19,6 @@ from weakref import ref
 
 from mo_future import allocate_lock as _allocate_lock, text
 from mo_logs import Log
-from mo_dots import is_null
 
 from mo_threads.signals import DONE, Signal
 
@@ -45,7 +44,7 @@ class Till(Signal):
             return DONE
         elif till != None:
             return object.__new__(cls)
-        elif is_null(seconds):
+        elif seconds == None:
             return object.__new__(cls)
         elif seconds <= 0:
             return DONE

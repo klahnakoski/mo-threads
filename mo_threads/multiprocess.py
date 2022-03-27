@@ -23,7 +23,6 @@ from mo_threads.lock import Lock
 from mo_threads.queues import Queue
 from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, Thread
-from mo_threads.till import Till
 
 DEBUG_PROCESS = False
 DEBUG_COMMAND = False
@@ -96,7 +95,6 @@ class Process(object):
                 shell=shell,
             )
 
-            self.please_stop = Signal()
             self.child_locker = Lock()
             self.children = [
                 Thread.run(
@@ -125,7 +123,12 @@ class Process(object):
                     please_stop=self.service_stopped,
                     parent_thread=self,
                 ),
-                Thread.run(self.name + " waiter", self._monitor, parent_thread=self),
+                Thread.run(
+                    self.name + " waiter",
+                    self._monitor,
+                    please_stop=self.service_stopped,
+                    parent_thread=self,
+                ),
             ]
         except Exception as cause:
             Log.error("Can not call", cause)
@@ -147,8 +150,11 @@ class Process(object):
         self.join(raise_on_error=True)
 
     def stop(self):
-        self.stdin.add(THREAD_STOP)
-        self.please_stop.go()
+        try:
+            # MAYBE "exit" WORKS?
+            self.stdin.add("exit")
+        except Exception:
+            pass
         return self
 
     def join(self, raise_on_error=False):
@@ -192,55 +198,47 @@ class Process(object):
     def _monitor(self, please_stop):
         with Timer(self.name, verbose=self.debug):
             self.service.wait()
-            self.debug and Log.note(
-                "{{process}} STOP: returncode={{returncode}}",
-                process=self.name,
-                returncode=self.service.returncode,
-            )
-            self.service_stopped.go()
             please_stop.go()
+            self.stdin.close()
+        self.debug and Log.note(
+            "{{process}} STOP: returncode={{returncode}}",
+            process=self.name,
+            returncode=self.service.returncode,
+        )
 
     def _reader(self, name, pipe, receive, please_stop):
+        self.debug and Log.note(
+            "{{process}} ({{name}} is reading)", name=name, process=self.name
+        )
+        acc = []
         try:
             while not please_stop and self.service.returncode is None:
-                line = to_text(pipe.readline().rstrip())
-                if line:
-                    receive.add(line)
-                    self.debug and Log.note(
-                        "{{process}} ({{name}}): {{line}}",
-                        name=name,
-                        process=self.name,
-                        line=line,
-                    )
-                else:
-                    (Till(seconds=0.1) | please_stop).wait()
+                b = pipe.read(1)
+                if b and b != b"\n":
+                    acc.append(b)
+                    continue
 
-            # GRAB A FEW MORE LINES
-            max = 100
-            while max:
-                try:
-                    line = to_text(pipe.readline().rstrip())
-                    if line:
-                        max = 100
-                        receive.add(line)
-                        self.debug and Log.note(
-                            "{{process}} RESIDUE: ({{name}}): {{line}}",
-                            name=name,
-                            process=self.name,
-                            line=line,
-                        )
-                    else:
-                        max -= 1
-                except Exception:
+                line = b"".join(acc).decode("utf8").rstrip()
+                self.debug and Log.note(
+                    "{{process}} ({{name}}): {{line}}",
+                    name=name,
+                    process=self.name,
+                    line=line,
+                )
+                receive.add(line)
+                acc = []
+                if not b:
                     break
+        except Exception as cause:
+            Log.warning("premature read failure", cause=cause)
         finally:
-            pipe.close()
-            receive.add(THREAD_STOP)
             self.debug and Log.note(
                 "{{process}} ({{name}} is closed)", name=name, process=self.name
             )
-
-        receive.add(THREAD_STOP)
+            receive.close()
+            pipe.close()
+            self.service.stderr.close()
+            self.service.stdout.close()
 
     def _writer(self, pipe, send, please_stop):
         while not please_stop:
@@ -252,10 +250,15 @@ class Process(object):
                 continue
 
             self.debug and Log.note(
-                "{{process}} (stdin): {{line}}", process=self.name, line=line.rstrip()
+                "{{process}} (stdin): {{line}}", process=self.name, line=line.rstrip(),
             )
-            pipe.write(line.encode("utf8") + b"\n")
-            pipe.flush()
+            try:
+                pipe.write(line.encode("utf8"))
+                pipe.write(b"\n")
+                pipe.flush()
+            except Exception as cause:
+                # HAPPENS WHEN PROCESS IS DONE
+                break
 
     def _kill(self):
         try:

@@ -14,29 +14,12 @@
 from __future__ import absolute_import, division, unicode_literals
 
 from mo_future import allocate_lock as _allocate_lock, decorate
+from mo_logs import Log
+
 from mo_threads.signals import Signal
 
-_Log, _Except, _Thread, _extract_stack = [None] * 4
 
 DEBUG = False
-DEBUG_SIGNAL = False
-
-
-def _late_import():
-    global _Log
-    global _Except
-    global _Thread
-    global _extract_stack
-
-    if _Thread:
-        return
-
-    from mo_logs.exceptions import Except as _Except
-    from mo_logs.exceptions import get_stacktrace as _extract_stack
-    from mo_threads.threads import Thread as _Thread
-    from mo_logs import Log as _Log
-
-    _keep_imports = _Log, _Except, _Thread, _extract_stack
 
 
 class Lock(object):
@@ -47,8 +30,6 @@ class Lock(object):
     __slots__ = ["name", "debug", "sample", "lock", "waiting"]
 
     def __init__(self, name="", debug=DEBUG, sample=False):
-        if (debug or sample) and not _Log:
-            _late_import()
         self.debug = debug
         self.sample = sample
         self.name = name
@@ -56,23 +37,21 @@ class Lock(object):
         self.waiting = None
 
     def __enter__(self):
-        self.debug and _Log.note("acquire  lock {{name|quote}}", name=self.name)
+        self.debug and print(f"acquire  lock {self.name}")
         self.lock.acquire()
-        self.debug and _Log.note("acquired lock {{name|quote}}", name=self.name)
+        self.debug and print(f"acquired lock {self.name}")
         return self
 
     def __exit__(self, a, b, c):
         if self.waiting:
-            self.debug and _Log.note(
-                "signaling {{num}} waiters on {{name|quote}}",
-                name=self.name,
-                num=len(self.waiting),
+            self.debug and print(
+                f"signaling {len(self.waiting)} waiters on {self.name}"
             )
             # TELL ANOTHER THAT THE LOCK IS READY SOON
             waiter = self.waiting.pop()
             waiter.go()
         self.lock.release()
-        self.debug and _Log.note("released lock {{name|quote}}", name=self.name)
+        self.debug and print(f"released lock {self.name}")
 
     def wait(self, till=None):
         """
@@ -80,46 +59,35 @@ class Lock(object):
         :param till: WHEN TO GIVE UP WAITING FOR ANOTHER THREAD TO SIGNAL, LOCK IS STILL ACQUIRED
         :return: True IF SIGNALED TO GO, False IF till WAS SIGNALED
         """
+        self.debug and print(f"as waiter on {self.name}")
         waiter = Signal()
         if self.waiting:
             # TELL ANOTHER THAT THE LOCK IS READY SOON
+            self.debug and print(f"inform other on {self.name}")
             other = self.waiting.pop()
             other.go()
-            self.debug and _Log.note(
-                "waiting with {{num}} others on {{name|quote}}",
-                num=len(self.waiting),
-                name=self.name,
-                stack_depth=1,
+            self.debug and print(
+                f"waiting with {len(self.waiting)} others on {self.name}"
             )
             self.waiting.insert(0, waiter)
         else:
-            self.debug and _Log.note(
-                "waiting by self on {{name|quote}}", name=self.name
-            )
+            self.debug and print(f"waiting by self on {self.name}")
             self.waiting = [waiter]
 
         try:
             self.lock.release()
-            self.debug and _Log.note("out of lock {{name|quote}}", name=self.name)
+            self.debug and print(f"out of lock {self.name}")
             (waiter | till).wait()
-            self.debug and _Log.note(
-                "done minimum wait (for signal {{till|quote}})",
-                till=till.name if till else "",
-                name=self.name,
-            )
+            self.debug and print(f"done minimum wait (for signal {till.name})")
         except Exception as cause:
-            if not _Log:
-                _late_import()
-            _Log.warning("problem", cause=cause)
+            Log.warning("problem", cause=cause)
         finally:
             self.lock.acquire()
-            self.debug and _Log.note("re-acquired lock {{name|quote}}", name=self.name)
+            self.debug and print(f"re-acquired lock {self.name}")
 
         try:
             self.waiting.remove(waiter)
-            self.debug and _Log.note(
-                "removed own signal from {{name|quote}}", name=self.name
-            )
+            self.debug and print(f"removed own signal from {self.name}")
         except Exception:
             pass
 

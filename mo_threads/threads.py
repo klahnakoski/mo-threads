@@ -27,11 +27,14 @@ from mo_future import (
     text,
     decorate,
 )
+from mo_imports import delay_import
 from mo_logs import Except, Log, raise_from_none
 from mo_logs.exceptions import ERROR
 
 from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till
+
+threading = delay_import("threading")
 
 DEBUG = False
 
@@ -42,7 +45,6 @@ DEFAULT_WAIT_TIME = timedelta(minutes=10)
 THREAD_STOP = "stop"
 THREAD_TIMEOUT = "TIMEOUT"
 COVERAGE = False  # LOOK FOR threading._trace_hook AND USE IT
-MAIN_THREAD = None
 
 datetime.strptime("2012-01-01", "%Y-%m-%d")  # http://bugs.python.org/issue7980
 
@@ -140,6 +142,9 @@ class MainThread(BaseThread):
         if self_thread != self:
             Log.error("Only the current thread can call stop()")
 
+        if self.stopped:
+            return
+
         self.please_stop.go()
 
         join_errors = []
@@ -177,8 +182,7 @@ class MainThread(BaseThread):
             if self.stopped:
                 return
             self.stop_logging()
-            self.timers.stop()
-            self.timers.join()
+            self.timers.stop().join()
 
             if cprofiler_stats is not None:
                 from mo_threads.profiles import write_profiles
@@ -259,24 +263,26 @@ class Thread(BaseThread):
         """
         SEND STOP SIGNAL, DO NOT BLOCK
         """
-        with self.child_locker:
-            children = list(self.children)
-        for c in children:
-            DEBUG and c.name and Log.note("Stopping thread {{name|quote}}", name=c.name)
-            c.stop()
-        self.please_stop.go()
+        try:
+            with self.child_locker:
+                children = list(self.children)
+            for c in children:
+                DEBUG and c.name and Log.note("Stopping thread {{name|quote}}", name=c.name)
+                c.stop()
+            self.please_stop.go()
 
-        DEBUG and Log.note("Thread {{name|quote}} got request to stop", name=self.name)
-        return self
+            DEBUG and Log.note("Thread {{name|quote}} got request to stop", name=self.name)
+            return self
+        except Exception as cause:
+            self.end_of_thread.exception = cause
 
     def _run(self):
         if COVERAGE:
-            import threading
             hook = threading._trace_hook
             if hook:
                 sys.settrace(hook)
 
-        self.please_stop.remove_go(self.start)
+        self.please_stop.remove_then(self.start)
         self.id = get_ident()
         with RegisterThread(self):
             try:
@@ -399,21 +405,21 @@ class Thread(BaseThread):
         )
         self.joiner_is_waiting.go()
         (self.stopped | till).wait()
-        if self.stopped:
-            try:
-                self.parent.remove_child(self)
-            except Exception as cause:
-                Log.warning("parents of children must have remove_child() method", cause=cause)
-            if not self.end_of_thread.exception:
-                return self.end_of_thread.response
-            else:
-                Log.error(
-                    "Thread {{name|quote}} did not end well",
-                    name=self.name,
-                    cause=self.end_of_thread.exception,
-                )
-        else:
+        if not self.stopped:
             raise Except(context=THREAD_TIMEOUT)
+
+        try:
+            self.parent.remove_child(self)
+        except Exception as cause:
+            Log.warning("parents of children must have remove_child() method", cause=cause)
+
+        if self.end_of_thread.exception:
+            Log.error(
+                "Thread {{name|quote}} did not end well",
+                name=self.name,
+                cause=self.end_of_thread.exception,
+            )
+        return self.end_of_thread.response
 
     @staticmethod
     def run(name, target, *args, **kwargs):
@@ -603,7 +609,10 @@ def wait_for_shutdown_signal(
 
 
 def stop_main_thread(signum=0, frame=None):
-    MAIN_THREAD.please_stop.go()
+    if Thread.current() == MAIN_THREAD:
+        MAIN_THREAD.stop()
+    else:
+        MAIN_THREAD.please_stop.go()
 
 
 def start_main_thread():
@@ -626,5 +635,6 @@ def start_main_thread():
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
 
+MAIN_THREAD = None
 ALL_LOCK = allocate_lock()
 ALL = dict()
