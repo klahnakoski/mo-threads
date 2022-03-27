@@ -23,4 +23,4 @@ class StructuredLogger_usingList(object):
         self.lines.append(expand_template(template, params))
 
     def stop(self):
-        pass
+        self.lines.append("logger stopped")

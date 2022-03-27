@@ -13,10 +13,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from mo_future import text
-from mo_json import value2json
 from mo_logs import Log
-from mo_logs.log_usingNothing import StructuredLogger
-from mo_logs.strings import expand_template
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.dates import Date
 from mo_times.durations import SECOND
@@ -191,20 +188,23 @@ class TestThreads(FuzzyTestCase):
         We often spawn threads to do work; ensure the thread is at least started,
         let the thread decide how to balance please_stop and the work to be done
         """
+        print("stopping", flush=True)
         stop_main_thread()
         threads.MAIN_THREAD.stopped.wait()
+        print("starting", flush=True)
         start_main_thread()
+        print("logging", flush=True)
         list_log = StructuredLogger_usingList()
         old_log, Log.main_log = Log.main_log, list_log
         old_log.stop()
-        print("ready")
+        print("ready", flush=True)
 
         def worker(please_stop):
             Log.info("started")
 
         please_stop = Signal()
         please_stop.go()
-        print("runing")
+        print("running", flush=True)
         thread = Thread.run("work", worker, please_stop=please_stop)
         thread.stopped.wait()
         self.assertIn("started", Log.main_log.lines)
@@ -232,14 +232,3 @@ class TestThreads(FuzzyTestCase):
 
 def bad_worker(please_stop):
     raise Exception("bad worker failure")
-
-
-class StructuredLogger_usingList(StructuredLogger):
-    def __init__(self):
-        self.lines = []
-
-    def write(self, template, params):
-        self.lines.append(expand_template(template, params))
-
-    def stop(self):
-        self.lines.append("logger stopped")
