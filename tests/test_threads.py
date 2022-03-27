@@ -188,26 +188,16 @@ class TestThreads(FuzzyTestCase):
         We often spawn threads to do work; ensure the thread is at least started,
         let the thread decide how to balance please_stop and the work to be done
         """
-        print("stopping", flush=True)
-        stop_main_thread()
-        threads.MAIN_THREAD.stopped.wait()
-        print("starting", flush=True)
-        start_main_thread()
-        print("logging", flush=True)
-        list_log = StructuredLogger_usingList()
-        old_log, Log.main_log = Log.main_log, list_log
-        old_log.stop()
-        print("ready", flush=True)
+        done = []
 
         def worker(please_stop):
-            Log.info("started")
+            done.append("started")
 
         please_stop = Signal()
         please_stop.go()
-        print("running", flush=True)
         thread = Thread.run("work", worker, please_stop=please_stop)
         thread.stopped.wait()
-        self.assertIn("started", Log.main_log.lines)
+        self.assertIn("started", done)
 
     def test_failure_during_wait_for_shutdown(self):
         threads.DEBUG = True
