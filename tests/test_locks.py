@@ -16,7 +16,6 @@ import gc
 import os
 import platform
 import threading
-from random import Random
 from time import time
 
 import objgraph
@@ -24,6 +23,7 @@ import psutil
 from mo_collections.queue import Queue
 from mo_future import allocate_lock as _allocate_lock, text, PY2, PY3
 from mo_logs import Log, machine_metadata
+from mo_math import randoms
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.timer import Timer
 
@@ -259,12 +259,12 @@ class TestLocks(FuzzyTestCase):
                 ]
                 Log.note("Object count\n{{current}}", current=current)
 
-                # NUMBER OF OBJECTS CLEANED UP SHOULD MATCH NUMBER OF OBJECTS CREATED
-                for (_, _, cd), (_, _, gd) in zip(current, growth):
-                    self.assertAlmostEqual(-cd, gd, places=2)
+                # NUMBER OF OBJECTS CLEANED UP SHOULD BE SAME, OR BIGGER THAN NUMBER OF OBJECTS CREATED
+                for (_, _, cd), (_, gt, gd) in zip(current, growth):
+                    self.assertGreater(-cd, gd)
                 return
             except Exception as cause:
-                pass
+                Log.note("problem: {{cause}}",  cause=cause)
         Log.error("object counts did not go down")
 
     def test_job_queue_in_signal(self):
@@ -313,7 +313,7 @@ class TestLocks(FuzzyTestCase):
         def _consumer(please_stop):
             while not please_stop:
                 v = queue.pop(till=please_stop)
-                if Random.int(1000) == 0:
+                if randoms.int(1000) == 0:
                     Log.note("got " + v)
 
         def _producer(t, please_stop=None):
