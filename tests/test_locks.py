@@ -13,18 +13,19 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import gc
-import objgraph
 import os
 import platform
-import psutil
 import threading
+from random import Random
+from time import time
+
+import objgraph
+import psutil
 from mo_collections.queue import Queue
 from mo_future import allocate_lock as _allocate_lock, text, PY2, PY3
 from mo_logs import Log, machine_metadata
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.timer import Timer
-from time import time
-from unittest import skip
 
 import mo_threads
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
