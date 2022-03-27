@@ -7,7 +7,7 @@ This docker image is meant for testing Linux on Windows. If you are using Linux,
 
 ## Instructions
 
-All commands are meant to be run from the root directory for this repo; not this directory, rather this' grandparent.
+All commands are meant to be run from the root directory for this repo; not this directory, rather this' parent.
 
 #### Build and Run
 

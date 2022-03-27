@@ -51,9 +51,11 @@ cprofiler_stats = None  # ACCUMULATION OF STATS FROM ALL THREADS
 
 try:
     STDOUT = sys.stdout.buffer
+    STDERR = sys.stderr.buffer
     STDIN = sys.stdin.buffer
 except Exception:
     STDOUT = sys.stdout
+    STDERR = sys.stderr
     STDIN = sys.stdin
 
 
@@ -133,8 +135,10 @@ class MainThread(BaseThread):
         BLOCKS UNTIL ALL KNOWN THREADS, EXCEPT MainThread, HAVE STOPPED
         """
         self_thread = Thread.current()
-        if self_thread != MAIN_THREAD or self_thread != self:
-            Log.error("Only the main thread can call stop() on main thread")
+        if self_thread != MAIN_THREAD:
+            Log.error("Only the main thread can call stop()")
+        if self_thread != self:
+            Log.error("Only the current thread can call stop()")
 
         self.please_stop.go()
 
@@ -217,10 +221,10 @@ class Thread(BaseThread):
         if PLEASE_STOP in self.kwargs:
             self.please_stop = self.kwargs[PLEASE_STOP]
         else:
-            self.please_stop = self.kwargs[PLEASE_STOP] = Signal("please_stop for " + self.name)
+            self.please_stop = self.kwargs[PLEASE_STOP] = Signal(f"please_stop for {self.name}")
         self.thread = None
-        self.joiner_is_waiting = Signal("joining with " + self.name)
-        self.stopped = Signal("stopped signal for " + self.name)
+        self.joiner_is_waiting = Signal(f"joining with {self.name}")
+        self.stopped = Signal(f"stopped signal for {self.name}")
 
         if PARENT_THREAD in kwargs:
             del self.kwargs[PARENT_THREAD]
