@@ -459,14 +459,18 @@ class ThreadedQueue(Queue):
 
         self.name = name
         self.slow_queue = slow_queue
-        self.thread = Thread.run(
-            f"threaded queue for {name}",
-            self.worker_bee,
-            batch_size,
-            period,
-            error_target,
-            parent_thread=self
-        ).release()
+        self.thread = (
+            Thread
+            .run(
+                f"threaded queue for {name}",
+                self.worker_bee,
+                batch_size,
+                period,
+                error_target,
+                parent_thread=self,
+            )
+            .release()
+        )
 
     def worker_bee(self, batch_size, period, error_target, please_stop):
         please_stop.then(lambda: self.add(THREAD_STOP))

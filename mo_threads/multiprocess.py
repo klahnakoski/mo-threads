@@ -250,9 +250,7 @@ class Process(object):
                 continue
 
             self.debug and Log.note(
-                "{{process}} (stdin): {{line}}",
-                process=self.name,
-                line=line.rstrip(),
+                "{{process}} (stdin): {{line}}", process=self.name, line=line.rstrip(),
             )
             try:
                 pipe.write(line.encode("utf8"))

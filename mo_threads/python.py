@@ -38,14 +38,13 @@ class Python(object):
             shell=shell,
         )
         self.process.stdin.add(value2json(from_data(
-            config | {
+            config
+            | {
                 "debug": {"trace": True},
-                "constants": {
-                    "mo_threads": {
-                        "signals": {"DEBUG": False},
-                        "lock": {"DEBUG": False}
-                    }
-                }
+                "constants": {"mo_threads": {
+                    "signals": {"DEBUG": False},
+                    "lock": {"DEBUG": False},
+                }},
             }
         )))
         while True:
@@ -59,8 +58,12 @@ class Python(object):
         self.response = None
         self.error = None
 
-        self.watch_stdout = Thread.run(f"watching stdout for {name}", self._watch_stdout)
-        self.watch_stderr = Thread.run(f"watching stderr for {name}", self._watch_stderr)
+        self.watch_stdout = Thread.run(
+            f"watching stdout for {name}", self._watch_stdout
+        )
+        self.watch_stderr = Thread.run(
+            f"watching stderr for {name}", self._watch_stderr
+        )
 
     def _execute(self, command):
         while True:
@@ -76,9 +79,7 @@ class Python(object):
         self.done.wait()
         try:
             if self.error:
-                Log.error(
-                    "problem with process call", cause=Except(**self.error)
-                )
+                Log.error("problem with process call", cause=Except(**self.error))
             else:
                 return self.response
         finally:

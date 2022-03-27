@@ -76,7 +76,6 @@ class TestLocks(FuzzyTestCase):
             for i in range(SCALE):
                 locks[i].release()
 
-    @skip("turn me on")
     def test_queue_speed(self):
         if "PyPy" in machine_metadata().python:
             # PyPy requires some warmup time
@@ -172,7 +171,6 @@ class TestLocks(FuzzyTestCase):
         self.assertTrue(bool(thread_a.stopped), "Thread should be done by now")
         self.assertTrue(bool(thread_b.stopped), "Thread should be done by now")
 
-    @skip("enable me")
     def test_till_create_speed(self):
         tills = []
         done = time() + 1
@@ -231,7 +229,6 @@ class TestLocks(FuzzyTestCase):
 
         self.assertEqual(counter[0], 100 * 50, "Expecting lock to work")
 
-    @skip("enable me")
     def test_memory_cleanup_with_till(self):
         objgraph.growth()
 
@@ -269,7 +266,6 @@ class TestLocks(FuzzyTestCase):
                 pass
         Log.error("object counts did not go down")
 
-    @skip("turn me on")
     def test_job_queue_in_signal(self):
 
         gc.collect()
@@ -299,7 +295,6 @@ class TestLocks(FuzzyTestCase):
         with self.assertRaises(RuntimeError):
             lock.release()
 
-    @skip("takes too long")
     def test_memory_cleanup_with_signal(self):
         """
         LOOKING FOR A MEMORY LEAK THAT HAPPENS ONLY DURING THREADING

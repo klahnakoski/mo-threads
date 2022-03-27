@@ -19,7 +19,6 @@ from weakref import ref
 
 from mo_future import allocate_lock as _allocate_lock, text
 from mo_logs import Log
-from mo_dots import is_null
 
 from mo_threads.signals import DONE, Signal
 

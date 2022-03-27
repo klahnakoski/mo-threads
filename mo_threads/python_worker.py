@@ -122,7 +122,10 @@ def temp_var():
 
 class RawLogger(StructuredLogger):
     def write(self, template, params):
-        STDOUT.write(value2json({"log": {"template": template, "params": params}}).encode('utf8') + b"\n")
+        STDOUT.write(
+            value2json({"log": {"template": template, "params": params}}).encode("utf8")
+            + b"\n"
+        )
 
 
 def start():

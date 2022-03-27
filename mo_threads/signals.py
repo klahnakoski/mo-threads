@@ -16,7 +16,7 @@ from __future__ import absolute_import, division, unicode_literals
 from weakref import ref
 
 from mo_dots import is_null
-from mo_future import allocate_lock as _allocate_lock, get_function_name
+from mo_future import allocate_lock as _allocate_lock
 from mo_logs import Log, Except
 from mo_logs.exceptions import get_stacktrace
 
@@ -242,6 +242,7 @@ class OrSignal(object):
     A SELF-REFERENTIAL CLUSTER OF SIGNALING METHODS TO IMPLEMENT __or__()
     MANAGE SELF-REMOVAL UPON NOT NEEDING THE signal OBJECT ANY LONGER
     """
+
     __slots__ = ["signal", "dependencies"]
 
     def __init__(self, signal, dependencies):
