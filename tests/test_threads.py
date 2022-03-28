@@ -218,8 +218,6 @@ class TestThreads(FuzzyTestCase):
         self.assertIn("ERROR", list_log.lines[-2])
         self.assertEqual(bool(threads.MAIN_THREAD.timers.stopped), True)
 
-        start_main_thread()
-
 
 def bad_worker(please_stop):
     raise Exception("bad worker failure")
