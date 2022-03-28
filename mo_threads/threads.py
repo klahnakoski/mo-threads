@@ -236,7 +236,6 @@ class Thread(BaseThread):
         else:
             self.parent = Thread.current()
             self.parent.add_child(self)
-        self.please_stop.then(self.start)
 
     def __enter__(self):
         return self
@@ -282,7 +281,6 @@ class Thread(BaseThread):
             if hook:
                 sys.settrace(hook)
 
-        self.please_stop.remove_then(self.start)
         self.id = get_ident()
         with RegisterThread(self):
             try:
@@ -622,7 +620,8 @@ def start_main_thread():
 
     with ALL_LOCK:
         if ALL:
-            raise Exception("failure")
+            names = [t.name for k, t in ALL.items()]
+            raise Exception(f"expecting no threads {names}")
 
         ALL[get_ident()] = MAIN_THREAD
 
