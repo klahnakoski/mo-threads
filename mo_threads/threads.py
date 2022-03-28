@@ -179,16 +179,19 @@ class MainThread(BaseThread):
             )
 
         with self.shutdown_locker:
-            if self.stopped:
-                return
-            self.stop_logging()
-            self.timers.stop().join()
+            try:
+                if self.stopped:
+                    return
+                self.stop_logging()
+                self.timers.stop().join()
 
-            if cprofiler_stats is not None:
-                from mo_threads.profiles import write_profiles
-                write_profiles(self.cprofiler)
-            DEBUG and Log.note("Thread {{name|quote}} now stopped", name=self.name)
-            self.stopped.go()
+                if cprofiler_stats is not None:
+                    from mo_threads.profiles import write_profiles
+                    write_profiles(self.cprofiler)
+                DEBUG and Log.note("Thread {{name|quote}} now stopped", name=self.name)
+                self.stopped.go()
+            except Exception as cause:
+                join_errors.append(cause)
 
         with ALL_LOCK:
             del ALL[self.id]
