@@ -13,10 +13,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 from mo_future import text
-from mo_json import value2json
 from mo_logs import Log
-from mo_logs.log_usingNothing import StructuredLogger
-from mo_logs.strings import expand_template
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.dates import Date
 from mo_times.durations import SECOND
@@ -191,25 +188,21 @@ class TestThreads(FuzzyTestCase):
         We often spawn threads to do work; ensure the thread is at least started,
         let the thread decide how to balance please_stop and the work to be done
         """
-        stop_main_thread()
-        threads.MAIN_THREAD.stopped.wait()
-        start_main_thread()
-        list_log = StructuredLogger_usingList()
-        old_log, Log.main_log = Log.main_log, list_log
-        old_log.stop()
+        done = []
 
         def worker(please_stop):
-            Log.info("started")
+            done.append("started")
 
         please_stop = Signal()
         please_stop.go()
         thread = Thread.run("work", worker, please_stop=please_stop)
         thread.stopped.wait()
-        self.assertIn("started", Log.main_log.lines)
+        self.assertIn("started", done)
 
     def test_failure_during_wait_for_shutdown(self):
         threads.DEBUG = True
-        threads.MAIN_THREAD.stop()
+        stop_main_thread()
+
         start_main_thread()
         list_log = StructuredLogger_usingList()
         old_log, Log.main_log = Log.main_log, list_log
@@ -225,19 +218,6 @@ class TestThreads(FuzzyTestCase):
         self.assertIn("ERROR", list_log.lines[-2])
         self.assertEqual(bool(threads.MAIN_THREAD.timers.stopped), True)
 
-        start_main_thread()
-
 
 def bad_worker(please_stop):
     raise Exception("bad worker failure")
-
-
-class StructuredLogger_usingList(StructuredLogger):
-    def __init__(self):
-        self.lines = []
-
-    def write(self, template, params):
-        self.lines.append(expand_template(template, params))
-
-    def stop(self):
-        self.lines.append("logger stopped")

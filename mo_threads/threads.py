@@ -620,7 +620,8 @@ def start_main_thread():
 
     with ALL_LOCK:
         if ALL:
-            raise Exception("failure")
+            names = [t.name for k, t in ALL.items()]
+            raise Exception(f"expecting no threads {names}")
 
         ALL[get_ident()] = MAIN_THREAD
 
