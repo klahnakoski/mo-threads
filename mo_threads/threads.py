@@ -277,7 +277,7 @@ class Thread(BaseThread):
 
     def _run(self):
         if COVERAGE_COLLECTOR is not None:
-            tracer = COVERAGE_COLLECTOR._collectors._start_tracer()
+            tracer = COVERAGE_COLLECTOR._collectors[-1]._start_tracer()
             sys.settrace(tracer)
 
         self.id = get_ident()
