@@ -19,5 +19,5 @@ script:
   - "python -u -m unittest discover -v tests"
 
 after_success:
-  - "coverage --concurrency=thread run -m unittest discover -v tests"
+  - "coverage run --concurrency=thread -m unittest discover -v tests"
   - "coveralls"
