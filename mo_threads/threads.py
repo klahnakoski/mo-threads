@@ -276,10 +276,6 @@ class Thread(BaseThread):
             self.end_of_thread.exception = cause
 
     def _run(self):
-        if COVERAGE_COLLECTOR is not None:
-            tracer = COVERAGE_COLLECTOR._collectors[-1]._start_tracer()
-            sys.settrace(tracer)
-
         self.id = get_ident()
         with RegisterThread(self):
             try:
@@ -481,6 +477,11 @@ class RegisterThread(object):
             from mo_threads.profiles import CProfiler
             cprofiler = self.thread.cprofiler = CProfiler()
             cprofiler.__enter__()
+        if COVERAGE_COLLECTOR is not None:
+            print(f"******************\n** COVERAGE ON {self.thread.name}\n******************\n")
+            tracer = COVERAGE_COLLECTOR._collectors[-1]._start_tracer()
+            sys.settrace(tracer)
+
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
