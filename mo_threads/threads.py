@@ -478,9 +478,7 @@ class RegisterThread(object):
             cprofiler = self.thread.cprofiler = CProfiler()
             cprofiler.__enter__()
         if COVERAGE_COLLECTOR is not None:
-            print(f"******************\n** COVERAGE ON {self.thread.name}\n******************\n")
-            tracer = COVERAGE_COLLECTOR._collectors[-1]._start_tracer()
-            sys.settrace(tracer)
+            COVERAGE_COLLECTOR._collectors[-1]._start_tracer()
 
         return self
 
