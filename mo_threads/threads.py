@@ -44,7 +44,7 @@ MAX_DATETIME = datetime(2286, 11, 20, 17, 46, 39)
 DEFAULT_WAIT_TIME = timedelta(minutes=10)
 THREAD_STOP = "stop"
 THREAD_TIMEOUT = "TIMEOUT"
-COVERAGE = False  # LOOK FOR threading._trace_hook AND USE IT
+COVERAGE_COLLECTOR = None  # Detect Coverage.py
 
 datetime.strptime("2012-01-01", "%Y-%m-%d")  # http://bugs.python.org/issue7980
 
@@ -276,10 +276,9 @@ class Thread(BaseThread):
             self.end_of_thread.exception = cause
 
     def _run(self):
-        if COVERAGE:
-            hook = threading._trace_hook
-            if hook:
-                sys.settrace(hook)
+        if COVERAGE_COLLECTOR is not None:
+            tracer = COVERAGE_COLLECTOR._collectors._start_tracer()
+            sys.settrace(tracer)
 
         self.id = get_ident()
         with RegisterThread(self):
@@ -634,6 +633,6 @@ def start_main_thread():
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
 
-MAIN_THREAD = None
+MAIN_THREAD : MainThread = None
 ALL_LOCK = allocate_lock()
 ALL = dict()
