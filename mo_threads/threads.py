@@ -633,6 +633,6 @@ def start_main_thread():
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
 
-MAIN_THREAD : MainThread = None
+MAIN_THREAD = None
 ALL_LOCK = allocate_lock()
 ALL = dict()
