@@ -478,6 +478,7 @@ class RegisterThread(object):
             cprofiler = self.thread.cprofiler = CProfiler()
             cprofiler.__enter__()
         if COVERAGE_COLLECTOR is not None:
+            # STARTING TRACER WILL sys.settrace() ITSELF
             COVERAGE_COLLECTOR._collectors[-1]._start_tracer()
 
         return self
