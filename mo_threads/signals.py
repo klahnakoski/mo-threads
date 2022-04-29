@@ -68,10 +68,15 @@ class Signal(object):
     def __nonzero__(self):
         return self._go
 
-    def wait(self):
+    def wait(self, till=None):
         """
         PUT THREAD IN WAIT STATE UNTIL SIGNAL IS ACTIVATED
         """
+        if till is not None:
+            # a.wait(till=b) IS AN ALTERNATE FORM FOR (a | b).wait()
+            (self | till).wait()
+            return True
+
         if self._go:
             return True
 
@@ -178,7 +183,7 @@ class Signal(object):
         return repr(self._go)
 
     def __or__(self, other):
-        if is_null(other):
+        if other == None:
             return self
         if not isinstance(other, Signal):
             Log.error("Expecting OR with other signal")

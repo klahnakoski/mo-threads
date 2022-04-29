@@ -11,7 +11,6 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-from mo_threads import till
 from mo_threads.futures import Future
 from mo_threads.lock import Lock
 from mo_threads.multiprocess import Process, Command
@@ -29,4 +28,17 @@ from mo_threads.threads import (
 )
 from mo_threads.till import Till
 
+
+def coverage_detector():
+    try:
+        # DETECT COVERAGE
+        from coverage.collector import Collector
+        from mo_threads import threads
+        if Collector._collectors:
+            threads.COVERAGE_COLLECTOR = Collector
+    except Exception:
+        pass
+
+
+coverage_detector()
 start_main_thread()
