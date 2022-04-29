@@ -183,7 +183,7 @@ class Signal(object):
         return repr(self._go)
 
     def __or__(self, other):
-        if other == null:
+        if other == None:
             return self
         if not isinstance(other, Signal):
             Log.error("Expecting OR with other signal")

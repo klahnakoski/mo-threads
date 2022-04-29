@@ -7,7 +7,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 
-from mo_threads import Signal
+from mo_threads.signals import Signal
 
 
 class Future(object):
