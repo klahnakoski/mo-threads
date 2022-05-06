@@ -21,5 +21,5 @@ docker run mo-threads
 Instead of running may start the image, without running tests:
 
 ```bash
-docker run --interactive --tty mo-threads bash
+docker run -it mo-threads bash
 ```

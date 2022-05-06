@@ -7,7 +7,7 @@ setup(
     author_email='kyle@lahnakoski.com',
     classifiers=["Programming Language :: Python :: 3.7","Programming Language :: Python :: 3.9","Programming Language :: Python :: 3.9","Development Status :: 4 - Beta","Topic :: Software Development :: Libraries","Topic :: Software Development :: Libraries :: Python Modules","License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"],
     description='More Threads! Simpler and faster threading.',
-    extras_require={"tests":["mo-future","mo-dots","mo-logs","mo-testing","jx-python","psutil","objgraph","mo-files"]},
+    extras_require={"tests":["mo-future","mo-dots","mo-logs","mo-testing","mo-json","jx-python","psutil","objgraph","mo-files"]},
     include_package_data=True,
     install_requires=["mo-dots==9.163.22119","mo-future==6.2.21303","mo-logs==7.163.22119","mo-math==7.163.22119","mo-times==5.163.22119"],
     license='MPL 2.0',

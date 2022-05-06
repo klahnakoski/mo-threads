@@ -22,7 +22,8 @@ from mo_threads.threads import STDOUT, STDIN, STDERR
 try:
     from mo_json import value2json, json2value
 except ImportError:
-    raise Log.error("Please `pip import mo-json` to use python sub processes")
+    from json import dumps as value2json
+    from json import loads as json2value
 
 context = copy(globals())
 del context["copy"]
