@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 import os
+import sys
 from unittest import skipIf
 
 from mo_logs import Log
@@ -31,7 +32,7 @@ class TestProcesses(FuzzyTestCase):
 
     def test_exit(self):
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
+            "waiting", [sys.executable, "-u", "tests/programs/exit_test.py"], debug=True
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
@@ -45,7 +46,7 @@ class TestProcesses(FuzzyTestCase):
         CAN WE CATCH A SIGINT?
         """
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/exit_test.py"], debug=True
+            "waiting", [sys.executable, "-u", "tests/programs/exit_test.py"], debug=True
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
@@ -64,7 +65,7 @@ class TestProcesses(FuzzyTestCase):
         CAN WE CATCH A SIGINT?
         """
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/sigint_test.py"], debug=True
+            "waiting", [ sys.executable, "-u", "tests/programs/sigint_test.py"], debug=True
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         if IS_WINDOWS:
@@ -81,7 +82,7 @@ class TestProcesses(FuzzyTestCase):
         DO WE STILL EXIT WITHOUT SIGINT?
         """
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/sigint_test.py"], debug=True
+            "waiting", [ sys.executable, "-u", "tests/programs/sigint_test.py"], debug=True
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
@@ -94,7 +95,7 @@ class TestProcesses(FuzzyTestCase):
         CAN WE CATCH A SIGINT?
         """
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/sigint_test.py"], debug=True
+            "waiting", [ sys.executable, "-u", "tests/programs/sigint_test.py"], debug=True
         )
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
@@ -107,7 +108,7 @@ class TestProcesses(FuzzyTestCase):
         CAN PROCESS STOP ITSELF??
         """
         p = Process(
-            "waiting", ["python", "-u", "tests/programs/stop_test.py"], debug=True
+            "waiting", [ sys.executable, "-u", "tests/programs/stop_test.py"], debug=True
         )
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))

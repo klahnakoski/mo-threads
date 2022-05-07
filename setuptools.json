@@ -3,7 +3,7 @@
     "author_email": "kyle@lahnakoski.com",
     "classifiers": [
         "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Development Status :: 4 - Beta",
         "Topic :: Software Development :: Libraries",
@@ -12,13 +12,13 @@
     ],
     "description": "More Threads! Simpler and faster threading.",
     "extras_require": {"tests": [
-         "mo-future",    "mo-dots",    "mo-logs", "mo-testing",  "jx-python",
-            "psutil",   "objgraph",   "mo-files"
+         "mo-future",    "mo-dots",    "mo-logs",    "mo-json", "mo-testing",
+         "jx-python",     "psutil",   "objgraph",   "mo-files"
     ]},
     "include_package_data": true,
     "install_requires": [
-         "mo-dots==9.163.22119",  "mo-future==6.2.21303",  "mo-logs==7.163.22119",
-         "mo-math==7.163.22119", "mo-times==5.163.22119"
+         "mo-dots==9.173.22126",  "mo-future==6.2.21303",  "mo-logs==7.173.22126",
+         "mo-math==7.173.22126", "mo-times==5.173.22126"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -314,6 +314,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "5.164.22119",
+    "version": "5.179.22127",
     "zip_safe": false
 }
