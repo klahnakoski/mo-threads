@@ -10,6 +10,7 @@ from __future__ import absolute_import, division, unicode_literals
 
 import os
 import platform
+import sys
 from json import dumps as value2json, loads as json2value
 
 from mo_dots import to_data, from_data
@@ -17,12 +18,12 @@ from mo_logs import Except, Log
 
 from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, DONE
 
-PYTHON = "python"
 DEBUG = False
 
 
 class Python(object):
     def __init__(self, name, config, parent_thread=None):
+        python_exe = sys.executable
         config = to_data(config)
         if config.debug.logs:
             Log.error("not allowed to configure logging on other process")
@@ -32,7 +33,7 @@ class Python(object):
         shell = "windows" in platform.system().lower()
         self.process = Process(
             name,
-            [PYTHON, "-u", f"mo_threads{os.sep}python_worker.py"],
+            [python_exe, "-u", f"mo_threads{os.sep}python_worker.py"],
             debug=DEBUG,
             cwd=os.getcwd(),
             shell=shell,
