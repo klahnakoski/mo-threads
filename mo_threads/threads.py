@@ -171,6 +171,7 @@ class MainThread(BaseThread):
             )
 
         if join_errors:
+            # REPORT ERRORS BEFORE LOGGING SHUTDOWN
             Log.warning(
                 "Problem while stopping {{name|quote}}",
                 name=self.name,
@@ -606,6 +607,11 @@ def wait_for_shutdown_signal(
 
 
 def stop_main_thread(signum=0, frame=None):
+    with ALL_LOCK:
+        if not ALL:
+            Log.note("All threads have shutdown")
+            return
+
     if Thread.current() == MAIN_THREAD:
         MAIN_THREAD.stop()
     else:

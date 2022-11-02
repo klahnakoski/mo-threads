@@ -14,6 +14,7 @@ import subprocess
 from _thread import allocate_lock
 
 from mo_dots import set_default, Null, Data, is_null
+from mo_files import os_path
 from mo_future import text
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
@@ -157,12 +158,12 @@ class Process(object):
             pass
         return self
 
-    def join(self, raise_on_error=False):
+    def join(self, till=None, raise_on_error=False):
         self.service_stopped.wait()
         with self.child_locker:
             child_threads, self.children = self.children, []
         for c in child_threads:
-            c.join()
+            c.join(till=till)
         if self.returncode != 0:
             if raise_on_error:
                 Log.error(
@@ -208,7 +209,9 @@ class Process(object):
 
     def _reader(self, name, pipe, receive, please_stop):
         self.debug and Log.note(
-            "{{process}} ({{name}} is reading)", name=name, process=self.name
+            "{{process}} ({{name}} is reading)",
+            name=name,
+            process=self.name
         )
         acc = []
         try:
@@ -296,12 +299,11 @@ PROMPT = "READY_FOR_MORE"
 
 
 def cmd_escape(value):
-    if hasattr(value, "abspath"):
-        quoted = strings.quote(value.abspath)
-    else:
-        quoted = strings.quote(value)
+    if hasattr(value, "abspath"):  # File
+        value = os_path(value.abspath)
+    quoted = strings.quote(value)
 
-    if quoted == '"' + value + '"':
+    if " " not in quoted and quoted == '"' + value + '"':
         # SIMPLE
         quoted = value
 
@@ -379,7 +381,7 @@ class Command(object):
 
         if not self.process:
             self.process = Process(
-                "command shell", [cmd()], cwd, env, debug, shell, bufsize
+                "command shell", [cmd()], os_path(cwd), env, debug, shell, bufsize
             )
             self.process.stdin.add(set_prompt())
             self.process.stdin.add(LAST_RETURN_CODE)
@@ -443,7 +445,6 @@ class Command(object):
         """
         :param source:
         :param destination:
-        :param error: Throw error if line shows up
         :param please_stop:
         :return:
         """
