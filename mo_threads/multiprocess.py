@@ -13,17 +13,18 @@ import platform
 import subprocess
 from _thread import allocate_lock
 
+from mo_threads import threads
+
 from mo_dots import set_default, Null, Data, is_null
 from mo_files import os_path
 from mo_future import text
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
-from mo_times import Timer
-
 from mo_threads.lock import Lock
 from mo_threads.queues import Queue
 from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, Thread
+from mo_times import Timer
 
 DEBUG_PROCESS = False
 DEBUG_COMMAND = False
@@ -131,6 +132,8 @@ class Process(object):
                     parent_thread=self,
                 ),
             ]
+        except NotADirectoryError as problem:
+            print(cwd)
         except Exception as cause:
             Log.error("Can not call", cause)
 
@@ -209,9 +212,7 @@ class Process(object):
 
     def _reader(self, name, pipe, receive, please_stop):
         self.debug and Log.note(
-            "{{process}} ({{name}} is reading)",
-            name=name,
-            process=self.name
+            "{{process}} ({{name}} is reading)", name=name, process=self.name
         )
         acc = []
         try:
@@ -381,7 +382,7 @@ class Command(object):
 
         if not self.process:
             self.process = Process(
-                "command shell", [cmd()], os_path(cwd), env, debug, shell, bufsize
+                "command shell", [cmd()], os_path(cwd), env, debug, shell, bufsize, parent_thread=threads.MAIN_THREAD
             )
             self.process.stdin.add(set_prompt())
             self.process.stdin.add(LAST_RETURN_CODE)
