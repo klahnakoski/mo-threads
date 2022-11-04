@@ -17,8 +17,8 @@
     ]},
     "include_package_data": true,
     "install_requires": [
-         "mo-dots==9.173.22126",  "mo-future==6.2.21303",  "mo-logs==7.173.22126",
-         "mo-math==7.173.22126", "mo-times==5.173.22126"
+         "mo-dots==9.213.22307",  "mo-future==6.2.21303",  "mo-logs==7.217.22307",
+         "mo-math==7.217.22307", "mo-times==5.218.22308"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -30,7 +30,7 @@
             "|Branch      |Status   |",
             "|------------|---------|",
             "|master      | [![Build Status](https://app.travis-ci.com/klahnakoski/mo-threads.svg?branch=master)](https://travis-ci.com/github/klahnakoski/mo-threads) |",
-            "|dev         | [![Build Status](https://app.travis-ci.com/klahnakoski/mo-threads.svg?branch=dev)](https://travis-ci.com/github/klahnakoski/mo-threads)  [![Coverage Status](https://coveralls.io/repos/github/klahnakoski/mo-threads/badge.svg?branch=dev)](https://coveralls.io/github/klahnakoski/mo-threads?branch=dev) \u2190 thread coverage is missing  |",
+            "|dev         | [![Build Status](https://app.travis-ci.com/klahnakoski/mo-threads.svg?branch=dev)](https://travis-ci.com/github/klahnakoski/mo-threads)  [![Coverage Status](https://coveralls.io/repos/github/klahnakoski/mo-threads/badge.svg?branch=dev)](https://coveralls.io/github/klahnakoski/mo-threads?branch=dev) ← thread coverage is missing  |",
             "",
             "## Module `threads`",
             "",
@@ -314,6 +314,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "5.182.22128",
+    "version": "5.218.22308",
     "zip_safe": false
 }
