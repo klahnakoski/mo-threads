@@ -13,18 +13,17 @@ import platform
 import subprocess
 from _thread import allocate_lock
 
-from mo_threads import threads
-
 from mo_dots import set_default, Null, Data, is_null
-from mo_files import os_path
 from mo_future import text
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
+from mo_times import Timer
+
+from mo_threads import threads
 from mo_threads.lock import Lock
 from mo_threads.queues import Queue
 from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, Thread
-from mo_times import Timer
 
 DEBUG_PROCESS = False
 DEBUG_COMMAND = False
@@ -502,3 +501,12 @@ def _wait_for_start(source, destination):
             destination.add(THREAD_STOP)
             return
         destination.add(value)
+
+
+def os_path(path):
+    """
+    :return: OS-specific path
+    """
+    if os.sep == "/":
+        return path
+    return str(path).lstrip("/")
