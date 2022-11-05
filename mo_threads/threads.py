@@ -453,8 +453,14 @@ class Thread(BaseThread):
 
     @staticmethod
     def join_all(threads):
+        causes = []
         for t in threads:
-            t.join()
+            try:
+                t.join()
+            except Exception as cause:
+                causes.append(cause)
+        if causes:
+            Log.error("At least one thread failed", cause=causes)
 
 
 class RegisterThread(object):
