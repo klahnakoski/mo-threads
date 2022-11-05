@@ -240,6 +240,9 @@ class Process(object):
         """
         MOVE LINES fROM pipe TO receive QUEUE
         """
+        """
+        MOVE LINES fROM pipe TO receive QUEUE
+        """
         self.debug and Log.note(
             "{{process}} ({{name}} is reading)", name=name, process=self.name
         )
