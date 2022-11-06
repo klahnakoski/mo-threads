@@ -89,7 +89,7 @@ class Process(object):
         self.timeout = timeout
 
         try:
-            if is_null(cwd):
+            if cwd == None:
                 cwd = os.getcwd()
             else:
                 cwd = str(cwd)
@@ -147,7 +147,7 @@ class Process(object):
                 ),
             ]
         except Exception as cause:
-            Log.error("Can not call", cause)
+            Log.error("Can not call  dir={{cwd}}", cwd=cwd, cause=cause)
 
         self.debug and Log.note(
             "{{process}} START: {{command}}",
@@ -535,6 +535,8 @@ def os_path(path):
     """
     :return: OS-specific path
     """
+    if path == None:
+        return None
     if os.sep == "/":
         return path
     return str(path).lstrip("/")
