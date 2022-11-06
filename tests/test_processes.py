@@ -112,3 +112,11 @@ class TestProcesses(FuzzyTestCase):
         )
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
+
+    def test_stop_does_not_throw_after_warning(self):
+        p = Process(
+            "waiting", [sys.executable, "-u", "tests/programs/simple_test.py"], debug=True
+        )
+        p.join()
+        lines = p.stdout.pop_all()
+        self.assertIn("All threads have shutdown", lines)
