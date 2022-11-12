@@ -15,7 +15,7 @@ from _thread import allocate_lock
 from dataclasses import dataclass
 from time import time as unix_now
 
-from mo_dots import set_default, Null, Data, is_null
+from mo_dots import set_default, Null, Data
 from mo_future import text
 from mo_logs import Log, strings
 from mo_logs.exceptions import Except
@@ -50,6 +50,7 @@ class Process(object):
         shell=False,
         bufsize=-1,
         timeout=2.0,
+        startup_timeout=10.0,
         parent_thread=None,
     ):
         """
@@ -68,6 +69,8 @@ class Process(object):
         :param bufsize: if you want to screw stuff up
         :param timeout: how long to wait for process stdout/stderr before we consider it dead
                         ensure your process emits lines to stay alive
+        :param startup_timeout: since the process may take a while to start outputting, this is the wait time
+                        for the first output
         """
         global next_process_id_locker, next_process_id
         with next_process_id_locker:
@@ -108,8 +111,8 @@ class Process(object):
             )
 
             self.child_locker = Lock()
-            self.stdout_status = Status(unix_now())
-            self.stderr_status = Status(unix_now())
+            self.stdout_status = Status(unix_now()+startup_timeout)
+            self.stderr_status = Status(unix_now()+startup_timeout)
             self.children = [
                 Thread.run(
                     self.name + " stdin",
@@ -217,7 +220,7 @@ class Process(object):
                 now = unix_now()
                 last_out = max(self.stderr_status.last_read, self.stderr_status.last_read)
                 timeout = last_out + self.timeout - now
-                if now < 0:
+                if timeout < 0:
                     self._kill()
                     if self.debug:
                         Log.warning("{{name}} took too long to respond", name=self.name)
@@ -248,7 +251,7 @@ class Process(object):
         )
         try:
             while not please_stop and self.service.returncode is None:
-                line = pipe.readline()
+                line = pipe.readline()  # THIS MAY NEVER RETURN
                 status.last_read = unix_now()
                 if not line:
                     break
