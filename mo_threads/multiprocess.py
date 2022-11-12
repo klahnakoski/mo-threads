@@ -217,7 +217,7 @@ class Process(object):
                 now = unix_now()
                 last_out = max(self.stderr_status.last_read, self.stderr_status.last_read)
                 timeout = last_out + self.timeout - now
-                if now < 0:
+                if timeout < 0:
                     self._kill()
                     if self.debug:
                         Log.warning("{{name}} took too long to respond", name=self.name)
@@ -248,7 +248,7 @@ class Process(object):
         )
         try:
             while not please_stop and self.service.returncode is None:
-                line = pipe.readline()
+                line = pipe.readline()  # THIS MAY NEVER RETURN
                 status.last_read = unix_now()
                 if not line:
                     break
