@@ -9,7 +9,7 @@ env:
 install:
 - pip install coverage==6.2
 - pip install coveralls
-- pip install -r requirements.txt
+- pip install .
 - pip install -r tests/requirements.txt
 script:
 - python -u -m unittest discover -v tests
