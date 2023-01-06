@@ -1,4 +1,5 @@
 language: python
+cache: pip
 python:
 - 3.7.8
 - 3.8
@@ -9,9 +10,9 @@ env:
 install:
 - pip install coverage==6.2
 - pip install coveralls
+- pip install -r tests/requirements.txt
 - cp packaging/setup.py .
 - pip install .
-- pip install -r tests/requirements.txt
 script:
 - python -u -m unittest discover -v tests
 after_success:
