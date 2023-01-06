@@ -9,6 +9,7 @@ env:
 install:
 - pip install coverage==6.2
 - pip install coveralls
+- cp packaging/setup.py .
 - pip install .
 - pip install -r tests/requirements.txt
 script:
