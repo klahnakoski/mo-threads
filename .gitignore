@@ -9,4 +9,5 @@
 /vendor
 __pycache__
 /htmlcov
-setup.py
+./setup.py
+
