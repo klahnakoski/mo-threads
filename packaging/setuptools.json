@@ -8,7 +8,8 @@
         "Development Status :: 4 - Beta",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
-        "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
+        "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+        "Programming Language :: Python :: 3.10"
     ],
     "description": "More Threads! Simpler and faster threading.",
     "extras_require": {"tests": [
@@ -17,8 +18,8 @@
     ]},
     "include_package_data": true,
     "install_requires": [
-          "mo-dots==9.341.23006", "mo-future==7.340.23006",   "mo-logs==7.341.23006",
-          "mo-math==7.341.23006",  "mo-times==5.341.23006"
+          "mo-dots==9.341.23006", "mo-future==7.340.23006",   "mo-logs==7.346.23011",
+          "mo-math==7.341.23006",  "mo-times==5.346.23011"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -314,6 +315,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "5.341.23006",
+    "version": "5.347.23012",
     "zip_safe": false
 }
