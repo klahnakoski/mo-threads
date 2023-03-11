@@ -638,6 +638,7 @@ def start_main_thread():
 
     # STARTUP TIMERS
     from mo_threads import till
+    till.enabled = Signal()
     MAIN_THREAD.timers = Thread.run("timers daemon", till.daemon, parent_thread=Null)
     till.enabled.wait()
 
