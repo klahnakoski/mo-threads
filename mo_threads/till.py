@@ -24,7 +24,7 @@ from mo_threads.signals import DONE, Signal
 
 DEBUG = False
 INTERVAL = 0.1
-enabled = Signal()
+enabled: Signal
 
 
 class Till(Signal):
