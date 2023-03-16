@@ -183,8 +183,12 @@ class Signal(object):
         return repr(self._go)
 
     def __or__(self, other):
-        if other == None:
+        if is_null(other):
             return self
+        if other is False:
+            return self
+        if other is True:
+            return DONE
         if not isinstance(other, Signal):
             Log.error("Expecting OR with other signal")
         if self or other:
@@ -192,11 +196,14 @@ class Signal(object):
 
         return or_signal(self, other)
 
-    def __ror__(self, other):
-        return self.__or__(other)
+    __ror__ = __or__
 
     def __and__(self, other):
-        if is_null(other) or other:
+        if is_null(other):
+            return self
+        if other is False:
+            return NEVER
+        if other is True:
             return self
         if not isinstance(other, Signal):
             Log.error("Expecting OR with other signal")
@@ -274,4 +281,11 @@ class OrSignal(object):
         return id(self) == id(other)
 
 
+class Never(Signal):
+
+    def go(self):
+        return self
+
+
 DONE = Signal().go()
+NEVER = Never()
