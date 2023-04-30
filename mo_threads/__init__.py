@@ -34,6 +34,7 @@ def coverage_detector():
         # DETECT COVERAGE
         from coverage.collector import Collector
         from mo_threads import threads
+
         if Collector._collectors:
             threads.COVERAGE_COLLECTOR = Collector
     except Exception:

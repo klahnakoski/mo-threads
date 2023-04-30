@@ -11,7 +11,6 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-from __future__ import absolute_import, division, unicode_literals
 
 import signal as _signal
 import sys
@@ -158,26 +157,17 @@ class MainThread(BaseThread):
                 join_errors.append(cause)
 
         for c in children:
-            DEBUG and c.name and Log.note(
-                "Joining on thread {{name|quote}}", name=c.name
-            )
+            DEBUG and c.name and Log.note("Joining on thread {{name|quote}}", name=c.name)
             try:
                 c.join()
             except Exception as cause:
                 join_errors.append(cause)
 
-            DEBUG and c.name and Log.note(
-                "Done join on thread {{name|quote}}", name=c.name
-            )
+            DEBUG and c.name and Log.note("Done join on thread {{name|quote}}", name=c.name)
 
         if join_errors:
             # REPORT ERRORS BEFORE LOGGING SHUTDOWN
-            Log.warning(
-                "Problem while stopping {{name|quote}}",
-                name=self.name,
-                cause=join_errors,
-                log_context=ERROR
-            )
+            Log.warning("Problem while stopping {{name|quote}}", name=self.name, cause=join_errors, log_context=ERROR)
 
         with self.shutdown_locker:
             if self.stopped:
@@ -187,6 +177,7 @@ class MainThread(BaseThread):
 
             if cprofiler_stats is not None:
                 from mo_threads.profiles import write_profiles
+
                 write_profiles(self.cprofiler)
             DEBUG and Log.note("Thread {{name|quote}} now stopped", name=self.name)
             self.stopped.go()
@@ -291,13 +282,9 @@ class Thread(BaseThread):
                 if emit_problem:
                     # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
                     try:
-                        Log.error(
-                            "Problem in thread {{name|quote}}", name=self.name, cause=cause
-                        )
+                        Log.error("Problem in thread {{name|quote}}", name=self.name, cause=cause)
                     except Exception as cause:
-                        sys.stderr.write(
-                            str("ERROR in thread: " + self.name + " " + text(cause) + "\n")
-                        )
+                        sys.stderr.write(str("ERROR in thread: " + self.name + " " + text(cause) + "\n"))
             finally:
                 try:
                     with self.child_locker:
@@ -308,9 +295,7 @@ class Thread(BaseThread):
                             c.stop()
                         except Exception as cause:
                             Log.warning(
-                                "Problem stopping thread {{thread}}",
-                                thread=c.name,
-                                cause=cause,
+                                "Problem stopping thread {{thread}}", thread=c.name, cause=cause,
                             )
 
                     for c in children:
@@ -319,9 +304,7 @@ class Thread(BaseThread):
                             c.join()
                         except Exception as cause:
                             Log.warning(
-                                "Problem joining thread {{thread}}",
-                                thread=c.name,
-                                cause=cause,
+                                "Problem joining thread {{thread}}", thread=c.name, cause=cause,
                             )
                         finally:
                             DEBUG and Log.note("Joined on thread " + c.name + "\n")
@@ -329,9 +312,7 @@ class Thread(BaseThread):
                     del self.target, self.args, self.kwargs
                     DEBUG and Log.note("thread {{name|quote}} stopping", name=self.name)
                 except Exception as cause:
-                    DEBUG and Log.warning(
-                        "problem with thread {{name|quote}}", cause=cause, name=self.name
-                    )
+                    DEBUG and Log.warning("problem with thread {{name|quote}}", cause=cause, name=self.name)
                 finally:
                     self.stopped.go()
 
@@ -349,17 +330,18 @@ class Thread(BaseThread):
                             # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
                             try:
                                 Log.error(
-                                    "Problem in thread {{name|quote}}", name=self.name, cause=self.end_of_thread.exception
+                                    "Problem in thread {{name|quote}}",
+                                    name=self.name,
+                                    cause=self.end_of_thread.exception,
                                 )
                             except Exception as cause:
-                                sys.stderr.write(
-                                    str("ERROR in thread: " + self.name + " " + text(cause) + "\n")
-                                )
+                                sys.stderr.write(str("ERROR in thread: " + self.name + " " + text(cause) + "\n"))
                         elif self.end_of_thread.response != None:
                             Log.warning(
-                                "Thread {{thread}} returned a response, but was not joined with {{parent}} after 10min",
+                                "Thread {{thread}} returned a response, but was not joined with {{parent}} after"
+                                " 10min",
                                 thread=self.name,
-                                parent=self.parent.name
+                                parent=self.parent.name,
                             )
                         else:
                             # IF THREAD ENDS OK, AND NOTHING RETURNED, THEN FORGET ABOUT IT
@@ -393,9 +375,7 @@ class Thread(BaseThread):
             c.join(till=till)
 
         DEBUG and Log.note(
-            "{{parent|quote}} waiting on thread {{child|quote}}",
-            parent=Thread.current().name,
-            child=self.name,
+            "{{parent|quote}} waiting on thread {{child|quote}}", parent=Thread.current().name, child=self.name,
         )
         self.joiner_is_waiting.go()
         (self.stopped | till).wait()
@@ -409,9 +389,7 @@ class Thread(BaseThread):
 
         if self.end_of_thread.exception:
             Log.error(
-                "Thread {{name|quote}} did not end well",
-                name=self.name,
-                cause=self.end_of_thread.exception,
+                "Thread {{name|quote}} did not end well", name=self.name, cause=self.end_of_thread.exception,
             )
         return self.end_of_thread.response
 
@@ -421,9 +399,7 @@ class Thread(BaseThread):
         if get_function_name(target) == "wrapper":
             pass  # GIVE THE override DECORATOR A PASS
         elif PLEASE_STOP not in target.__code__.co_varnames:
-            Log.error(
-                "function must have please_stop argument for signalling emergency shutdown"
-            )
+            Log.error("function must have please_stop argument for signalling emergency shutdown")
 
         Thread.num_threads += 1
 
@@ -441,13 +417,12 @@ class Thread(BaseThread):
             thread = BaseThread(ident)
             if cprofiler_stats is not None:
                 from mo_threads.profiles import CProfiler
+
                 thread.cprofiler = CProfiler()
                 thread.cprofiler.__enter__()
             with ALL_LOCK:
                 ALL[ident] = thread
-            Log.warning(
-                "this thread is not known. Register this thread at earliest known entry point."
-            )
+            Log.warning("this thread is not known. Register this thread at earliest known entry point.")
             return thread
         return output
 
@@ -482,6 +457,7 @@ class RegisterThread(object):
             ALL[self.thread.id] = self.thread
         if cprofiler_stats is not None:
             from mo_threads.profiles import CProfiler
+
             cprofiler = self.thread.cprofiler = CProfiler()
             cprofiler.__enter__()
         if COVERAGE_COLLECTOR is not None:
@@ -502,7 +478,7 @@ class RegisterThread(object):
                 Log.error(
                     "Thread {{thread|quote}} has not joined with child threads {{children|json}}",
                     children=[c.name for c in self.thread.children],
-                    thread=self.thread.name
+                    thread=self.thread.name,
                 )
         with all_lock:
             del all[self.thread.id]
@@ -638,6 +614,7 @@ def start_main_thread():
 
     # STARTUP TIMERS
     from mo_threads import till
+
     till.enabled = Signal()
     MAIN_THREAD.timers = Thread.run("timers daemon", till.daemon, parent_thread=Null)
     till.enabled.wait()

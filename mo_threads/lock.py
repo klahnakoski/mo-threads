@@ -11,7 +11,6 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-from __future__ import absolute_import, division, unicode_literals
 
 from mo_future import allocate_lock as _allocate_lock, decorate
 from mo_logs import Log
@@ -44,9 +43,7 @@ class Lock(object):
 
     def __exit__(self, a, b, c):
         if self.waiting:
-            self.debug and print(
-                f"signaling {len(self.waiting)} waiters on {self.name}"
-            )
+            self.debug and print(f"signaling {len(self.waiting)} waiters on {self.name}")
             # TELL ANOTHER THAT THE LOCK IS READY SOON
             waiter = self.waiting.pop()
             waiter.go()
@@ -66,9 +63,7 @@ class Lock(object):
             self.debug and print(f"inform other on {self.name}")
             other = self.waiting.pop()
             other.go()
-            self.debug and print(
-                f"waiting with {len(self.waiting)} others on {self.name}"
-            )
+            self.debug and print(f"waiting with {len(self.waiting)} others on {self.name}")
             self.waiting.insert(0, waiter)
         else:
             self.debug and print(f"waiting by self on {self.name}")

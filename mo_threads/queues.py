@@ -11,7 +11,6 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-from __future__ import absolute_import, division, unicode_literals
 
 import types
 from collections import deque
@@ -44,9 +43,7 @@ class Queue(object):
     IS DIFFICULT TO USE JUST BETWEEN THREADS)
     """
 
-    def __init__(
-        self, name, max=None, silent=False, unique=False, allow_add_after_close=False
-    ):
+    def __init__(self, name, max=None, silent=False, unique=False, allow_add_after_close=False):
         """
         max - LIMIT THE NUMBER IN THE QUEUE, IF TOO MANY add() AND extend() WILL BLOCK
         silent - COMPLAIN IF THE READERS ARE TOO SLOW
@@ -169,9 +166,7 @@ class Queue(object):
 
         wait_time = 5
 
-        (
-            DEBUG and len(self.queue) > 1 * 1000 * 1000
-        ) and Log.warning("Queue {{name}} has over a million items")
+        (DEBUG and len(self.queue) > 1 * 1000 * 1000) and Log.warning("Queue {{name}} has over a million items")
 
         start = time()
         stop_waiting = Till(till=start + coalesce(timeout, DEFAULT_WAIT_TIME))
@@ -271,32 +266,15 @@ class PriorityQueue(Queue):
     """
 
     def __init__(
-        self,
-        name,
-        numpriorities,
-        max=None,
-        silent=False,
-        unique=False,
-        allow_add_after_close=False,
+        self, name, numpriorities, max=None, silent=False, unique=False, allow_add_after_close=False,
     ):
         Queue.__init__(
-            self,
-            name=name,
-            max=max,
-            silent=silent,
-            unique=False,
-            allow_add_after_close=False,
+            self, name=name, max=max, silent=silent, unique=False, allow_add_after_close=False,
         )
 
         self.numpriorities = numpriorities
         self.queue = [
-            Queue(
-                name=name,
-                max=max,
-                silent=silent,
-                unique=False,
-                allow_add_after_close=False,
-            )
+            Queue(name=name, max=max, silent=silent, unique=False, allow_add_after_close=False,)
             for _ in range(numpriorities)
         ]
 
@@ -461,14 +439,7 @@ class ThreadedQueue(Queue):
         self.slow_queue = slow_queue
         self.thread = (
             Thread
-            .run(
-                f"threaded queue for {name}",
-                self.worker_bee,
-                batch_size,
-                period,
-                error_target,
-                parent_thread=self,
-            )
+            .run(f"threaded queue for {name}", self.worker_bee, batch_size, period, error_target, parent_thread=self,)
             .release()
         )
 
@@ -517,9 +488,7 @@ class ThreadedQueue(Queue):
                         error_target(cause, _buffer)
                     except Exception as f:
                         Log.warning(
-                            "`error_target` should not throw, just deal",
-                            name=self.name,
-                            cause=f,
+                            "`error_target` should not throw, just deal", name=self.name, cause=f,
                         )
                 else:
                     Log.warning("Unexpected problem", name=self.name, cause=cause)
@@ -537,9 +506,7 @@ class ThreadedQueue(Queue):
                         error_target(cause, _buffer)
                     except Exception as f:
                         Log.warning(
-                            "`error_target` should not throw, just deal",
-                            name=self.name,
-                            cause=f,
+                            "`error_target` should not throw, just deal", name=self.name, cause=f,
                         )
                 else:
                     Log.warning(
@@ -568,9 +535,7 @@ class ThreadedQueue(Queue):
             if not self.closed:
                 self.queue.extend(values)
             if not self.silent:
-                Log.note(
-                    "{{name}} has {{num}} items", name=self.name, num=len(self.queue)
-                )
+                Log.note("{{name}} has {{num}} items", name=self.name, num=len(self.queue))
         return self
 
     def __enter__(self):

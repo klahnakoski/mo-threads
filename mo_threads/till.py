@@ -11,7 +11,6 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-from __future__ import absolute_import, division, unicode_literals
 
 from collections import namedtuple
 from time import sleep, time
@@ -112,9 +111,7 @@ def daemon(please_stop):
                 if len(new_timers) > 5:
                     Log.note("{{num}} new timers", num=len(new_timers))
                 else:
-                    Log.note(
-                        "new timers: {{timers}}", timers=[t for t, _ in new_timers]
-                    )
+                    Log.note("new timers: {{timers}}", timers=[t for t, _ in new_timers])
 
             sorted_timers.extend(new_timers)
 
@@ -133,9 +130,7 @@ def daemon(please_stop):
                     DEBUG and Log.note(
                         "done: {{timers}}.  Remaining {{pending}}",
                         timers=[t for t, s in work] if len(work) <= 5 else len(work),
-                        pending=[t for t, s in sorted_timers]
-                        if len(sorted_timers) <= 5
-                        else len(sorted_timers),
+                        pending=[t for t, s in sorted_timers] if len(sorted_timers) <= 5 else len(sorted_timers),
                     )
 
                     for t, r in work:

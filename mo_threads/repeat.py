@@ -6,8 +6,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import division
-from __future__ import unicode_literals
+
 
 from mo_future import is_text
 from mo_logs import Log
@@ -54,12 +53,7 @@ class Repeat(object):
         if self.thread:
             Log.error("Use as context manager or use start parameter, not both")
         self.thread = Thread.run(
-            "repeat",
-            _repeat,
-            self.message,
-            self.every,
-            Date.now(),
-            please_stop=self.please_stop,
+            "repeat", _repeat, self.message, self.every, Date.now(), please_stop=self.please_stop,
         )
 
     def __exit__(self, exc_type, exc_val, exc_tb):

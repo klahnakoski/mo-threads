@@ -6,7 +6,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 import os
 import platform
@@ -32,20 +32,13 @@ class Python(object):
         # WINDOWS REQUIRED shell, WHILE LINUX NOT
         shell = "windows" in platform.system().lower()
         self.process = Process(
-            name,
-            [python_exe, "-u", f"mo_threads{os.sep}python_worker.py"],
-            debug=DEBUG,
-            cwd=os.getcwd(),
-            shell=shell,
+            name, [python_exe, "-u", f"mo_threads{os.sep}python_worker.py"], debug=DEBUG, cwd=os.getcwd(), shell=shell,
         )
         self.process.stdin.add(value2json(from_data(
             config
             | {
                 "debug": {"trace": True},
-                "constants": {"mo_threads": {
-                    "signals": {"DEBUG": False},
-                    "lock": {"DEBUG": False},
-                }},
+                "constants": {"mo_threads": {"signals": {"DEBUG": False}, "lock": {"DEBUG": False},}},
             }
         )))
         while True:
@@ -59,12 +52,8 @@ class Python(object):
         self.response = None
         self.error = None
 
-        self.watch_stdout = Thread.run(
-            f"watching stdout for {name}", self._watch_stdout
-        )
-        self.watch_stderr = Thread.run(
-            f"watching stderr for {name}", self._watch_stderr
-        )
+        self.watch_stdout = Thread.run(f"watching stdout for {name}", self._watch_stdout)
+        self.watch_stderr = Thread.run(f"watching stderr for {name}", self._watch_stderr)
 
     def _execute(self, command):
         while True:

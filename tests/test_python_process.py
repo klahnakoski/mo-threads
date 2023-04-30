@@ -8,9 +8,6 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
 
 from mo_logs import Log
 from mo_testing.fuzzytestcase import FuzzyTestCase

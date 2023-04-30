@@ -10,9 +10,6 @@
 # Intended to test exit behaviour from timeout, SIGINT (CTRL-C), or "exit"
 ###############################################################################
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
 
 from mo_logs import Log
 
