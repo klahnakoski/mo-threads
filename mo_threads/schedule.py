@@ -6,8 +6,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import division
-from __future__ import unicode_literals
+
 
 from mo_dots import Data, coalesce
 from mo_future import text
@@ -70,11 +69,7 @@ class Schedule(object):
 
     def killer(self, please_stop):
         self.current.stop()
-        (
-            please_stop
-            | self.current.service_stopped()
-            | Till(seconds=self.wait_for_shutdown.seconds)
-        ).wait()
+        (please_stop | self.current.service_stopped() | Till(seconds=self.wait_for_shutdown.seconds)).wait()
         if not self.current.service_stopped:
             self.fail_count += 1
             self.current.kill()
@@ -114,8 +109,7 @@ def monitor(please_stop=True):
             (Till(seconds=NO_JOB_WAITING_TIME) | please_stop).wait()
             continue
         Log.note(
-            "Currently scheduled jobs:\n {{jobs|json|indent}}",
-            jobs=[s.status() for s in schedules],
+            "Currently scheduled jobs:\n {{jobs|json|indent}}", jobs=[s.status() for s in schedules],
         )
         (Till(seconds=JOBS_WAITING_TIME) | please_stop).wait()
 

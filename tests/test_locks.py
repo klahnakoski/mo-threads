@@ -8,9 +8,6 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
 
 import gc
 import os
@@ -111,9 +108,7 @@ class TestLocks(FuzzyTestCase):
             done.wait()
 
         Log.note(
-            "{{num}} items through queue in {{seconds|round(3)}} seconds",
-            num=SCALE,
-            seconds=timer.duration.seconds,
+            "{{num}} items through queue in {{seconds|round(3)}} seconds", num=SCALE, seconds=timer.duration.seconds,
         )
         if PY2 and "windows" not in platform.system().lower():
             expected_time = 15  # LINUX PY2 IS CRAZY SLOW
@@ -125,9 +120,7 @@ class TestLocks(FuzzyTestCase):
             self.assertLess(
                 timer.duration.seconds,
                 expected_time,
-                "Expecting queue to be fast, not "
-                + text(timer.duration.seconds)
-                + " seconds",
+                "Expecting queue to be fast, not " + text(timer.duration.seconds) + " seconds",
             )
 
     def test_lock_and_till(self):
@@ -185,11 +178,7 @@ class TestLocks(FuzzyTestCase):
         thread.join()
 
         self.assertGreater(
-            len(tills),
-            60000,
-            "Till objects must be created faster: "
-            + text(len(tills))
-            + " per second is too slow",
+            len(tills), 60000, "Till objects must be created faster: " + text(len(tills)) + " per second is too slow",
         )
         Log.note("{{num}} new Tills in one second", num=len(tills))
 
@@ -208,9 +197,7 @@ class TestLocks(FuzzyTestCase):
         with please_stop.lock:
             q = please_stop.job_queue
             self.assertLessEqual(
-                0 if q is None else len(q),
-                1,
-                "Expecting only one pending job on go, got " + text(len(q)),
+                0 if q is None else len(q), 1, "Expecting only one pending job on go, got " + text(len(q)),
             )
         please_stop.go()
         Log.note("test done")
@@ -254,9 +241,7 @@ class TestLocks(FuzzyTestCase):
         for _ in range(0, 20):
             try:
                 Till(seconds=0.1).wait()  # LET TIMER DAEMON CLEANUP
-                current = [
-                    (t, objgraph.count(t), objgraph.count(t) - c) for t, c, d in growth
-                ]
+                current = [(t, objgraph.count(t), objgraph.count(t) - c) for t, c, d in growth]
                 Log.note("Object count\n{{current}}", current=current)
 
                 # NUMBER OF OBJECTS CLEANED UP SHOULD BE SAME, OR BIGGER THAN NUMBER OF OBJECTS CREATED
@@ -264,7 +249,7 @@ class TestLocks(FuzzyTestCase):
                     self.assertGreater(-cd, gd)
                 return
             except Exception as cause:
-                Log.note("problem: {{cause}}",  cause=cause)
+                Log.note("problem: {{cause}}", cause=cause)
         Log.error("object counts did not go down")
 
     def test_job_queue_in_signal(self):
@@ -287,9 +272,7 @@ class TestLocks(FuzzyTestCase):
 
         main.go()  # NOT NEEDED, BUT INTERESTING
 
-        self.assertLess(
-            end_mem, (start_mem + mid_mem) / 2, "end memory should be closer to start"
-        )
+        self.assertLess(end_mem, (start_mem + mid_mem) / 2, "end memory should be closer to start")
 
     def test_relase_lock_failure(self):
         lock = _allocate_lock()
@@ -330,9 +313,7 @@ class TestLocks(FuzzyTestCase):
             mid_mem = psutil.Process(os.getpid()).memory_info().rss
             Log.note("{{group}} memory {{mem|comma}}", group=g, mem=mid_mem)
             if USE_PYTHON_THREADS:
-                threads = [
-                    threading.Thread(target=_producer, args=(i,)) for i in range(500)
-                ]
+                threads = [threading.Thread(target=_producer, args=(i,)) for i in range(500)]
                 for t in threads:
                     t.start()
             else:

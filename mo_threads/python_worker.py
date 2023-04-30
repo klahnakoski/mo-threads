@@ -6,7 +6,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 from copy import copy
 
@@ -85,17 +85,11 @@ def command_loop(local):
                 for k, v in command.items():
                     if is_list(v):
                         exec(
-                            f"_return = {k}(" + ",".join(map(value2json, v)) + ")",
-                            context,
-                            local,
+                            f"_return = {k}(" + ",".join(map(value2json, v)) + ")", context, local,
                         )
                     else:
                         exec(
-                            f"_return = {k}("
-                            + ",".join(
-                                kk + "=" + value2json(vv) for kk, vv in v.items()
-                            )
-                            + ")",
+                            f"_return = {k}(" + ",".join(kk + "=" + value2json(vv) for kk, vv in v.items()) + ")",
                             context,
                             local,
                         )
@@ -123,10 +117,7 @@ def temp_var():
 
 class RawLogger(StructuredLogger):
     def write(self, template, params):
-        STDOUT.write(
-            value2json({"log": {"template": template, "params": params}}).encode("utf8")
-            + b"\n"
-        )
+        STDOUT.write(value2json({"log": {"template": template, "params": params}}).encode("utf8") + b"\n")
 
 
 def start():

@@ -8,9 +8,6 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
 
 from mo_future import text
 from mo_logs import Log
@@ -123,11 +120,7 @@ class TestThreads(FuzzyTestCase):
         # We expect 10, but 9 is good enough
         num = len(acc)
         self.assertGreater(
-            num,
-            9,
-            "Expecting some reasonable number of entries to prove there was looping,"
-            " not "
-            + text(num),
+            num, 9, "Expecting some reasonable number of entries to prove there was looping, not " + text(num),
         )
 
     def test_or_signal_timeout(self):

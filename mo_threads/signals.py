@@ -11,7 +11,6 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-from __future__ import absolute_import, division, unicode_literals
 
 from weakref import ref
 
@@ -26,9 +25,7 @@ TRACE_THEN = False  # GRAB STACK TRACE OF then() CALL FOR BLAME
 
 def standard_warning(cause):
     Log.warning(
-        "Trigger on Signal.go() failed, and no error function provided!",
-        cause=cause,
-        stack_depth=1,
+        "Trigger on Signal.go() failed, and no error function provided!", cause=cause, stack_depth=1,
     )
 
 
@@ -114,9 +111,7 @@ class Signal(object):
         threads, self.waiting_threads = self.waiting_threads, None
 
         if threads:
-            DEBUG and self._name and Log.note(
-                "Release {{num}} threads", num=len(threads)
-            )
+            DEBUG and self._name and Log.note("Release {{num}} threads", num=len(threads))
             for t in threads:
                 t.release()
 
@@ -282,7 +277,6 @@ class OrSignal(object):
 
 
 class Never(Signal):
-
     def go(self):
         return self
 

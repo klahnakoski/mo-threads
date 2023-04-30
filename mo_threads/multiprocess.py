@@ -6,7 +6,7 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-from __future__ import absolute_import, division, unicode_literals
+
 
 import os
 import platform
@@ -80,15 +80,9 @@ class Process(object):
         self.debug = debug or DEBUG_PROCESS
         self.name = name + " (" + text(self.process_id) + ")"
         self.service_stopped = Signal("stopped signal for " + strings.quote(name))
-        self.stdin = Queue(
-            "stdin for process " + strings.quote(name), silent=not self.debug
-        )
-        self.stdout = Queue(
-            "stdout for process " + strings.quote(name), silent=not self.debug
-        )
-        self.stderr = Queue(
-            "stderr for process " + strings.quote(name), silent=not self.debug
-        )
+        self.stdin = Queue("stdin for process " + strings.quote(name), silent=not self.debug)
+        self.stdout = Queue("stdout for process " + strings.quote(name), silent=not self.debug)
+        self.stderr = Queue("stderr for process " + strings.quote(name), silent=not self.debug)
         self.timeout = timeout
 
         try:
@@ -111,8 +105,8 @@ class Process(object):
             )
 
             self.child_locker = Lock()
-            self.stdout_status = Status(unix_now()+startup_timeout)
-            self.stderr_status = Status(unix_now()+startup_timeout)
+            self.stdout_status = Status(unix_now() + startup_timeout)
+            self.stderr_status = Status(unix_now() + startup_timeout)
             self.children = [
                 Thread.run(
                     self.name + " stdin",
@@ -143,19 +137,14 @@ class Process(object):
                     parent_thread=self,
                 ),
                 Thread.run(
-                    self.name + " waiter",
-                    self._monitor,
-                    please_stop=self.service_stopped,
-                    parent_thread=self,
+                    self.name + " waiter", self._monitor, please_stop=self.service_stopped, parent_thread=self,
                 ),
             ]
         except Exception as cause:
             Log.error("Can not call  dir={{cwd}}", cwd=cwd, cause=cause)
 
         self.debug and Log.note(
-            "{{process}} START: {{command}}",
-            process=self.name,
-            command=" ".join(map(strings.quote, params)),
+            "{{process}} START: {{command}}", process=self.name, command=" ".join(map(strings.quote, params)),
         )
         if not parent_thread:
             parent_thread = Thread.current()
@@ -234,9 +223,7 @@ class Process(object):
             please_stop.go()
             self.stdin.close()
         self.debug and Log.note(
-            "{{process}} STOP: returncode={{returncode}}",
-            process=self.name,
-            returncode=self.service.returncode,
+            "{{process}} STOP: returncode={{returncode}}", process=self.name, returncode=self.service.returncode,
         )
 
     def _reader(self, name, pipe, receive, status: Status, please_stop):
@@ -246,9 +233,7 @@ class Process(object):
         """
         MOVE LINES fROM pipe TO receive QUEUE
         """
-        self.debug and Log.note(
-            "{{process}} ({{name}} is reading)", name=name, process=self.name
-        )
+        self.debug and Log.note("{{process}} ({{name}} is reading)", name=name, process=self.name)
         try:
             while not please_stop and self.service.returncode is None:
                 line = pipe.readline()  # THIS MAY NEVER RETURN
@@ -257,18 +242,13 @@ class Process(object):
                     break
                 line = line.decode("utf8").rstrip()
                 self.debug and Log.note(
-                    "{{process}} ({{name}}): {{line}}",
-                    name=name,
-                    process=self.name,
-                    line=line,
+                    "{{process}} ({{name}}): {{line}}", name=name, process=self.name, line=line,
                 )
                 receive.add(line)
         except Exception as cause:
             Log.warning("premature read failure", cause=cause)
         finally:
-            self.debug and Log.note(
-                "{{process}} ({{name}} is closed)", name=name, process=self.name
-            )
+            self.debug and Log.note("{{process}} ({{name}} is closed)", name=name, process=self.name)
             receive.close()
             pipe.close()
             self.service.stderr.close()
@@ -306,9 +286,7 @@ class Process(object):
                 return
 
             Log.warning(
-                "Failure to kill process {{process|quote}}",
-                process=self.name,
-                cause=cause,
+                "Failure to kill process {{process|quote}}", process=self.name, cause=cause,
             )
 
 
@@ -378,15 +356,7 @@ class Command(object):
     available_process = {}
 
     def __init__(
-        self,
-        name,
-        params,
-        cwd=None,
-        env=None,
-        debug=False,
-        shell=True,
-        max_stdout=1024,
-        bufsize=-1,
+        self, name, params, cwd=None, env=None, debug=False, shell=True, max_stdout=1024, bufsize=-1,
     ):
 
         self.name = name
@@ -405,9 +375,7 @@ class Command(object):
             if avail:
                 self.process = avail.pop()
                 DEBUG_COMMAND and Log.note(
-                    "Reuse process {{process}} for {{command}}",
-                    process=self.process.name,
-                    command=name,
+                    "Reuse process {{process}} for {{command}}", process=self.process.name, command=name,
                 )
 
         if not self.process:
@@ -417,27 +385,17 @@ class Command(object):
             self.process.stdin.add(set_prompt())
             self.process.stdin.add(LAST_RETURN_CODE)
             DEBUG_COMMAND and Log.note(
-                "New process {{process}} for {{command}}",
-                process=self.process.name,
-                command=name,
+                "New process {{process}} for {{command}}", process=self.process.name, command=name,
             )
             _wait_for_start(self.process.stdout, Null)
 
         self.process.stdin.add(" ".join(cmd_escape(p) for p in params))
         self.process.stdin.add(LAST_RETURN_CODE)
         self.stdout_thread = Thread.run(
-            name + " stdout",
-            self._stream_relay,
-            "stdout",
-            self.process.stdout,
-            self.stdout,
+            name + " stdout", self._stream_relay, "stdout", self.process.stdout, self.stdout,
         )
         self.stderr_thread = Thread.run(
-            name + " stderr",
-            self._stream_relay,
-            "stderr",
-            self.process.stderr,
-            self.stderr,
+            name + " stderr", self._stream_relay, "stderr", self.process.stderr, self.stderr,
         )
         self.stderr_thread.stopped.then(self._cleanup)
         self.returncode = None
@@ -491,10 +449,7 @@ class Command(object):
                 elif value is THREAD_STOP:
                     DEBUG_COMMAND and Log.note("got thread stop")
                     return
-                elif (
-                    line_count == 0
-                    and "is not recognized as an internal or external command" in value
-                ):
+                elif line_count == 0 and "is not recognized as an internal or external command" in value:
                     DEBUG_COMMAND and Log.note("exit with error")
                     Log.error("Problem with command: {{desc}}", desc=value)
                 elif value.startswith(prompt):
@@ -511,9 +466,7 @@ class Command(object):
         finally:
             destination.add(THREAD_STOP)
         DEBUG_COMMAND and Log.note(
-            "{{name}} done with {{please_stop}}",
-            name=name,
-            please_stop=bool(please_stop),
+            "{{name}} done with {{please_stop}}", name=name, please_stop=bool(please_stop),
         )
 
 

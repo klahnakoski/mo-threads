@@ -7,7 +7,6 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 
-from __future__ import absolute_import, division, unicode_literals
 
 import cProfile
 import pstats
@@ -91,8 +90,7 @@ def enable_profilers(filename=None):
             t.cprofiler.__enter__()
         else:
             DEBUG and Log.note(
-                "cprofiler not started for thread {{name}} (already running)",
-                name=t.name,
+                "cprofiler not started for thread {{name}} (already running)", name=t.name,
             )
 
 
