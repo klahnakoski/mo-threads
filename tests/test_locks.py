@@ -343,4 +343,4 @@ class TestLocks(FuzzyTestCase):
 
         self.assertGreater(
             no_change, NUM_CYCLES / 2
-        )  # IF MOST CYCLES DO NOT HAVE MORE OBJCETS, WE ASSUME THERE IS NO LEAK
+        )  # IF MOST CYCLES DO NOT HAVE MORE OBJECTS, WE ASSUME THERE IS NO LEAK
