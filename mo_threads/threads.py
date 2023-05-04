@@ -15,6 +15,7 @@
 import signal as _signal
 import sys
 from datetime import datetime, timedelta
+from threading import _active_limbo_lock, _active
 from time import sleep
 
 from mo_dots import Data, coalesce, unwraplist, Null
@@ -26,14 +27,11 @@ from mo_future import (
     text,
     decorate,
 )
-from mo_imports import delay_import
 from mo_logs import Except, Log, raise_from_none
 from mo_logs.exceptions import ERROR
 
 from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till
-
-threading = delay_import("threading")
 
 DEBUG = False
 
@@ -97,10 +95,10 @@ class AllThread(object):
 
 
 class BaseThread(object):
-    __slots__ = ["id", "name", "children", "child_locker", "cprofiler", "trace_func"]
+    __slots__ = ["_ident", "name", "children", "child_locker", "cprofiler", "trace_func"]
 
     def __init__(self, ident, name=None):
-        self.id = ident
+        self._ident = ident
         self.name = name
         if ident != -1:
             self.name = "Unknown Thread " + text(ident)
@@ -108,6 +106,14 @@ class BaseThread(object):
         self.children = []
         self.cprofiler = None
         self.trace_func = sys.gettrace()
+
+    @property
+    def id(self):
+        return self._ident
+
+    @property
+    def ident(self):
+        return self._ident
 
     def add_child(self, child):
         with self.child_locker:
@@ -183,7 +189,7 @@ class MainThread(BaseThread):
             self.stopped.go()
 
         with ALL_LOCK:
-            del ALL[self.id]
+            del ALL[self._ident]
             if ALL:
                 sys.stderr.write("Expecting no further threads")
 
@@ -268,7 +274,7 @@ class Thread(BaseThread):
             self.end_of_thread.exception = cause
 
     def _run(self):
-        self.id = get_ident()
+        self._ident = get_ident()
         with RegisterThread(self):
             try:
                 if self.target is not None:
@@ -349,9 +355,6 @@ class Thread(BaseThread):
                                 # SOMETIMES parent IS NOT A THREAD
                                 self.parent.remove_child(self)
 
-    def is_alive(self):
-        return not self.stopped
-
     def release(self):
         """
         RELEASE THREAD TO FEND FOR ITSELF. THREAD CAN EXPECT TO NEVER
@@ -368,6 +371,9 @@ class Thread(BaseThread):
         """
         if self is Thread:
             Log.error("Thread.join() is not a valid call, use t.join()")
+
+        if isinstance(till, (int, float)):
+            till = Till(seconds=till)
 
         with self.child_locker:
             children = list(self.children)
@@ -437,6 +443,29 @@ class Thread(BaseThread):
         if causes:
             Log.error("At least one thread failed", cause=causes)
 
+    ####################################################################################################################
+    ## threading.Thread METHODS
+    ####################################################################################################################
+    def is_alive(self):
+        return not self.stopped
+
+    @property
+    def _is_stopped(self):
+        return self.stopped
+
+    @property
+    def daemon(self):
+        return False
+
+    def isDaemon(self):
+        return self.daemon
+
+    def getName(self):
+        return self.name
+
+    def setName(self, name):
+        self.name = name
+
 
 class RegisterThread(object):
     """
@@ -453,12 +482,16 @@ class RegisterThread(object):
         self.thread = thread
 
     def __enter__(self):
+        thread = self.thread
+        ident = thread._ident
         with ALL_LOCK:
-            ALL[self.thread.id] = self.thread
+            ALL[ident] = thread
+        with _active_limbo_lock:
+            _active[ident] = thread
         if cprofiler_stats is not None:
             from mo_threads.profiles import CProfiler
 
-            cprofiler = self.thread.cprofiler = CProfiler()
+            cprofiler = thread.cprofiler = CProfiler()
             cprofiler.__enter__()
         if COVERAGE_COLLECTOR is not None:
             # STARTING TRACER WILL sys.settrace() ITSELF
@@ -534,6 +567,10 @@ def _wait_for_exit(please_stop):
         if please_stop:
             Log.note("please_stop has been requested")
         Log.note("done waiting for exit")
+
+
+def current_thread():
+    return Thread.current()
 
 
 def _wait_for_interrupt(please_stop):
