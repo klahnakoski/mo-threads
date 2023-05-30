@@ -11,15 +11,14 @@
 
 import gc
 import os
-import platform
 import threading
+from copy import copy
 from time import time
-from unittest import skip
 
 import objgraph
 import psutil
 from mo_collections.queue import Queue
-from mo_future import allocate_lock as _allocate_lock, text, PY2, PY3
+from mo_future import allocate_lock as _allocate_lock
 from mo_logs import logger, machine_metadata
 from mo_math import randoms
 from mo_testing.fuzzytestcase import FuzzyTestCase
@@ -28,6 +27,7 @@ from mo_times.timer import Timer
 import mo_threads
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
 from mo_threads.busy_lock import BusyLock
+from mo_threads.threads import ALL, ALL_LOCK
 from tests import StructuredLogger_usingList
 from tests.utils import add_error_reporting
 
@@ -113,12 +113,7 @@ class TestLocks(FuzzyTestCase):
         logger.info(
             "{num} items through queue in {seconds|round(3)} seconds", num=SCALE, seconds=timer.duration.seconds,
         )
-        if PY2 and "windows" not in platform.system().lower():
-            expected_time = 15  # LINUX PY2 IS CRAZY SLOW
-        elif PY3 and "windows" not in platform.system().lower():
-            expected_time = 6  # LINUX PY3 IS SLOW
-        else:
-            expected_time = 6
+        expected_time = 6
         if test:
             self.assertLess(
                 timer.duration.seconds,
@@ -307,7 +302,7 @@ class TestLocks(FuzzyTestCase):
                 queue.add(str(t) + ":" + str(i))
                 Till(seconds=0.01).wait()
 
-        consumer = Thread.run("", _consumer)
+        consumer = Thread.run("consumer", _consumer)
 
         objgraph.growth(limit=None)
 
@@ -320,10 +315,13 @@ class TestLocks(FuzzyTestCase):
                 for t in threads:
                     t.start()
             else:
-                threads = [Thread.run("", _producer, i) for i in range(500)]
+                threads = [Thread.run(f"producer-{i}", _producer, i) for i in range(500)]
 
-            for t in threads:
-                t.join()
+            Thread.join_all(threads)
+            with ALL_LOCK:
+                residue = copy(ALL)
+            if any(t.ident in residue for t in threads):
+                logger.error("Threads still running: {residue}", residue=residue)
             del threads
 
             gc.collect()
