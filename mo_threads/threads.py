@@ -63,18 +63,7 @@ class BaseThread(object):
 
     def __init__(self, ident, name=None):
         self._ident = ident
-<<<<<<< .mine
         self.name = name or f"Unknown Thread {ident if ident != -1 else ''}"
-||||||| .r1705
-        self.name = name
-        if ident != -1:
-            self.name = "Unknown Thread " + text(ident)
-=======
-        self.name = name
-        self.stopped = Signal(f"stopped signal for {self.name}")
-        if ident != -1:
-            self.name = "Unknown Thread " + text(ident)
->>>>>>> .r1733
         self.child_locker = allocate_lock()
         self.children = []
         self.cprofiler = None
