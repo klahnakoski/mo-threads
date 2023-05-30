@@ -11,24 +11,26 @@ import os
 import sys
 from unittest import skipIf
 
-from mo_logs import Log
+from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
 from mo_threads import Process
 from mo_threads import Till
 from tests import IS_WINDOWS
+from tests.utils import add_error_reporting
 
 IS_TRAVIS = bool(os.environ.get("TRAVIS"))
 
 
+@add_error_reporting
 class TestProcesses(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):
-        Log.start()
+        logger.start()
 
     @classmethod
     def tearDownClass(cls):
-        Log.stop()
+        logger.stop()
 
     def test_exit(self):
         p = Process("waiting", [sys.executable, "-u", "tests/programs/exit_test.py"], debug=True)
@@ -52,9 +54,7 @@ class TestProcesses(FuzzyTestCase):
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
-    @skipIf(
-        IS_TRAVIS or IS_WINDOWS, "travis can not kill, Python can not send ctrl-c on Windows",
-    )
+    @skipIf(IS_TRAVIS or IS_WINDOWS, "travis can not kill, Python can not send ctrl-c on Windows")
     def test_sigint(self):
         """
         CAN WE CATCH A SIGINT?
@@ -70,6 +70,7 @@ class TestProcesses(FuzzyTestCase):
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
+    @skipIf(IS_TRAVIS or IS_WINDOWS, "Can not SIGINT on Windows or Travis")
     def test_no_sigint(self):
         """
         DO WE STILL EXIT WITHOUT SIGINT?

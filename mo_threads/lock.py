@@ -13,10 +13,9 @@
 
 
 from mo_future import allocate_lock as _allocate_lock, decorate
-from mo_logs import Log
+from mo_logs import logger
 
 from mo_threads.signals import Signal
-
 
 DEBUG = False
 
@@ -75,7 +74,7 @@ class Lock(object):
             (waiter | till).wait()
             self.debug and print(f"done minimum wait (for signal {till.name})")
         except Exception as cause:
-            Log.warning("problem", cause=cause)
+            logger.warning("problem", cause=cause)
         finally:
             self.lock.acquire()
             self.debug and print(f"re-acquired lock {self.name}")

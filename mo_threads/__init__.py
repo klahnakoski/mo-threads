@@ -10,7 +10,9 @@
 # THIS THREADING MODULE IS PERMEATED BY THE please_stop SIGNAL.
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
+from mo_imports import export
 
+from mo_threads import threads
 from mo_threads.futures import Future
 from mo_threads.lock import Lock
 from mo_threads.multiprocess import Process, Command
@@ -27,6 +29,9 @@ from mo_threads.threads import (
     start_main_thread,
 )
 from mo_threads.till import Till
+
+export("mo_threads.signals", threads)
+del threads
 
 
 def coverage_detector():

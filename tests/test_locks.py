@@ -11,15 +11,15 @@
 
 import gc
 import os
-import platform
 import threading
+from copy import copy
 from time import time
 
 import objgraph
 import psutil
 from mo_collections.queue import Queue
-from mo_future import allocate_lock as _allocate_lock, text, PY2, PY3
-from mo_logs import Log, machine_metadata
+from mo_future import allocate_lock as _allocate_lock
+from mo_logs import logger, machine_metadata
 from mo_math import randoms
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.timer import Timer
@@ -27,26 +27,29 @@ from mo_times.timer import Timer
 import mo_threads
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
 from mo_threads.busy_lock import BusyLock
+from mo_threads.threads import ALL, ALL_LOCK
 from tests import StructuredLogger_usingList
+from tests.utils import add_error_reporting
 
 USE_PYTHON_THREADS = False
 DEBUG_SHOW_BACKREFS = False
 
 
+@add_error_reporting
 class TestLocks(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):
-        Log.start({"trace": True, "cprofile": False})
+        logger.start({"trace": True, "cprofile": False})
 
     @classmethod
     def tearDownClass(cls):
-        Log.stop()
+        logger.stop()
 
     def setUp(self):
-        self.old, Log.main_log = Log.main_log, StructuredLogger_usingList()
+        self.old, logger.main_log = logger.main_log, StructuredLogger_usingList()
 
     def tearDown(self):
-        self.logs, Log.main_log = Log.main_log, self.old
+        self.logs, logger.main_log = logger.main_log, self.old
 
     def test_signal_is_not_null(self):
         a = Signal()
@@ -99,28 +102,23 @@ class TestLocks(FuzzyTestCase):
 
         Thread.run("empty", empty)
 
-        timer = Timer("add {{num}} to queue", param={"num": SCALE})
+        timer = Timer("add {num} to queue", param={"num": SCALE})
         with timer:
             for i in range(SCALE):
                 q.add(i)
             q.add(THREAD_STOP)
-            Log.note("Done insert")
+            logger.info("Done insert")
             done.wait()
 
-        Log.note(
-            "{{num}} items through queue in {{seconds|round(3)}} seconds", num=SCALE, seconds=timer.duration.seconds,
+        logger.info(
+            "{num} items through queue in {seconds|round(3)} seconds", num=SCALE, seconds=timer.duration.seconds,
         )
-        if PY2 and "windows" not in platform.system().lower():
-            expected_time = 15  # LINUX PY2 IS CRAZY SLOW
-        elif PY3 and "windows" not in platform.system().lower():
-            expected_time = 6  # LINUX PY3 IS SLOW
-        else:
-            expected_time = 6
+        expected_time = 6
         if test:
             self.assertLess(
                 timer.duration.seconds,
                 expected_time,
-                "Expecting queue to be fast, not " + text(timer.duration.seconds) + " seconds",
+                f"Expecting queue to be fast, not {timer.duration.seconds} seconds",
             )
 
     def test_lock_and_till(self):
@@ -129,17 +127,17 @@ class TestLocks(FuzzyTestCase):
         a_is_ready = Signal("a lock")
         b_is_ready = Signal("b lock")
 
-        Log.note("begin")
+        logger.info("begin")
 
         def loop(is_ready, please_stop):
             with locker:
                 while not got_signal:
                     locker.wait(till=Till(seconds=0.01))
                     is_ready.go()
-                    Log.note("{{thread}} is ready", thread=Thread.current().name)
-                Log.note("outside loop")
+                    logger.info("{thread} is ready", thread=Thread.current().name)
+                logger.info("outside loop")
                 locker.wait()
-                Log.note("thread is expected to get here")
+                logger.info("thread is expected to get here")
 
         thread_a = Thread.run("a", loop, a_is_ready).release()
         thread_b = Thread.run("b", loop, b_is_ready).release()
@@ -152,15 +150,15 @@ class TestLocks(FuzzyTestCase):
             while not thread_a.stopped:
                 # WE MUST CONTINUE TO USE THE locker TO ENSURE THE OTHER THREADS ARE NOT ORPHANED IN THERE
                 locker.wait(till=Till(seconds=0.1))
-                Log.note("wait for a thread")
+                logger.info("wait for a thread")
             while not thread_b.stopped:
                 # WE MUST CONTINUE TO USE THE locker TO ENSURE THE OTHER THREADS ARE NOT ORPHANED IN THERE
                 locker.wait(till=Till(seconds=0.1))
-                Log.note("wait for b thread")
+                logger.info("wait for b thread")
         thread_a.join()
         thread_b.join()
         if timeout:
-            Log.error("Took too long")
+            logger.error("Took too long")
 
         self.assertTrue(bool(thread_a.stopped), "Thread should be done by now")
         self.assertTrue(bool(thread_b.stopped), "Thread should be done by now")
@@ -178,9 +176,9 @@ class TestLocks(FuzzyTestCase):
         thread.join()
 
         self.assertGreater(
-            len(tills), 60000, "Till objects must be created faster: " + text(len(tills)) + " per second is too slow",
+            len(tills), 60000, f"Till objects must be created faster: {len(tills)} per second is too slow",
         )
-        Log.note("{{num}} new Tills in one second", num=len(tills))
+        logger.info("{num} new Tills in one second", num=len(tills))
 
     def test_till_in_loop(self):
         def loop(please_stop):
@@ -188,8 +186,8 @@ class TestLocks(FuzzyTestCase):
             while not please_stop:
                 (Till(seconds=0.001) | please_stop).wait()
                 counter += 1
-                Log.note("{{count}}", count=counter)
-            Log.note("loop done")
+                logger.info("{count}", count=counter)
+            logger.info("loop done")
 
         please_stop = Signal("please_stop")
         Thread.run("loop", loop, please_stop=please_stop)
@@ -197,10 +195,10 @@ class TestLocks(FuzzyTestCase):
         with please_stop.lock:
             q = please_stop.job_queue
             self.assertLessEqual(
-                0 if q is None else len(q), 1, "Expecting only one pending job on go, got " + text(len(q)),
+                0 if q is None else len(q), 1, f"Expecting only one pending job on go, got {len(q)}",
             )
         please_stop.go()
-        Log.note("test done")
+        logger.info("test done")
 
     def test_consistency(self):
         counter = [0]
@@ -211,7 +209,7 @@ class TestLocks(FuzzyTestCase):
                 with lock:
                     counter[0] += 1
 
-        threads = [Thread.run(text(i), adder) for i in range(50)]
+        threads = [Thread.run(str(i), adder) for i in range(50)]
         for t in threads:
             t.join()
 
@@ -223,17 +221,17 @@ class TestLocks(FuzzyTestCase):
         root = Signal()
         for i in range(100000):
             if i % 1000 == 0:
-                Log.note("at {{num}} tills", num=i)
+                logger.info("at {num} tills", num=i)
             root = root | Till(seconds=100000)
             mid_mem = psutil.Process(os.getpid()).memory_info().rss
             if mid_mem > 1000 * 1000 * 1000:
-                Log.note("{{num}} Till triggers created", num=i)
+                logger.info("{num} Till triggers created", num=i)
                 break
         trigger = Signal()
         root = root | trigger
 
         growth = objgraph.growth(limit=4)
-        growth and Log.note("More object\n{{growth}}", growth=growth)
+        growth and logger.info("More object\n{growth}", growth=growth)
 
         trigger.go()
         root.wait()  # THERE SHOULD BE NO DELAY HERE
@@ -242,33 +240,33 @@ class TestLocks(FuzzyTestCase):
             try:
                 Till(seconds=0.1).wait()  # LET TIMER DAEMON CLEANUP
                 current = [(t, objgraph.count(t), objgraph.count(t) - c) for t, c, d in growth]
-                Log.note("Object count\n{{current}}", current=current)
+                logger.info("Object count\n{current}", current=current)
 
                 # NUMBER OF OBJECTS CLEANED UP SHOULD BE SAME, OR BIGGER THAN NUMBER OF OBJECTS CREATED
                 for (_, _, cd), (_, gt, gd) in zip(current, growth):
                     self.assertGreater(-cd, gd)
                 return
             except Exception as cause:
-                Log.note("problem: {{cause}}", cause=cause)
-        Log.error("object counts did not go down")
+                logger.info("problem: {cause}", cause=cause)
+        logger.error("object counts did not go down")
 
     def test_job_queue_in_signal(self):
 
         gc.collect()
         start_mem = psutil.Process(os.getpid()).memory_info().rss
-        Log.note("Start memory {{mem|comma}}", mem=start_mem)
+        logger.info("Start memory {mem|comma}", mem=start_mem)
 
         main = Signal()
         result = [main | Signal() for _ in range(10000)]
 
         mid_mem = psutil.Process(os.getpid()).memory_info().rss
-        Log.note("Mid memory {{mem|comma}}", mem=mid_mem)
+        logger.info("Mid memory {mem|comma}", mem=mid_mem)
 
         del result
         gc.collect()
 
         end_mem = psutil.Process(os.getpid()).memory_info().rss
-        Log.note("End memory {{mem|comma}}", mem=end_mem)
+        logger.info("End memory {mem|comma}", mem=end_mem)
 
         main.go()  # NOT NEEDED, BUT INTERESTING
 
@@ -289,7 +287,7 @@ class TestLocks(FuzzyTestCase):
         NUM_CYCLES = 100
         gc.collect()
         start_mem = psutil.Process(os.getpid()).memory_info().rss
-        Log.note("Start memory {{mem|comma}}", mem=start_mem)
+        logger.info("Start memory {mem|comma}", mem=start_mem)
 
         queue = mo_threads.Queue("", max=1000000)
 
@@ -297,30 +295,33 @@ class TestLocks(FuzzyTestCase):
             while not please_stop:
                 v = queue.pop(till=please_stop)
                 if randoms.int(1000) == 0:
-                    Log.note("got " + v)
+                    logger.info("got " + v)
 
         def _producer(t, please_stop=None):
             for i in range(2):
                 queue.add(str(t) + ":" + str(i))
                 Till(seconds=0.01).wait()
 
-        consumer = Thread.run("", _consumer)
+        consumer = Thread.run("consumer", _consumer)
 
         objgraph.growth(limit=None)
 
         no_change = 0
         for g in range(NUM_CYCLES):
             mid_mem = psutil.Process(os.getpid()).memory_info().rss
-            Log.note("{{group}} memory {{mem|comma}}", group=g, mem=mid_mem)
+            logger.info("{group} memory {mem|comma}", group=g, mem=mid_mem)
             if USE_PYTHON_THREADS:
                 threads = [threading.Thread(target=_producer, args=(i,)) for i in range(500)]
                 for t in threads:
                     t.start()
             else:
-                threads = [Thread.run("", _producer, i) for i in range(500)]
+                threads = [Thread.run(f"producer-{i}", _producer, i) for i in range(500)]
 
-            for t in threads:
-                t.join()
+            Thread.join_all(threads)
+            with ALL_LOCK:
+                residue = copy(ALL)
+            if any(t.ident in residue for t in threads):
+                logger.error("Threads still running: {residue}", residue=residue)
             del threads
 
             gc.collect()
@@ -330,13 +331,13 @@ class TestLocks(FuzzyTestCase):
             else:
                 if DEBUG_SHOW_BACKREFS:
                     for typ, count, delta in results:
-                        Log.note("%-*s%9d %+9d\n" % (18, typ, count, delta))
+                        logger.info("%-*s%9d %+9d\n" % (18, typ, count, delta))
                         obj_list = objgraph.by_type(typ)
                         if obj_list:
                             obj = obj_list[-1]
                             objgraph.show_backrefs(obj, max_depth=10)
                 else:
-                    Log.note("growth = \n{{results}}", results=results)
+                    logger.info("growth = \n{results}", results=results)
 
         consumer.please_stop.go()
         consumer.join()
