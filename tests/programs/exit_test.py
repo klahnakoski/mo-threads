@@ -11,21 +11,21 @@
 ###############################################################################
 
 
-from mo_logs import Log
+from mo_logs import logger
 
 from mo_threads import Thread, Till, wait_for_shutdown_signal
 
 
 def timeout(please_stop):
-    Log.note("begin waiting")
+    logger.info("begin waiting")
     (Till(seconds=10) | please_stop).wait()
     if please_stop:
-        Log.note("EXIT DETECTED")
+        logger.info("EXIT DETECTED")
     else:
-        Log.note("timeout detected")
+        logger.info("timeout detected")
 
 
-Log.start(settings={"trace": True})
+logger.start(settings={"trace": True})
 
 Thread.run("timeout", target=timeout).release()
 
@@ -33,4 +33,4 @@ Thread.run("timeout", target=timeout).release()
 try:
     wait_for_shutdown_signal(allow_exit=True, wait_forever=False)
 except Exception as cause:
-    Log.error("can not wait", cause=cause)
+    logger.error("can not wait", cause=cause)

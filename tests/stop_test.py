@@ -13,7 +13,7 @@
 ###############################################################################
 
 
-from mo_logs import Log
+from mo_logs import logger
 
 from mo_threads import Signal, Thread, stop_main_thread, wait_for_shutdown_signal
 from mo_threads.till import Till
@@ -28,5 +28,5 @@ def timeout(please_stop):
 
 Thread.run("timeout", target=timeout, please_stop=please_stop)
 
-Log.note("test if sys.exit() will send TERM signal")
+logger.info("test if sys.exit() will send TERM signal")
 wait_for_shutdown_signal(allow_exit=False, wait_forever=True, please_stop=please_stop)

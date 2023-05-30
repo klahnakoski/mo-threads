@@ -11,19 +11,17 @@
 import cProfile
 import pstats
 
-
-from mo_logs import Log
+from mo_logs import logger
 from mo_times import Date
 
 from mo_threads.profile_utils import stats2tab
 from mo_threads.queues import Queue
 from mo_threads.threads import ALL_LOCK, ALL, Thread
 
-
 try:
     from mo_files import File
 except ImportError:
-    raise Log.error("please `pip install mo-files` to use profiling")
+    raise logger.error("please `pip install mo-files` to use profiling")
 
 
 DEBUG = False
@@ -51,7 +49,7 @@ class CProfiler(object):
     def __enter__(self):
         global cprofiler_stats
 
-        DEBUG and Log.note("starting cprofile")
+        DEBUG and logger.info("starting cprofile")
         if not cprofiler_stats:
             enable_profilers()
         self.cprofiler.enable()
@@ -60,7 +58,7 @@ class CProfiler(object):
         self.cprofiler.disable()
         cprofiler_stats.add(pstats.Stats(self.cprofiler))
         del self.cprofiler
-        DEBUG and Log.note("done cprofile")
+        DEBUG and logger.info("done cprofile")
 
     def enable(self):
         return self.cprofiler.enable()
@@ -86,11 +84,11 @@ def enable_profilers(filename=None):
     for t in threads:
         t.cprofiler = CProfiler()
         if t is current_thread:
-            DEBUG and Log.note("starting cprofile for thread {{name}}", name=t.name)
+            DEBUG and logger.info("starting cprofile for thread {name}", name=t.name)
             t.cprofiler.__enter__()
         else:
-            DEBUG and Log.note(
-                "cprofiler not started for thread {{name}} (already running)", name=t.name,
+            DEBUG and logger.info(
+                "cprofiler not started for thread {name} (already running)", name=t.name,
             )
 
 
@@ -99,7 +97,7 @@ def write_profiles(main_thread_profile=None):
         cprofiler_stats.add(pstats.Stats(main_thread_profile.cprofiler))
     stats = cprofiler_stats.pop_all()
 
-    DEBUG and Log.note("aggregating {{num}} profile stats", num=len(stats))
+    DEBUG and logger.info("aggregating {num} profile stats", num=len(stats))
     acc = stats[0]
     for s in stats[1:]:
         acc.add(s)
@@ -108,4 +106,4 @@ def write_profiles(main_thread_profile=None):
 
     stats_file = File(FILENAME).add_suffix(Date.now().format("_%Y%m%d_%H%M%S"))
     stats_file.write(tab)
-    DEBUG and Log.note("profile written to {{filename}}", filename=stats_file.abs_path)
+    DEBUG and logger.info("profile written to {filename}", filename=stats_file.abs_path)

@@ -9,20 +9,22 @@
 #
 
 
-from mo_logs import Log
+from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
 from mo_threads.python import Python
+from mo_testing import add_error_reporting
 
 
+@add_error_reporting
 class TestLocks(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):
-        Log.start({"trace": True})
+        logger.start({"trace": True})
 
     @classmethod
     def tearDownClass(cls):
-        Log.stop()
+        logger.stop()
 
     def test_stop(self):
         p = Python("test_stop", {})

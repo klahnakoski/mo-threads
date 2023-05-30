@@ -13,24 +13,24 @@
 ###############################################################################
 
 
-from mo_logs import Log
+from mo_logs import logger
 
 from mo_threads import Thread, Till, wait_for_shutdown_signal
 
 
 def timeout(please_stop):
-    Log.note("timout waiting")
+    logger.info("timout waiting")
     (Till(seconds=20) | please_stop).wait()
     if please_stop:
-        Log.note("EXIT DETECTED")
+        logger.info("EXIT DETECTED")
     else:
-        Log.note("timeout detected")
+        logger.info("timeout detected")
 
 
 Thread.run("timeout", target=timeout)
 
-Log.note("you must type 'exit', and press Enter, or wait 20seconds")
+logger.info("you must type 'exit', and press Enter, or wait 20seconds")
 try:
     wait_for_shutdown_signal(allow_exit=True, wait_forever=False)
 except Exception as cause:
-    Log.error("can not wait", cause=cause)
+    logger.error("can not wait", cause=cause)

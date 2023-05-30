@@ -12,8 +12,8 @@ from copy import copy
 
 from mo_dots import is_list, to_data
 from mo_dots import listwrap, coalesce
-from mo_future import is_text, text
-from mo_logs import Log, constants, Except
+from mo_future import is_text
+from mo_logs import logger, constants, Except
 from mo_logs.log_usingNothing import StructuredLogger
 
 from mo_threads import Signal
@@ -36,7 +36,7 @@ please_stop = Signal()
 def command_loop(local):
     STDOUT.write(b'{"out":"ok"}\n')
     STDOUT.flush()
-    DEBUG and Log.note("python process running")
+    DEBUG and logger.info("python process running")
 
     while not please_stop:
         line = STDIN.readline().decode("utf8").strip()
@@ -44,7 +44,7 @@ def command_loop(local):
             continue
         try:
             command = json2value(line)
-            DEBUG and Log.note("got {{command}}", command=command)
+            DEBUG and logger.info("got {command}", command=command)
 
             if "import" in command:
                 dummy = {}
@@ -78,7 +78,7 @@ def command_loop(local):
                 please_stop.go()
             elif "exec" in command:
                 if not is_text(command["exec"]):
-                    Log.error("exec expects only text")
+                    logger.error("exec expects only text")
                 exec(command["exec"], context, local)
                 STDOUT.write(DONE)
             else:
@@ -110,7 +110,7 @@ num_temps = 0
 def temp_var():
     global num_temps
     try:
-        return "temp_var" + text(num_temps)
+        return f"temp_var{num_temps}"
     finally:
         num_temps += 1
 
@@ -126,13 +126,13 @@ def start():
         line = STDIN.readline().decode("utf8")
         config = to_data(json2value(line))
         constants.set(config.constants)
-        Log.start(config.debug)
-        Log.set_logger(RawLogger())
+        logger.start(config.debug)
+        logger.set_logger(RawLogger())
         command_loop({"config": config})
     except Exception as e:
-        Log.error("problem staring worker", cause=e)
+        logger.error("problem staring worker", cause=e)
     finally:
-        Log.stop()
+        logger.stop()
 
 
 if __name__ == "__main__":

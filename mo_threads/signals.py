@@ -16,22 +16,26 @@ from weakref import ref
 
 from mo_dots import is_null
 from mo_future import allocate_lock as _allocate_lock
-from mo_logs import Log, Except
+from mo_imports import expect
+from mo_logs import logger, Except
 from mo_logs.exceptions import get_stacktrace
+
+current_thread, threads = expect("current_thread", "threads")
+
 
 DEBUG = False
 TRACE_THEN = False  # GRAB STACK TRACE OF then() CALL FOR BLAME
 
 
 def standard_warning(cause):
-    Log.warning(
+    logger.warning(
         "Trigger on Signal.go() failed, and no error function provided!", cause=cause, stack_depth=1,
     )
 
 
 def debug_warning(stacktrace):
     def warning(cause):
-        Log.warning(
+        logger.warning(
             "Trigger on Signal.go() failed, and no error function provided!",
             cause=[cause, Except(template="attached at", trace=stacktrace)],
             stack_depth=1,
@@ -52,7 +56,7 @@ class Signal(object):
     __slots__ = ["_name", "lock", "_go", "job_queue", "waiting_threads", "__weakref__"]
 
     def __init__(self, name=None):
-        DEBUG and name and Log.note("New signal {{name|quote}}", name=name)
+        DEBUG and name and logger.info("New signal {name|quote}", name=name)
         self._name = name
         self.lock = _allocate_lock()
         self._go = False
@@ -77,6 +81,10 @@ class Signal(object):
         if self._go:
             return True
 
+        if DEBUG:
+            if threads.MAIN_THREAD.timers == current_thread():
+                logger.error("Deadlock detected", stack_depth=1)
+
         with self.lock:
             if self._go:
                 return True
@@ -87,16 +95,16 @@ class Signal(object):
             else:
                 self.waiting_threads.append(stopper)
 
-        DEBUG and self._name and Log.note("wait for go {{name|quote}}", name=self.name)
+        DEBUG and self._name and logger.info("wait for go {name|quote}", name=self.name)
         stopper.acquire()
-        DEBUG and self._name and Log.note("GOing! {{name|quote}}", name=self.name)
+        DEBUG and self._name and logger.info("GOing! {name|quote}", name=self.name)
         return True
 
     def go(self):
         """
         ACTIVATE SIGNAL (DOES NOTHING IF SIGNAL IS ALREADY ACTIVATED)
         """
-        DEBUG and self._name and Log.note("GO! {{name|quote}}", name=self.name)
+        DEBUG and self._name and logger.info("GO! {name|quote}", name=self.name)
 
         if self._go:
             return self
@@ -106,12 +114,12 @@ class Signal(object):
                 return self
             self._go = True
 
-        DEBUG and self._name and Log.note("internal GO! {{name|quote}}", name=self.name)
+        DEBUG and self._name and logger.info("internal GO! {name|quote}", name=self.name)
         jobs, self.job_queue = self.job_queue, None
         threads, self.waiting_threads = self.waiting_threads, None
 
         if threads:
-            DEBUG and self._name and Log.note("Release {{num}} threads", num=len(threads))
+            DEBUG and self._name and logger.info("Release {num} threads", num=len(threads))
             for t in threads:
                 t.release()
 
@@ -125,13 +133,14 @@ class Signal(object):
 
     def then(self, target, error=standard_warning):
         """
+        WARNING: THIS IS RUN BY THE timer THREAD, KEEP THIS FUNCTION SHORT, AND DO NOT BLOCK
         RUN target WHEN SIGNALED
         """
         if DEBUG:
             if not target:
-                Log.error("expecting target")
+                logger.error("expecting target")
             if isinstance(target, Signal):
-                Log.error("expecting a function, not a signal")
+                logger.error("expecting a function, not a signal")
 
         with self.lock:
             if not self._go:
@@ -185,7 +194,7 @@ class Signal(object):
         if other is True:
             return DONE
         if not isinstance(other, Signal):
-            Log.error("Expecting OR with other signal")
+            logger.error("Expecting OR with other signal")
         if self or other:
             return DONE
 
@@ -201,7 +210,7 @@ class Signal(object):
         if other is True:
             return self
         if not isinstance(other, Signal):
-            Log.error("Expecting OR with other signal")
+            logger.error("Expecting OR with other signal")
 
         if DEBUG and self._name:
             output = Signal(self.name + " & " + other.name)

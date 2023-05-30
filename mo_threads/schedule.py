@@ -9,11 +9,11 @@
 
 
 from mo_dots import Data, coalesce
-from mo_future import text
 from mo_kwargs import override
-from mo_logs import Log
-from mo_threads import Thread, Till, Process
+from mo_logs import logger
 from mo_times import Duration, Date
+
+from mo_threads import Thread, Till, Process
 
 MAX_RUNTIME = "hour"
 WAIT_FOR_SHUTDOWN = "5minute"
@@ -92,7 +92,7 @@ class Schedule(object):
         elif self.current.returncode == 0:
             status = "done"
         else:
-            status = "failed " + text(self.current.returncode)
+            status = f"failed {self.current.returncode}"
 
         return Data(
             name=self.name,
@@ -108,11 +108,11 @@ def monitor(please_stop=True):
         if not schedules:
             (Till(seconds=NO_JOB_WAITING_TIME) | please_stop).wait()
             continue
-        Log.note(
-            "Currently scheduled jobs:\n {{jobs|json|indent}}", jobs=[s.status() for s in schedules],
+        logger.info(
+            "Currently scheduled jobs:\n {jobs|json|indent}", jobs=[s.status() for s in schedules],
         )
         (Till(seconds=JOBS_WAITING_TIME) | please_stop).wait()
 
 
-Log.alert("Job scheduler started...")
+logger.alert("Job scheduler started...")
 Thread.run("Monitor scheduled tasks", monitor)

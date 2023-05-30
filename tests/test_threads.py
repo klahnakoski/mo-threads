@@ -7,27 +7,29 @@
 #
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
+import threading
 
-
-from mo_future import text
-from mo_logs import Log
+from mo_future import start_new_thread
+from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.dates import Date
 from mo_times.durations import SECOND
 
-from mo_threads import Lock, Thread, Signal, Till, till, threads, start_main_thread, DONE
-from mo_threads.signals import NEVER
+from mo_threads import Lock, Thread, Signal, Till, till, threads, start_main_thread, DONE, signals
+from mo_threads.signals import NEVER, current_thread
 from mo_threads.threads import wait_for_shutdown_signal, stop_main_thread
 from tests import StructuredLogger_usingList
+from mo_testing import add_error_reporting
 
 
+@add_error_reporting
 class TestThreads(FuzzyTestCase):
     def setUp(self):
-        old_log, Log.main_log = Log.main_log, StructuredLogger_usingList()
+        old_log, logger.main_log = logger.main_log, StructuredLogger_usingList()
         old_log.stop()
 
     def tearDown(self):
-        Log.stop()
+        logger.stop()
 
     def test_lock_wait_timeout(self):
         locker = Lock("test")
@@ -54,7 +56,7 @@ class TestThreads(FuzzyTestCase):
                 phase2.append(value)
 
         with locker:
-            threads = [Thread.run(text(i), work, i) for i in range(NUM)]
+            threads = [Thread.run(f"{i}", work, i) for i in range(NUM)]
 
         # CONTINUE TO USE THE locker SO WAITS GET TRIGGERED
 
@@ -64,11 +66,11 @@ class TestThreads(FuzzyTestCase):
         for t in threads:
             t.join()
 
-        self.assertEqual(len(phase1), NUM, "expecting " + text(NUM) + " items")
-        self.assertEqual(len(phase2), NUM, "expecting " + text(NUM) + " items")
+        self.assertEqual(len(phase1), NUM, f"expecting {NUM} items")
+        self.assertEqual(len(phase2), NUM, f"expecting {NUM} items")
         for i in range(NUM):
-            self.assertTrue(i in phase1, "expecting " + text(i))
-            self.assertTrue(i in phase2, "expecting " + text(i))
+            self.assertTrue(i in phase1, f"expecting {i}")
+            self.assertTrue(i in phase2, f"expecting {i}")
 
     def test_thread_wait_till(self):
         phase1 = []
@@ -120,7 +122,7 @@ class TestThreads(FuzzyTestCase):
         # We expect 10, but 9 is good enough
         num = len(acc)
         self.assertGreater(
-            num, 9, "Expecting some reasonable number of entries to prove there was looping, not " + text(num),
+            num, 9, "Expecting some reasonable number of entries to prove there was looping, not {num}",
         )
 
     def test_or_signal_timeout(self):
@@ -199,7 +201,7 @@ class TestThreads(FuzzyTestCase):
 
         start_main_thread()
         list_log = StructuredLogger_usingList()
-        old_log, Log.main_log = Log.main_log, list_log
+        old_log, logger.main_log = logger.main_log, list_log
         old_log.stop()
 
         Thread.run("test_failure_during_wait_for_shutdown", bad_worker)
@@ -221,6 +223,53 @@ class TestThreads(FuzzyTestCase):
         a = Signal()
         self.assertIs(NEVER, a & False)
         self.assertIs(a, a & True)
+
+    def test_blocking_then(self):
+        signals.DEBUG, old_value = True, signals.DEBUG
+        try:
+            def blocking_function():
+                return Till(seconds=0.1).wait()
+
+            Till(seconds=0.1).then(blocking_function).wait()
+            self.assertTrue(any("Deadlock detected" in line for line in logger.main_log.lines))
+        finally:
+            signals.DEBUG = old_value
+
+    def test_threading_thread(self):
+        """
+        Test that we can get the threading name
+        """
+        ready = Signal("ready")
+        name = []
+
+        def worker():
+            this = current_thread()
+            name.append(this.name)
+            ready.go()
+
+        threading.Thread(name="test thread", target=worker).start()
+        ready.wait()
+        self.assertEqual(name, ["test thread"])
+
+    def test_alien_thread(self):
+        """
+        Test that we can get the threading name
+        """
+        ready = Signal("ready")
+        name = []
+
+        def worker():
+            this = current_thread()
+            name.append(this.name)
+            ready.go()
+
+        start_new_thread(worker, ())
+        ready.wait()
+        print(name[0])
+        self.assertTrue(
+            name[0].startswith("Dummy-")  # pycharm debugger
+            or name[0].startswith("Unknown Thread")  # regular run
+        )
 
 
 def bad_worker(please_stop):
