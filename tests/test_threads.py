@@ -19,7 +19,7 @@ from mo_threads import Lock, Thread, Signal, Till, till, threads, start_main_thr
 from mo_threads.signals import NEVER, current_thread
 from mo_threads.threads import wait_for_shutdown_signal, stop_main_thread
 from tests import StructuredLogger_usingList
-from mo_testing import add_error_reporting
+from tests.utils import add_error_reporting
 
 
 @add_error_reporting

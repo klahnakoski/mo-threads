@@ -29,7 +29,7 @@ import mo_threads
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
 from mo_threads.busy_lock import BusyLock
 from tests import StructuredLogger_usingList
-from mo_testing import add_error_reporting
+from tests.utils import add_error_reporting
 
 USE_PYTHON_THREADS = False
 DEBUG_SHOW_BACKREFS = False

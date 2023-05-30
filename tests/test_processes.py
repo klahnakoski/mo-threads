@@ -17,7 +17,7 @@ from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_threads import Process
 from mo_threads import Till
 from tests import IS_WINDOWS
-from mo_testing import add_error_reporting
+from tests.utils import add_error_reporting
 
 IS_TRAVIS = bool(os.environ.get("TRAVIS"))
 

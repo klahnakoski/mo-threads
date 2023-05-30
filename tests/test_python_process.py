@@ -13,7 +13,7 @@ from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
 from mo_threads.python import Python
-from mo_testing import add_error_reporting
+from tests.utils import add_error_reporting
 
 
 @add_error_reporting
