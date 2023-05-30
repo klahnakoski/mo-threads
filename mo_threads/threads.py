@@ -33,7 +33,7 @@ from mo_logs.exceptions import ERROR
 from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till, TIMERS_NAME
 
-DEBUG = True
+DEBUG = False
 
 PLEASE_STOP = "please_stop"  # REQUIRED thread PARAMETER TO SIGNAL STOP
 PARENT_THREAD = "parent_thread"  # OPTIONAL PARAMETER TO ASSIGN THREAD TO SOMETHING OTHER THAN CURRENT THREAD
@@ -131,6 +131,7 @@ class MainThread(BaseThread):
     def __init__(self):
         BaseThread.__init__(self, get_ident(), "Main Thread")
         self.please_stop = Signal()
+        self.stopped = Signal()
         self.stop_logging = logger.stop
         self.timers = None
         self.shutdown_locker = allocate_lock()
@@ -223,11 +224,13 @@ class Thread(BaseThread):
             self.please_stop = self.kwargs[PLEASE_STOP] = Signal(f"please_stop for {self.name}")
         self.thread = None
         self.joiner_is_waiting = Signal(f"joining with {self.name}")
-        if parent_thread is None:  # IMPORTANT, USE Null FOR ORPHANS
+        self.stopped = Signal(f"stopped signal for {self.name}")
+
+        if parent_thread is not None:  # IMPORTANT, USE Null FOR ORPHANS
+            self.parent = parent_thread
+        else:
             self.parent = current_thread()
             self.parent.add_child(self)
-        else:
-            self.parent = parent_thread
 
     def __enter__(self):
         return self
