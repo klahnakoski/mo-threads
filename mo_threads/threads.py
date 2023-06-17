@@ -58,17 +58,39 @@ except Exception:
     STDIN = sys.stdin
 
 
+if sys.version_info[1] > 9:
+
+    def is_daemon(thread):
+        return thread.daemon
+
+
+else:
+
+    def is_daemon(thread):
+        return thread.isDaemon()
+
+
 class BaseThread(object):
-    __slots__ = ["_ident", "name", "children", "child_locker", "parent_thread", "cprofiler", "trace_func"]
+    __slots__ = [
+        "_ident",
+        "name",
+        "child_locker",
+        "children",
+        "parent_thread",
+        "cprofiler",
+        "trace_func",
+        "additional_info",
+    ]
 
     def __init__(self, ident, name):
         self._ident = ident
         self.name = name or f"Unknown Thread {ident or ''}"
         self.child_locker = allocate_lock()
         self.children = []
+        self.parent_thread = None
         self.cprofiler = None
         self.trace_func = sys.gettrace()
-        self.parent_thread = None
+        self.additional_info = Data()
 
     @property
     def id(self):
@@ -108,7 +130,7 @@ class BaseThread(object):
         if not thread:
             raise Exception("Thread has no join method")
         try:
-            if not thread.isDaemon():
+            if not is_daemon(thread):
                 while not till and thread.is_alive():
                     thread.join(1.0)
                     sys.stderr.write(f"waiting for {thread.name}")
@@ -313,9 +335,7 @@ class Thread(BaseThread):
                 # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
                 try:
                     logger.error(
-                        "Problem in thread {name|quote}",
-                        name=self.name,
-                        cause=self.end_of_thread.exception,
+                        "Problem in thread {name|quote}", name=self.name, cause=self.end_of_thread.exception,
                     )
                 except Exception as cause:
                     sys.stderr.write(f"ERROR in thread: {self.name} {cause}\n")
@@ -407,7 +427,7 @@ class Thread(BaseThread):
         return False
 
     def isDaemon(self):
-        return self.daemon
+        return False
 
     def getName(self):
         return self.name
@@ -646,6 +666,7 @@ def start_main_thread():
             if DEBUG:
                 from mo_files import File
                 from mo_json import value2json
+
                 File("all_thread.json").write(value2json([(t.name, t.id) for t in ALL_THREAD], pretty=True))
             raise Exception(f"expecting no threads {names}")
 
