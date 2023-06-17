@@ -218,7 +218,7 @@ class Queue(object):
                     if self.closed:
                         break
                     return None
-        (DEBUG or not self.silent) and logger.info(self.name + " queue closed")
+        (DEBUG or not self.silent) and logger.info("{name} queue closed", name=self.name)
         return THREAD_STOP
 
     def pop_all(self):

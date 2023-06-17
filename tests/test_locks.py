@@ -295,7 +295,7 @@ class TestLocks(FuzzyTestCase):
             while not please_stop:
                 v = queue.pop(till=please_stop)
                 if randoms.int(1000) == 0:
-                    logger.info("got " + v)
+                    logger.info("got {v}", v=v)
 
         def _producer(t, please_stop=None):
             for i in range(2):

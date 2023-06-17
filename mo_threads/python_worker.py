@@ -12,7 +12,6 @@ from copy import copy
 
 from mo_dots import is_list, to_data
 from mo_dots import listwrap, coalesce
-from mo_future import is_text
 from mo_logs import logger, constants, Except
 from mo_logs.log_usingNothing import StructuredLogger
 
@@ -48,7 +47,7 @@ def command_loop(local):
 
             if "import" in command:
                 dummy = {}
-                if is_text(command["import"]):
+                if isinstance(command["import"], str):
                     exec("from " + command["import"] + " import *", dummy, context)
                 else:
                     exec(
@@ -77,7 +76,7 @@ def command_loop(local):
                 STDOUT.write(DONE)
                 please_stop.go()
             elif "exec" in command:
-                if not is_text(command["exec"]):
+                if not isinstance(command["exec"], str):
                     logger.error("exec expects only text")
                 exec(command["exec"], context, local)
                 STDOUT.write(DONE)

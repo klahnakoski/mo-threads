@@ -16,7 +16,7 @@ from json import dumps as value2json, loads as json2value
 from mo_dots import to_data, from_data
 from mo_logs import Except, logger
 
-from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, DONE
+from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, DONE, python_worker
 
 DEBUG = False
 
@@ -31,18 +31,21 @@ class Python(object):
         logger.info("begin process")
         # WINDOWS REQUIRED shell, WHILE LINUX NOT
         shell = "windows" in platform.system().lower()
+        python_worker_file = os.path.abspath(python_worker.__file__)
         self.process = Process(
-            name, [python_exe, "-u", f"mo_threads{os.sep}python_worker.py"], debug=DEBUG, cwd=os.getcwd(), shell=shell,
+            name, [python_exe, "-u", python_worker_file], debug=DEBUG, cwd=os.getcwd(), shell=shell,
         )
         self.process.stdin.add(value2json(from_data(
             config
             | {
                 "debug": {"trace": True},
-                "constants": {"mo_threads": {"signals": {"DEBUG": False}, "lock": {"DEBUG": False},}},
+                "constants": {"mo_threads": {"signals": {"DEBUG": False}, "lock": {"DEBUG": False}}},
             }
         )))
         while True:
             line = self.process.stdout.pop()
+            if line == THREAD_STOP:
+                logger.error("problem starting python process: STOP detected on stdout")
             if line == '{"out":"ok"}':
                 break
             logger.info("waiting to start python: {line}", line=line)

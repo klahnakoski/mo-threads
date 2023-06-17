@@ -13,7 +13,7 @@ def add_error_reporting(suite):
             except SkipTest as cause:
                 raise cause
             except Exception as cause:
-                Log.warning(f"{test_name} failed", cause)
+                Log.warning("{test_name} failed", test_name=test_name, cause=cause)
                 raise cause
 
         return error_hanlder
