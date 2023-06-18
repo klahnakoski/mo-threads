@@ -28,7 +28,7 @@ class Python(object):
         if config.debug.logs:
             logger.error("not allowed to configure logging on other process")
 
-        logger.info("begin process")
+        logger.info("begin process in dir={dir}", dir=os.getcwd())
         # WINDOWS REQUIRED shell, WHILE LINUX NOT
         shell = "windows" in platform.system().lower()
         python_worker_file = os.path.abspath(python_worker.__file__)
@@ -88,10 +88,16 @@ class Python(object):
                 break
             elif not line:
                 continue
+
             try:
                 data = to_data(json2value(line))
+            except Exception as cause:
+                logger.info("non-json line: {line}", line=line)
+                continue
+
+            try:
                 if "log" in data:
-                    logger.main_log.write(*data.log)
+                    logger.main_log.write(**data.log)
                 elif "out" in data:
                     self.response = data.out
                     self.done.go()
@@ -99,7 +105,7 @@ class Python(object):
                     self.error = data.err
                     self.done.go()
             except Exception as cause:
-                logger.info("non-json line: {line}", line=line)
+                logger.error("unexpected problem", cause=cause)
         DEBUG and logger.info("stdout reader is done")
 
     def _watch_stderr(self, please_stop):

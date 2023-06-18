@@ -15,10 +15,11 @@
 import signal as _signal
 import sys
 import threading
+from collections import namedtuple
 from datetime import datetime, timedelta
 from time import sleep
 
-from mo_dots import Data, unwraplist, Null
+from mo_dots import unwraplist, Null
 from mo_future import (
     allocate_lock,
     get_function_name,
@@ -90,7 +91,7 @@ class BaseThread(object):
         self.parent_thread = None
         self.cprofiler = None
         self.trace_func = sys.gettrace()
-        self.additional_info = Data()
+        self.additional_info = None  # FOR DEBUGGING
 
     @property
     def id(self):
@@ -108,7 +109,7 @@ class BaseThread(object):
         if DEBUG:
             if child.name == TIMERS_NAME:
                 logger.error("timer thread should not be added as child")
-            logger.info(f"adding child {child.name} to {self.name}")
+            logger.info("adding child {child} to {parent}", child=child.name, parent=self.name)
 
         with self.child_locker:
             self.children.append(child)
@@ -215,6 +216,9 @@ class MainThread(BaseThread):
         return self
 
 
+EndOfThread = namedtuple("EndOfThread", ["response", "exception"])
+
+
 class Thread(BaseThread):
     """
     join() ENHANCED TO ALLOW CAPTURE OF CTRL-C, AND RETURN POSSIBLE THREAD EXCEPTIONS
@@ -224,7 +228,7 @@ class Thread(BaseThread):
     def __init__(self, name, target, *args, parent_thread=None, **kwargs):
         BaseThread.__init__(self, 0, name or f"thread_{object.__hash__(self)}")
         self.target = target
-        self.end_of_thread = Data()
+        self.end_of_thread = None
         self.args = args
 
         # ENSURE THERE IS A SHARED please_stop SIGNAL
@@ -268,33 +272,30 @@ class Thread(BaseThread):
         """
         SEND STOP SIGNAL, DO NOT BLOCK
         """
-        try:
-            with self.child_locker:
-                children = list(self.children)
-            for c in children:
-                DEBUG and c.name and logger.note("Stopping thread {name|quote}", name=c.name)
-                c.stop()
-            self.please_stop.go()
+        with self.child_locker:
+            children = list(self.children)
+        for c in children:
+            DEBUG and c.name and logger.note("Stopping thread {name|quote}", name=c.name)
+            c.stop()
+        self.please_stop.go()
 
-            DEBUG and logger.note("Thread {name|quote} got request to stop", name=self.name)
-            return self
-        except Exception as cause:
-            self.end_of_thread.exception = cause
+        DEBUG and logger.note("Thread {name|quote} got request to stop", name=self.name)
+        return self
 
     def is_alive(self):
         return not self.stopped
 
     def _run(self):
         self._ident = get_ident()
-        try:
-            with RegisterThread(self):
+        with RegisterThread(self):
+            try:
                 try:
                     if self.target is not None:
                         a, k, self.args, self.kwargs = self.args, self.kwargs, None, None
-                        self.end_of_thread.response = self.target(*a, **k)
+                        self.end_of_thread = EndOfThread(self.target(*a, **k), None)
                 except Exception as cause:
                     cause = Except.wrap(cause)
-                    self.end_of_thread.exception = cause
+                    self.end_of_thread = EndOfThread(None, cause)
                     with self.parent.child_locker:
                         emit_problem = self not in self.parent.children
                     if emit_problem:
@@ -319,34 +320,38 @@ class Thread(BaseThread):
                         DEBUG and logger.warning("problem with thread {name|quote}", cause=cause, name=self.name)
                     finally:
                         self.stopped.go()
-        finally:
-            if not self.joiner_is_waiting:
-                DEBUG and logger.note("thread {name|quote} is done, wait for join", name=self.name)
-                # WHERE DO WE PUT THE THREAD RESULT?
-                # IF NO THREAD JOINS WITH THIS, THEN WHAT DO WE DO WITH THE RESULT?
-                # HOW LONG DO WE WAIT FOR ANOTHER TO ACCEPT THE RESULT?
-                #
-                # WAIT 60seconds, THEN SEND RESULT TO LOGGER
-                (Till(seconds=60) | self.joiner_is_waiting).wait()
-            if self.joiner_is_waiting:
-                return
+            finally:
+                if not self.joiner_is_waiting:
+                    DEBUG and logger.note("thread {name|quote} is done, wait for join", name=self.name)
+                    # WHERE DO WE PUT THE THREAD RESULT?
+                    # IF NO THREAD JOINS WITH THIS, THEN WHAT DO WE DO WITH THE RESULT?
+                    # HOW LONG DO WE WAIT FOR ANOTHER TO ACCEPT THE RESULT?
+                    #
+                    # WAIT 60seconds, THEN SEND RESULT TO LOGGER
+                    (Till(seconds=60) | self.joiner_is_waiting).wait()
+                if self.joiner_is_waiting:
+                    return
 
-            if self.end_of_thread.exception:
-                # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
-                try:
-                    logger.error(
-                        "Problem in thread {name|quote}", name=self.name, cause=self.end_of_thread.exception,
+                eot = self.end_of_thread
+                exp = eot.exception
+                if exp:
+                    # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
+                    try:
+                        logger.error(
+                            "Problem in thread {name|quote}", name=self.name, cause=self.end_of_thread.exception,
+                        )
+                    except Exception as cause:
+                        sys.stderr.write(f"ERROR in thread: {self.name} {cause}\n")
+                        return
+
+                res = eot.response
+                if res is not None:
+                    logger.warning(
+                        "Thread {thread} returned a response {response|json}, but was not joined",
+                        thread=self.name,
+                        response=res
                     )
-                except Exception as cause:
-                    sys.stderr.write(f"ERROR in thread: {self.name} {cause}\n")
-            elif self.end_of_thread.response is not None:
-                logger.warning(
-                    "Thread {thread} returned a response, but was not joined with {parent} after 10min",
-                    thread=self.name,
-                    parent=self.parent.name,
-                )
-            else:
-                # IF THREAD ENDS OK, AND NOTHING RETURNED, THEN FORGET ABOUT IT
+                # THREAD ENDS OK; FORGET ABOUT IT
                 if isinstance(self.parent, Thread):
                     # SOMETIMES parent IS NOT A THREAD
                     self.parent.remove_child(self)

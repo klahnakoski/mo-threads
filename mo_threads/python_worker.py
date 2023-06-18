@@ -48,16 +48,11 @@ def command_loop(local):
             if "import" in command:
                 dummy = {}
                 if isinstance(command["import"], str):
-                    exec("from " + command["import"] + " import *", dummy, context)
+                    line= "from " + command["import"] + " import *"
                 else:
-                    exec(
-                        "from "
-                        + command["import"]["from"]
-                        + " import "
-                        + ",".join(listwrap(command["import"]["vars"])),
-                        dummy,
-                        context,
-                    )
+                    line = f"from {command['import']['from']} import " + ",".join(listwrap(command["import"]["vars"]))
+                DEBUG and logger.info("exec {line}", line=line)
+                exec(line, dummy, context)
                 STDOUT.write(DONE)
             elif "ping" in command:
                 STDOUT.write(DONE)

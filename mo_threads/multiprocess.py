@@ -227,7 +227,7 @@ class Process(object):
 
     def _reader(self, name, pipe, receive, status: Status, please_stop):
         """
-        MOVE LINES fROM pipe TO receive QUEUE
+        MOVE LINES FROM pipe TO receive QUEUE
         """
         """
         MOVE LINES fROM pipe TO receive QUEUE

@@ -69,6 +69,6 @@ class TestLocks(FuzzyTestCase):
         stdout, stdin, strerr = python_worker.STDOUT, python_worker.STDIN, python_worker.STDERR = Stdout(), Stdin(), Stdout()
         try:
             start()
-            self.assertEqual(len(stdout.lines), 2)
+            self.assertEqual(len([line for line in stdout.lines if not line.startswith(b'{"log"')]), 2)
         finally:
             python_worker.STDOUT, python_worker.STDIN, python_worker.STDERR = STDOUT, STDIN, STDERR
