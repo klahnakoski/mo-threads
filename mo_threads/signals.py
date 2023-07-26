@@ -214,7 +214,7 @@ class Signal(object):
             logger.error("Expecting OR with other signal")
 
         name = f"{self.name} & {other.name}"
-        if len(name)>MAX_NAME_LENGTH:
+        if len(name) > MAX_NAME_LENGTH:
             name = name[:MAX_NAME_LENGTH] + "..."
         output = Signal(name)
 
@@ -253,7 +253,7 @@ def or_signal(*dependencies):
         name = f"{dependencies[0].name} | ({len(dependencies)} other signals)"
     else:
         name = " | ".join(d.name for d in dependencies)
-    if len(name)>MAX_NAME_LENGTH:
+    if len(name) > MAX_NAME_LENGTH:
         name = name[:MAX_NAME_LENGTH] + "..."
 
     output = Signal(name)

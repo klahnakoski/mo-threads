@@ -97,10 +97,7 @@ def daemon(please_stop):
                     sleep(min(later, INTERVAL))
                 except Exception as cause:
                     logger.warning(
-                        "Call to sleep failed with ({later}, {interval})",
-                        later=later,
-                        interval=INTERVAL,
-                        cause=cause,
+                        "Call to sleep failed with ({later}, {interval})", later=later, interval=INTERVAL, cause=cause,
                     )
                 continue
 

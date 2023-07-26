@@ -126,7 +126,7 @@ def start():
         # ENSURE WE HAVE A PYTHONPATH SET
         python_path = os.environ.get("PYTHONPATH")
         if not python_path:
-            os.environ['PYTHONPATH'] = "."
+            os.environ["PYTHONPATH"] = "."
 
         command_loop({"config": config})
     except Exception as e:

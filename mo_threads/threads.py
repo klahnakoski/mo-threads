@@ -347,7 +347,7 @@ class Thread(BaseThread):
                     logger.warning(
                         "Thread {thread} returned a response {response|json}, but was not joined",
                         thread=self.name,
-                        response=res
+                        response=res,
                     )
                 # THREAD ENDS OK; FORGET ABOUT IT
                 if isinstance(self.parent, Thread):
