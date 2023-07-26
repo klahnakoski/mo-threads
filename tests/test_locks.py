@@ -14,6 +14,7 @@ import os
 import threading
 from copy import copy
 from time import time
+from unittest import skipIf
 
 import objgraph
 import psutil
