@@ -48,7 +48,6 @@ datetime.strptime("2012-01-01", "%Y-%m-%d")  # http://bugs.python.org/issue7980
 
 cprofiler_stats = None  # ACCUMULATION OF STATS FROM ALL THREADS
 
-
 try:
     STDOUT = sys.stdout.buffer
     STDERR = sys.stderr.buffer
@@ -57,7 +56,6 @@ except Exception:
     STDOUT = sys.stdout
     STDERR = sys.stderr
     STDIN = sys.stdin
-
 
 if sys.version_info[1] > 9:
 

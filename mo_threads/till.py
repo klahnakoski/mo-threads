@@ -138,6 +138,7 @@ def daemon(please_stop):
                         s = r()
                         if s is not None:
                             s.go()
+                    work = []  # THIS MAY LINGER IF NO NEW TIMERS ARE ADDED
 
     except Exception as cause:
         logger.warning("unexpected timer shutdown", cause=cause)

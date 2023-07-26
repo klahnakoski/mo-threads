@@ -25,6 +25,7 @@ from mo_threads.lock import Lock
 from mo_threads.queues import Queue
 from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, Thread
+from mo_threads.till import Till
 
 DEBUG_PROCESS = False
 DEBUG_COMMAND = False
@@ -103,17 +104,16 @@ class Process(object):
                 shell=shell,
             )
 
-            self.child_locker = Lock()
             self.stdout_status = Status(unix_now() + startup_timeout)
             self.stderr_status = Status(unix_now() + startup_timeout)
-            self.children = [
+            self.children = (
                 Thread.run(
                     self.name + " stdin",
                     self._writer,
                     service.stdin,
                     self.stdin,
                     please_stop=self.service_stopped,
-                    parent_thread=self,
+                    parent_thread=Null,
                 ),
                 Thread.run(
                     self.name + " stdout",
@@ -123,7 +123,7 @@ class Process(object):
                     self.stdout,
                     self.stdout_status,
                     please_stop=self.service_stopped,
-                    parent_thread=self,
+                    parent_thread=Null,
                 ),
                 Thread.run(
                     self.name + " stderr",
@@ -133,12 +133,12 @@ class Process(object):
                     self.stderr,
                     self.stderr_status,
                     please_stop=self.service_stopped,
-                    parent_thread=self,
+                    parent_thread=Null,
                 ),
                 Thread.run(
                     self.name + " waiter", self._monitor, please_stop=self.service_stopped, parent_thread=self,
                 ),
-            ]
+            )
         except Exception as cause:
             logger.error("Can not call  dir={cwd}", cwd=cwd, cause=cause)
 
@@ -166,10 +166,21 @@ class Process(object):
 
     def join(self, till=None, raise_on_error=False):
         self.service_stopped.wait()
-        with self.child_locker:
-            child_threads, self.children = self.children, []
-        for c in child_threads:
-            c.join(till=till)
+        if not self.children:
+            return
+        try:
+            stdin_thread, stdout_thread, stderr_thread, monitor_thread = self.children
+            monitor_thread.join(till=till)
+            stdin_thread.join(till=till)
+            # stdout can lock up in windows, so do not wait too long
+            wait_limit = Till(seconds=0.5) | till
+            stdout_thread.join(till=wait_limit)
+            stderr_thread.join(till=wait_limit)
+            if stdout_thread.is_alive() or stderr_thread.is_alive():
+                self._kill()
+        finally:
+            self.children = ()
+
         if self.returncode != 0:
             if raise_on_error:
                 logger.error(
@@ -188,11 +199,7 @@ class Process(object):
         return self
 
     def remove_child(self, child):
-        with self.child_locker:
-            try:
-                self.children.remove(child)
-            except Exception:
-                pass
+        pass
 
     @property
     def pid(self):
@@ -206,7 +213,7 @@ class Process(object):
         with Timer(self.name, verbose=self.debug):
             while not please_stop:
                 now = unix_now()
-                last_out = max(self.stderr_status.last_read, self.stderr_status.last_read)
+                last_out = max(self.stdout_status.last_read, self.stderr_status.last_read)
                 timeout = last_out + self.timeout - now
                 if timeout < 0:
                     self._kill()
@@ -226,9 +233,6 @@ class Process(object):
         )
 
     def _reader(self, name, pipe, receive, status: Status, please_stop):
-        """
-        MOVE LINES FROM pipe TO receive QUEUE
-        """
         """
         MOVE LINES fROM pipe TO receive QUEUE
         """
@@ -307,8 +311,8 @@ PROMPT = "READY_FOR_MORE"
 
 
 def cmd_escape(value):
-    if hasattr(value, "abspath"):  # File
-        value = os_path(value.abs_path)
+    if hasattr(value, "os_path"):  # File
+        value = value.os_path
     quoted = strings.quote(value)
 
     if " " not in quoted and quoted == '"' + value + '"':

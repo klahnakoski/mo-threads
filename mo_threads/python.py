@@ -33,7 +33,7 @@ class Python(object):
         shell = "windows" in platform.system().lower()
         python_worker_file = os.path.abspath(python_worker.__file__)
         self.process = Process(
-            name, [python_exe, "-u", python_worker_file], debug=DEBUG, cwd=os.getcwd(), shell=shell,
+            name, [python_exe, "-u", python_worker_file], env={**os.environ, "PYTHONPATH": "."}, debug=DEBUG, cwd=os.getcwd(), shell=shell,
         )
         self.process.stdin.add(value2json(from_data(
             config
@@ -91,7 +91,7 @@ class Python(object):
 
             try:
                 data = to_data(json2value(line))
-            except Exception as cause:
+            except Exception:
                 logger.info("non-json line: {line}", line=line)
                 continue
 

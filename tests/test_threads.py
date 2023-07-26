@@ -196,9 +196,7 @@ class TestThreads(FuzzyTestCase):
         self.assertIn("started", done)
 
     def test_failure_during_wait_for_shutdown(self):
-        threads.DEBUG = True
         stop_main_thread()
-
         start_main_thread()
         list_log = StructuredLogger_usingList()
         old_log, logger.main_log = logger.main_log, list_log
