@@ -14,12 +14,14 @@ import os
 import threading
 from copy import copy
 from time import time
+from unittest import skipIf
 
 import objgraph
 import psutil
 from mo_collections.queue import Queue
+from mo_files import File
 from mo_future import allocate_lock as _allocate_lock
-from mo_logs import logger, machine_metadata
+from mo_logs import logger, machine_metadata, get_stacktrace
 from mo_math import randoms
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.timer import Timer
@@ -27,12 +29,14 @@ from mo_times.timer import Timer
 import mo_threads
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
 from mo_threads.busy_lock import BusyLock
+from mo_threads.signals import OrSignal
 from mo_threads.threads import ALL, ALL_LOCK
 from tests import StructuredLogger_usingList
 from tests.utils import add_error_reporting
 
 USE_PYTHON_THREADS = False
-DEBUG_SHOW_BACKREFS = False
+DEBUG_SHOW_BACKREFS = True
+IN_DEBUGGER = any("pydevd.py" in line['file']for line in get_stacktrace())
 
 
 @add_error_reporting
@@ -216,9 +220,13 @@ class TestLocks(FuzzyTestCase):
         self.assertEqual(counter[0], 100 * 50, "Expecting lock to work")
 
     def test_memory_cleanup_with_till(self):
-        objgraph.growth()
-
+        interesting = [Signal.__name__, OrSignal.__name__, Till.__name__]
         root = Signal()
+        start_ids = set(id(o) for o in gc.get_objects())
+        start_counts = {n:objgraph.count(n) for n in interesting}
+        start_ids.add(id(start_ids))
+        start_ids.add(id(start_counts))
+
         for i in range(100000):
             if i % 1000 == 0:
                 logger.info("at {num} tills", num=i)
@@ -230,24 +238,40 @@ class TestLocks(FuzzyTestCase):
         trigger = Signal()
         root = root | trigger
 
-        growth = objgraph.growth(limit=4)
-        growth and logger.info("More object\n{growth}", growth=growth)
+        growth_counts = {n:objgraph.count(n) for n in interesting}
+        growth_counts and logger.info("More object\n{growth}", growth=growth_counts)
 
         trigger.go()
+        del trigger
         root.wait()  # THERE SHOULD BE NO DELAY HERE
 
         for _ in range(0, 20):
             try:
-                Till(seconds=0.1).wait()  # LET TIMER DAEMON CLEANUP
-                current = [(t, objgraph.count(t), objgraph.count(t) - c) for t, c, d in growth]
-                logger.info("Object count\n{current}", current=current)
+                waiter = Till(seconds=0.1)
+                waiter.wait()  # LET TIMER DAEMON CLEANUP
+                gc.collect()
+                stop_counts ={n:objgraph.count(n)-start_counts[n] for n in interesting}
+                logger.info("Object count\n{current}", current=stop_counts)
 
-                # NUMBER OF OBJECTS CLEANED UP SHOULD BE SAME, OR BIGGER THAN NUMBER OF OBJECTS CREATED
-                for (_, _, cd), (_, gt, gd) in zip(current, growth):
-                    self.assertGreater(-cd, gd)
+                # THERE SHOULD BE NO NET NEW OBJECTS
+                for name, net_new in stop_counts.items():
+                    self.assertLessEqual(net_new, 0, f"Object {name} went up by {net_new}")
                 return
             except Exception as cause:
-                logger.info("problem: {cause}", cause=cause)
+                cause_description = str(cause)
+                del cause
+                remaining = [o for o in objgraph.by_type("method") if id(o) not in start_ids]
+                examples = remaining  # randoms.sample(remaining, 1)
+                filename = "test_memory_cleanup_with_till.png"
+                try:
+                    File(filename).backup()
+                except Exception:
+                    pass
+                objgraph.show_backrefs(examples, max_depth=10, filename=File(filename).os_path)
+                del remaining
+                del examples
+                del filename
+                logger.info("problem: {cause}", cause=cause_description)
         logger.error("object counts did not go down")
 
     def test_job_queue_in_signal(self):
@@ -277,6 +301,7 @@ class TestLocks(FuzzyTestCase):
         with self.assertRaises(RuntimeError):
             lock.release()
 
+    @skipIf(IN_DEBUGGER, "The debugger hangs onto threads ")
     def test_memory_cleanup_with_signal(self):
         """
         LOOKING FOR A MEMORY LEAK THAT HAPPENS ONLY DURING THREADING
@@ -304,7 +329,12 @@ class TestLocks(FuzzyTestCase):
 
         consumer = Thread.run("consumer", _consumer)
 
-        objgraph.growth(limit=None)
+        interesting = [Signal.__name__, OrSignal.__name__, Till.__name__, Thread.__name__]
+        start_ids = set(id(o) for o in gc.get_objects())
+        start_counts = {n:objgraph.count(n) for n in interesting}
+        start_ids.add(id(start_ids))
+        start_ids.add(id(start_counts))
+
 
         no_change = 0
         for g in range(NUM_CYCLES):
@@ -318,26 +348,35 @@ class TestLocks(FuzzyTestCase):
                 threads = [Thread.run(f"producer-{i}", _producer, i) for i in range(500)]
 
             Thread.join_all(threads)
-            with ALL_LOCK:
-                residue = copy(ALL)
-            if any(t.ident in residue for t in threads):
-                logger.error("Threads still running: {residue}", residue=residue)
+
+            while threads:
+                Till(seconds=0.1).wait()
+                with ALL_LOCK:
+                    residue = copy(ALL)
+                threads = [t for t in threads if t.ident in residue]
+                if threads:
+                    logger.error("Threads still running: {residue}", residue=residue)
             del threads
 
             gc.collect()
-            results = objgraph.growth(limit=3)
-            if not results:
+            end_counts = {n: objgraph.count(n) for n in interesting}
+            end_ids = set(id(o) for o in gc.get_objects())
+
+            growth_seen = any(end_counts[n]-start_counts[n] > 0 for n in interesting)
+            if not growth_seen:
                 no_change += 1
             else:
-                if DEBUG_SHOW_BACKREFS:
-                    for typ, count, delta in results:
-                        logger.info("%-*s%9d %+9d\n" % (18, typ, count, delta))
-                        obj_list = objgraph.by_type(typ)
-                        if obj_list:
-                            obj = obj_list[-1]
-                            objgraph.show_backrefs(obj, max_depth=10)
-                else:
-                    logger.info("growth = \n{results}", results=results)
+                logger.info("growth = \n{results}", results=growth_seen)
+                filename = "test_memory_cleanup_with_signal.png"
+                try:
+                    File(filename).backup()
+                except Exception:
+                    pass
+                examples = [o for o in gc.get_objects() if id(o) not in start_ids and type(o).__name__ in interesting]
+                objgraph.show_backrefs(examples[0], max_depth=4, filename=File(filename).os_path)
+            start_counts = {n: max(end_counts[n], start_counts[n]) for n in interesting}
+            start_ids = end_ids
+
 
         consumer.please_stop.go()
         consumer.join()

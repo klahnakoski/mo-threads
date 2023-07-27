@@ -6,14 +6,14 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-
-
+import os
 from copy import copy
 
 from mo_dots import is_list, to_data
 from mo_dots import listwrap, coalesce
 from mo_logs import logger, constants, Except
 from mo_logs.log_usingNothing import StructuredLogger
+from mo_files import File
 
 from mo_threads import Signal
 from mo_threads.threads import STDOUT, STDIN, STDERR
@@ -48,16 +48,11 @@ def command_loop(local):
             if "import" in command:
                 dummy = {}
                 if isinstance(command["import"], str):
-                    exec("from " + command["import"] + " import *", dummy, context)
+                    line = "from " + command["import"] + " import *"
                 else:
-                    exec(
-                        "from "
-                        + command["import"]["from"]
-                        + " import "
-                        + ",".join(listwrap(command["import"]["vars"])),
-                        dummy,
-                        context,
-                    )
+                    line = f"from {command['import']['from']} import " + ",".join(listwrap(command["import"]["vars"]))
+                DEBUG and logger.info("exec {line}", line=line)
+                exec(line, dummy, context)
                 STDOUT.write(DONE)
             elif "ping" in command:
                 STDOUT.write(DONE)
@@ -127,6 +122,12 @@ def start():
         constants.set(config.constants)
         logger.start(config.debug)
         logger.set_logger(RawLogger())
+
+        # ENSURE WE HAVE A PYTHONPATH SET
+        python_path = os.environ.get("PYTHONPATH")
+        if not python_path:
+            os.environ["PYTHONPATH"] = "."
+
         command_loop({"config": config})
     except Exception as e:
         logger.error("problem staring worker", cause=e)

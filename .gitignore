@@ -11,3 +11,4 @@ __pycache__
 /htmlcov
 /setup.py
 /all_thread.json
+test*.png

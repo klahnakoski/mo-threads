@@ -97,10 +97,7 @@ def daemon(please_stop):
                     sleep(min(later, INTERVAL))
                 except Exception as cause:
                     logger.warning(
-                        "Call to sleep failed with ({later}, {interval})",
-                        later=later,
-                        interval=INTERVAL,
-                        cause=cause,
+                        "Call to sleep failed with ({later}, {interval})", later=later, interval=INTERVAL, cause=cause,
                     )
                 continue
 
@@ -138,6 +135,7 @@ def daemon(please_stop):
                         s = r()
                         if s is not None:
                             s.go()
+                    work = []  # THIS MAY LINGER IF NO NEW TIMERS ARE ADDED
 
     except Exception as cause:
         logger.warning("unexpected timer shutdown", cause=cause)

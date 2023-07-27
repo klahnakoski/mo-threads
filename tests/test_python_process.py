@@ -34,14 +34,14 @@ class TestLocks(FuzzyTestCase):
 
     def test_import(self):
         p = Python("test_import", {})
-        p.import_module("tests.simple_module")
+        p.import_module("tests.some_thing")
         result = p.add(1, 2)
         self.assertEqual(result, 3)
         p.stop()
 
     def test_assign(self):
         p = Python("test_assign", {})
-        p.import_module("tests.simple_module")
+        p.import_module("tests.some_thing")
         p.execute_script("temp = add(1, 2)")
         result = p.get("temp")
         self.assertEqual(result, 3)
@@ -69,6 +69,6 @@ class TestLocks(FuzzyTestCase):
         stdout, stdin, strerr = python_worker.STDOUT, python_worker.STDIN, python_worker.STDERR = Stdout(), Stdin(), Stdout()
         try:
             start()
-            self.assertEqual(len(stdout.lines), 2)
+            self.assertEqual(len([line for line in stdout.lines if not line.startswith(b'{"log"')]), 2)
         finally:
             python_worker.STDOUT, python_worker.STDIN, python_worker.STDERR = STDOUT, STDIN, STDERR

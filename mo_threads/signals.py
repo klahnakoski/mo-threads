@@ -25,6 +25,7 @@ current_thread, threads = expect("current_thread", "threads")
 
 DEBUG = False
 TRACE_THEN = False  # GRAB STACK TRACE OF then() CALL FOR BLAME
+MAX_NAME_LENGTH = 100
 
 
 def standard_warning(cause):
@@ -212,10 +213,10 @@ class Signal(object):
         if not isinstance(other, Signal):
             logger.error("Expecting OR with other signal")
 
-        if DEBUG and self._name:
-            output = Signal(self.name + " & " + other.name)
-        else:
-            output = Signal(self.name + " & " + other.name)
+        name = f"{self.name} & {other.name}"
+        if len(name) > MAX_NAME_LENGTH:
+            name = name[:MAX_NAME_LENGTH] + "..."
+        output = Signal(name)
 
         gen = AndSignals(output, 2)
         self.then(gen.done)
@@ -248,7 +249,14 @@ class AndSignals(object):
 
 
 def or_signal(*dependencies):
-    output = Signal(" | ".join(d.name for d in dependencies))
+    if len(dependencies) > 5:
+        name = f"{dependencies[0].name} | ({len(dependencies)} other signals)"
+    else:
+        name = " | ".join(d.name for d in dependencies)
+    if len(name) > MAX_NAME_LENGTH:
+        name = name[:MAX_NAME_LENGTH] + "..."
+
+    output = Signal(name)
     OrSignal(output, dependencies)
     return output
 
