@@ -6,7 +6,7 @@ setup(
     author_email='kyle@lahnakoski.com',
     classifiers=["Programming Language :: Python :: 3.7","Programming Language :: Python :: 3.8","Programming Language :: Python :: 3.9","Development Status :: 4 - Beta","Topic :: Software Development :: Libraries","Topic :: Software Development :: Libraries :: Python Modules","License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)","Programming Language :: Python :: 3.10"],
     description='More Threads! Simpler and faster threading.',
-    extras_require={"tests":["mo-future","mo-dots","mo-logs","mo-json","mo-testing","jx-python","psutil","objgraph","mo-files"]},
+    extras_require={"tests":["mo-testing","jx-python","psutil","objgraph","mo-files>=6.0.0"]},
     include_package_data=True,
     install_requires=["mo-dots==9.417.23168","mo-future==7.416.23168","mo-logs==8.425.23207","mo-math==7.417.23168","mo-times==5.425.23207"],
     license='MPL 2.0',
@@ -15,6 +15,6 @@ setup(
     name='mo-threads',
     packages=["mo_threads"],
     url='https://github.com/klahnakoski/mo-threads',
-    version='5.425.23207',
+    version='5.426.23208',
     zip_safe=False
 )
