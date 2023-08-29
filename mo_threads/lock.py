@@ -13,7 +13,7 @@
 
 
 from mo_future import allocate_lock as _allocate_lock, decorate
-from mo_json import quote
+from mo_logs.strings import quote
 from mo_logs import logger
 
 from mo_threads.signals import Signal
