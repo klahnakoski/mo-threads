@@ -15,11 +15,12 @@
 import signal as _signal
 import sys
 import threading
+import traceback
 from collections import namedtuple
 from datetime import datetime, timedelta
 from time import sleep
 
-from mo_dots import unwraplist, Null
+from mo_dots import unwraplist, Null, Data
 from mo_future import (
     allocate_lock,
     get_function_name,
@@ -30,11 +31,11 @@ from mo_future import (
 from mo_imports import export
 from mo_logs import Except, logger, raise_from_none
 from mo_logs.exceptions import ERROR
-
 from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till, TIMERS_NAME
 
 DEBUG = False
+KNOWN_DEBUGGERS = ["pydevd.py"]
 
 PLEASE_STOP = "please_stop"  # REQUIRED thread PARAMETER TO SIGNAL STOP
 PARENT_THREAD = "parent_thread"  # OPTIONAL PARAMETER TO ASSIGN THREAD TO SOMETHING OTHER THAN CURRENT THREAD
@@ -43,6 +44,7 @@ DEFAULT_WAIT_TIME = timedelta(minutes=10)
 THREAD_STOP = "stop"
 THREAD_TIMEOUT = "TIMEOUT"
 COVERAGE_COLLECTOR = None  # Detect Coverage.py
+
 
 datetime.strptime("2012-01-01", "%Y-%m-%d")  # http://bugs.python.org/issue7980
 
@@ -89,7 +91,7 @@ class BaseThread(object):
         self.parent_thread = None
         self.cprofiler = None
         self.trace_func = sys.gettrace()
-        self.additional_info = None  # FOR DEBUGGING
+        self.additional_info = Data()  # FOR DEBUGGING
 
     @property
     def id(self):
@@ -184,6 +186,7 @@ class MainThread(BaseThread):
             join_errors = cause
             # REPORT ERRORS BEFORE LOGGING SHUTDOWN
             logger.warning("Problem while stopping {name|quote}", name=self.name, cause=cause, log_context=ERROR)
+        DEBUG and logger.info("All children stopped")
 
         with self.shutdown_locker:
             if self.stopped:
@@ -200,8 +203,21 @@ class MainThread(BaseThread):
 
         with ALL_LOCK:
             del ALL[self._ident]
-            if ALL:
-                sys.stderr.write("Expecting no further threads")
+            residue = list(ALL.values())
+
+        debugger_stop = any(
+            debugger in line.filename
+            for line in traceback.extract_stack()
+            for debugger in KNOWN_DEBUGGERS
+        )
+
+        if debugger_stop:
+            for t in residue:
+                t.stop()
+            # break while debugging will have context managers still active.  eg sqlite db thread
+            join_all_threads(residue)
+        elif residue:
+            sys.stderr.write(f"Expecting no further threads: {[t.name for t in residue]}")
 
         if join_errors:
             raise Except(
@@ -210,6 +226,12 @@ class MainThread(BaseThread):
                 name=self.name,
                 cause=unwraplist(join_errors),
             )
+
+        if debugger_stop:
+            import objgraph
+            objgraph.by_type("PyDB")[0].finish_debugging_session()
+            # the debugger may have monkey patched sys.exit() to raise an exception
+            raise RuntimeError("Got stop from debugger")
 
         return self
 
@@ -566,7 +588,7 @@ def current_thread():
         with all_lock:
             all[ident] = thread
 
-        logger.warning("this thread is not known. Register this thread at earliest known entry point.")
+        logger.warning("this thread is not known. Register {name|quote} at earliest known entry point.", name=thread.name)
         return thread
     return output
 

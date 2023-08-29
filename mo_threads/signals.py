@@ -19,6 +19,7 @@ from mo_future import allocate_lock as _allocate_lock
 from mo_imports import expect
 from mo_logs import logger, Except
 from mo_logs.exceptions import get_stacktrace
+from mo_logs.strings import quote
 
 current_thread, threads = expect("current_thread", "threads")
 
@@ -57,7 +58,7 @@ class Signal(object):
     __slots__ = ["_name", "lock", "_go", "job_queue", "waiting_threads", "__weakref__"]
 
     def __init__(self, name=None):
-        DEBUG and name and logger.info("New signal {name|quote}", name=name)
+        DEBUG and name and print(f"New signal {quote(name)}")
         self._name = name
         self.lock = _allocate_lock()
         self._go = False
@@ -96,16 +97,16 @@ class Signal(object):
             else:
                 self.waiting_threads.append(stopper)
 
-        DEBUG and self._name and logger.info("wait for go {name|quote}", name=self.name)
+        DEBUG and self._name and print(f"wait for go {quote(self.name)}")
         stopper.acquire()
-        DEBUG and self._name and logger.info("GOing! {name|quote}", name=self.name)
+        DEBUG and self._name and print(f"GOing! {quote(self.name)}")
         return True
 
     def go(self):
         """
         ACTIVATE SIGNAL (DOES NOTHING IF SIGNAL IS ALREADY ACTIVATED)
         """
-        DEBUG and self._name and logger.info("GO! {name|quote}", name=self.name)
+        DEBUG and self._name and print(f"GO! {quote(self.name)}")
 
         if self._go:
             return self
@@ -115,12 +116,12 @@ class Signal(object):
                 return self
             self._go = True
 
-        DEBUG and self._name and logger.info("internal GO! {name|quote}", name=self.name)
+        DEBUG and self._name and print(f"internal GO! {quote(self.name)}")
         jobs, self.job_queue = self.job_queue, None
         threads, self.waiting_threads = self.waiting_threads, None
 
         if threads:
-            DEBUG and self._name and logger.info("Release {num} threads", num=len(threads))
+            DEBUG and self._name and print(f"Release {len(threads)} threads")
             for t in threads:
                 t.release()
 

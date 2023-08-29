@@ -140,7 +140,6 @@ def daemon(please_stop):
     except Exception as cause:
         logger.warning("unexpected timer shutdown", cause=cause)
     finally:
-        DEBUG and logger.alert("TIMER SHUTDOWN")
         enabled = Signal()
         # TRIGGER ALL REMAINING TIMERS RIGHT NOW
         with Till.locker:
@@ -149,6 +148,7 @@ def daemon(please_stop):
             s = r()
             if s is not None:
                 s.go()
+        DEBUG and logger.alert("TIMER SHUTDOWN")
 
 
 def actual_time(todo):

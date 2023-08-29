@@ -127,8 +127,6 @@ class Queue(object):
         DUMMY IMPLEMENTATION FOR DEBUGGING
         """
 
-        if till is not None and not isinstance(till, Signal):
-            logger.error("Expecting a signal")
         return Null, self.pop(till=till)
 
     def extend(self, values):
