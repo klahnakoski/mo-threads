@@ -71,6 +71,13 @@ else:
         return thread.isDaemon()
 
 
+in_debugger = any(
+    debugger in line.filename
+    for line in traceback.extract_stack()
+    for debugger in KNOWN_DEBUGGERS
+)
+
+
 class BaseThread(object):
     __slots__ = [
         "_ident",
@@ -205,13 +212,7 @@ class MainThread(BaseThread):
             del ALL[self._ident]
             residue = list(ALL.values())
 
-        debugger_stop = any(
-            debugger in line.filename
-            for line in traceback.extract_stack()
-            for debugger in KNOWN_DEBUGGERS
-        )
-
-        if debugger_stop:
+        if in_debugger:
             for t in residue:
                 t.stop()
             # break while debugging will have context managers still active.  eg sqlite db thread
@@ -227,7 +228,7 @@ class MainThread(BaseThread):
                 cause=unwraplist(join_errors),
             )
 
-        if debugger_stop:
+        if in_debugger:
             import objgraph
             objgraph.by_type("PyDB")[0].finish_debugging_session()
             # the debugger may have monkey patched sys.exit() to raise an exception

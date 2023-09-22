@@ -40,7 +40,7 @@ class Till(Signal):
 
     def __new__(cls, till=None, seconds=None):
         if not enabled:
-            logger.info("Till daemon not enabled", stack_depth=1)
+            not_enabled_message()
             return DONE
         elif till != None:
             return object.__new__(cls)
@@ -153,6 +153,27 @@ def daemon(please_stop):
 
 def actual_time(todo):
     return 0 if todo.ref() is None else todo.timestamp
+
+
+not_enabled_message = None
+
+
+def not_enabled_message():
+    global not_enabled_message
+
+    from mo_threads.threads import in_debugger
+
+    def silent_not_enabled_message():
+        pass
+
+    def loud_not_enabled_message():
+        logger.info("Till daemon not enabled", stack_depth=1)
+
+    if in_debugger:
+        not_enabled_message = silent_not_enabled_message
+    else:
+        loud_not_enabled_message()
+        not_enabled_message = loud_not_enabled_message
 
 
 TodoItem = namedtuple("TodoItem", ["timestamp", "ref"])

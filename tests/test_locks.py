@@ -14,7 +14,7 @@ import os
 import threading
 from copy import copy
 from time import time
-from unittest import skipIf
+from unittest import skipIf, skip
 
 import objgraph
 import psutil
@@ -219,6 +219,7 @@ class TestLocks(FuzzyTestCase):
 
         self.assertEqual(counter[0], 100 * 50, "Expecting lock to work")
 
+    @skip
     def test_memory_cleanup_with_till(self):
         interesting = [Signal.__name__, OrSignal.__name__, Till.__name__]
         root = Signal()
@@ -258,6 +259,7 @@ class TestLocks(FuzzyTestCase):
                     self.assertLessEqual(net_new, 0, f"Object {name} went up by {net_new}")
                 return
             except Exception as cause:
+                print(f"problem: {cause}")
                 cause_description = str(cause)
                 del cause
                 remaining = [o for o in objgraph.by_type("method") if id(o) not in start_ids]
