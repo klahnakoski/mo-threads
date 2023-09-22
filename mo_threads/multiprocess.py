@@ -348,6 +348,11 @@ else:
         return value.decode("latin1")
 
 
+available_command_locker = Lock("cmd lock")
+available_command = {}
+stale_command_killer = None
+
+
 class Command(object):
     """
     FASTER Process CLASS - OPENS A COMMAND_LINE APP (CMD on windows) AND KEEPS IT OPEN FOR MULTIPLE COMMANDS
@@ -355,12 +360,10 @@ class Command(object):
     THREADS ARE REQUESTING Commands
     """
 
-    available_locker = Lock("cmd lock")
-    available_process = {}
-
     def __init__(
         self, name, params, cwd=None, env=None, debug=False, shell=True, max_stdout=1024, bufsize=-1,
     ):
+        global stale_command_killer
 
         self.name = name
         self.params = params
@@ -373,8 +376,8 @@ class Command(object):
         self.stdout = Queue("stdout for " + name, max=max_stdout)
         self.stderr = Queue("stderr for " + name, max=max_stdout)
         self.process = None
-        with Command.available_locker:
-            avail = Command.available_process.setdefault(self.key, [])
+        with available_command_locker:
+            avail = available_command.setdefault(self.key, [])
             if avail:
                 self.process = avail.pop()
                 DEBUG_COMMAND and logger.info(
@@ -404,10 +407,16 @@ class Command(object):
         self.returncode = None
 
     def _cleanup(self):
-        with Command.available_locker:
-            if any(self.process == p for p in Command.available_process[self.key]):
+        global stale_command_killer
+
+        with available_command_locker:
+            if any(self.process == p for p, _ in available_command[self.key]):
                 logger.error("Not expected")
-            Command.available_process[self.key].append(self.process)
+            available_command[self.key].append((self.process, unix_now()))
+            if not stale_command_killer:
+                stale_command_killer = Thread.run(
+                    "remove stale Command objects", remove_stale_commands, parent_thread=threads.MAIN_THREAD
+                )
 
     def join(self, raise_on_error=False, till=None):
         try:
@@ -471,6 +480,29 @@ class Command(object):
         DEBUG_COMMAND and logger.info(
             "{name} done with {please_stop}", name=name, please_stop=bool(please_stop),
         )
+
+
+def remove_stale_commands(please_stop):
+    """
+    REMOVE COMMANDS THAT HAVE NOT BEEN USED IN A WHILE
+    """
+    global stale_command_killer
+    while not please_stop:
+        Till(seconds=10).wait()
+        now = unix_now()
+        with available_command_locker:
+            for key, processes in list(available_command.items()):
+                for process, last_used in processes:
+                    if now - last_used > 60:
+                        DEBUG_COMMAND and logger.info(
+                            "removing stale process {process} for {key}", process=process.name, key=key,
+                        )
+                        process.stop()
+                        processes.remove((process, last_used))
+
+            if not any(available_command.values()):
+                stale_command_killer = None
+                return
 
 
 def _wait_for_start(source, destination):
