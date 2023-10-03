@@ -19,8 +19,8 @@
     ]},
     "include_package_data": true,
     "install_requires": [
-          "mo-dots==9.440.23265", "mo-future==7.428.23214",   "mo-logs==8.440.23265",
-          "mo-math==7.440.23265",  "mo-times==5.441.23265"
+          "mo-dots==9.440.23265", "mo-future==7.428.23214",   "mo-logs==8.444.23276",
+          "mo-math==7.440.23265",  "mo-times==5.444.23276"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -316,6 +316,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "5.442.23265",
+    "version": "5.444.23276",
     "zip_safe": false
 }
