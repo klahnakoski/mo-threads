@@ -133,22 +133,19 @@ class BaseThread(object):
 
     def join(self, till=None):
         DEBUG and logger.info("Joining on thread {name|quote}", name=self.name)
-        with threading._active_limbo_lock:
-            thread = threading._active.get(self._ident)
-        if not thread:
+        threading_thread = threading.current_thread()
+        if not threading_thread:
             raise Exception("Thread has no join method")
         try:
-            if not is_daemon(thread):
-                while not till and thread.is_alive():
-                    thread.join(1.0)
-                    sys.stderr.write(f"waiting for {thread.name}")
+            if not is_daemon(threading_thread):
+                while not till and threading_thread.is_alive():
+                    threading_thread.join(1.0)
+                    sys.stderr.write(f"waiting for {threading_thread.name}")
         except Exception as cause:
-            logger.error(thread.name, cause=cause)
+            logger.error(threading_thread.name, cause=cause)
         finally:
             with ALL_LOCK:
                 del ALL[self._ident]
-            with threading._active_limbo_lock:
-                del threading._active[self._ident]
             try:
                 self.parent.remove_child(self)
             except Exception as cause:
@@ -481,8 +478,6 @@ class RegisterThread(object):
             ALL[ident] = thread
             if DEBUG:
                 ALL_THREAD.append(thread)
-        with threading._active_limbo_lock:
-            threading._active[ident] = thread
         if cprofiler_stats is not None:
             from mo_threads.profiles import CProfiler
 
@@ -512,8 +507,6 @@ class RegisterThread(object):
                 )
         with all_lock:
             del all[ident]
-        with threading._active_limbo_lock:
-            del threading._active[ident]
 
 
 def register_thread(func):
