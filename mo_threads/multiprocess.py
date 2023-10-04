@@ -379,7 +379,7 @@ class Command(object):
         with available_command_locker:
             avail = available_command.setdefault(self.key, [])
             if avail:
-                self.process = avail.pop()
+                self.process, _ = avail.pop()
                 DEBUG_COMMAND and logger.info(
                     "Reuse process {process} for {command}", process=self.process.name, command=name,
                 )
