@@ -20,7 +20,7 @@ import psutil
 from mo_collections.queue import Queue
 from mo_files import File
 from mo_future import allocate_lock as _allocate_lock
-from mo_logs import logger, machine_metadata
+from mo_logs import logger, machine_metadata, get_stacktrace
 from mo_math import randoms
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.timer import Timer
@@ -35,7 +35,7 @@ from tests.utils import add_error_reporting
 
 USE_PYTHON_THREADS = False
 DEBUG_SHOW_BACKREFS = True
-IN_DEBUGGER = any("pydevd.py" in line['file']for line in get_stacktrace())
+IN_DEBUGGER = any("pydevd.py" in line['file'] for line in get_stacktrace())
 
 
 @add_error_reporting
