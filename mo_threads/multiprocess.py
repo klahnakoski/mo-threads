@@ -41,17 +41,17 @@ class Status:
 
 class Process(object):
     def __init__(
-        self,
-        name,
-        params,
-        cwd=None,
-        env=None,
-        debug=False,
-        shell=False,
-        bufsize=-1,
-        timeout=2.0,
-        startup_timeout=10.0,
-        parent_thread=None,
+            self,
+            name,
+            params,
+            cwd=None,
+            env=None,
+            debug=False,
+            shell=False,
+            bufsize=-1,
+            timeout=2.0,
+            startup_timeout=10.0,
+            parent_thread=None,
     ):
         """
         Spawns multiple threads to manage the stdin/stdout/stderr of the child process; communication is done
@@ -325,11 +325,14 @@ def cmd_escape(value):
 if "windows" in platform.system().lower():
     LAST_RETURN_CODE = "echo %errorlevel%"
 
+
     def set_prompt():
         return "prompt " + PROMPT + "$g"
 
+
     def cmd():
         return "%windir%\\system32\\cmd.exe"
+
 
     def to_text(value):
         return value.decode("latin1")
@@ -338,15 +341,17 @@ if "windows" in platform.system().lower():
 else:
     LAST_RETURN_CODE = "echo $?"
 
+
     def set_prompt():
         return "set prompt=" + cmd_escape(PROMPT + ">")
+
 
     def cmd():
         return "bash"
 
+
     def to_text(value):
         return value.decode("latin1")
-
 
 available_command_locker = Lock("cmd lock")
 available_command = {}
@@ -361,7 +366,7 @@ class Command(object):
     """
 
     def __init__(
-        self, name, params, cwd=None, env=None, debug=False, shell=True, max_stdout=1024, bufsize=-1,
+            self, name, params, cwd=None, env=None, debug=False, shell=True, max_stdout=1024, bufsize=-1,
     ):
         global stale_command_killer
 
@@ -386,7 +391,15 @@ class Command(object):
 
         if not self.process:
             self.process = Process(
-                "command shell", [cmd()], os_path(cwd), env, debug, shell, bufsize, parent_thread=threads.MAIN_THREAD
+                name="command shell",
+                params=[cmd()],
+                cwd=os_path(cwd),
+                env=env,
+                debug=debug,
+                shell=shell,
+                bufsize=bufsize,
+                timeout=60 * 60,
+                parent_thread=threads.MAIN_THREAD
             )
             self.process.stdin.add(set_prompt())
             self.process.stdin.add(LAST_RETURN_CODE)
