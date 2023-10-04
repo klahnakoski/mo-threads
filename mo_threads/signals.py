@@ -84,7 +84,7 @@ class Signal(object):
             return True
 
         if DEBUG:
-            if threads.MAIN_THREAD.timers == current_thread():
+            if threads.MAIN_THREAD.timers is current_thread():
                 logger.error("Deadlock detected", stack_depth=1)
 
         with self.lock:

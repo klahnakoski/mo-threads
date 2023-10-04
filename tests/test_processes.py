@@ -14,7 +14,7 @@ from unittest import skipIf
 from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
-from mo_threads import Process
+from mo_threads import Process, start_main_thread, stop_main_thread
 from mo_threads import Till
 from tests import IS_WINDOWS
 from tests.utils import add_error_reporting
@@ -26,11 +26,13 @@ IS_TRAVIS = bool(os.environ.get("TRAVIS"))
 class TestProcesses(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):
+        stop_main_thread()
+        start_main_thread()
         logger.start()
 
     @classmethod
     def tearDownClass(cls):
-        logger.stop()
+        stop_main_thread()
 
     def test_exit(self):
         p = Process("waiting", [sys.executable, "-u", "tests/programs/exit_test.py"], debug=True)

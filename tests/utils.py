@@ -7,6 +7,7 @@ from mo_logs import Log
 def add_error_reporting(suite):
     def add_hanlder(function):
         test_name = get_function_name(function)
+
         def error_hanlder(*args, **kwargs):
             try:
                 return function(*args, **kwargs)
@@ -20,7 +21,7 @@ def add_error_reporting(suite):
 
     if not hasattr(suite, "FuzzyTestCase.__modified__"):
         setattr(suite, "FuzzyTestCase.__modified__", True)
-        # find all methods, and wrap in exceptin handler
+        # find all methods, and wrap in exception handler
         for name, func in vars(suite).items():
             if name.startswith("test"):
                 h = add_hanlder(func)

@@ -13,10 +13,9 @@ from mo_dots import is_list, to_data
 from mo_dots import listwrap, coalesce
 from mo_logs import logger, constants, Except
 from mo_logs.log_usingNothing import StructuredLogger
-from mo_files import File
 
 from mo_threads import Signal
-from mo_threads.threads import STDOUT, STDIN, STDERR
+from mo_threads.threads import STDOUT, STDIN, STDERR, THREAD_STOP, stop_main_thread
 
 try:
     from mo_json import value2json, json2value
@@ -133,6 +132,7 @@ def start():
         logger.error("problem staring worker", cause=e)
     finally:
         logger.stop()
+        stop_main_thread()
 
 
 if __name__ == "__main__":

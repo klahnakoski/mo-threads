@@ -170,7 +170,7 @@ class Queue(object):
 
         while not self.closed and len(self.queue) >= self.max:
             if stop_waiting:
-                logger.error(THREAD_TIMEOUT)
+                logger.error(THREAD_TIMEOUT, name=self.name)
 
             if self.silent:
                 self.lock.wait(stop_waiting)
