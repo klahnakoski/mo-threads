@@ -55,7 +55,7 @@ class Signal(object):
     then() - METHOD FOR OTHER THREAD TO RUN WHEN ACTIVATING SIGNAL
     """
 
-    __slots__ = ["_name", "lock", "_go", "job_queue", "waiting_threads", "__weakref__"]
+    __slots__ = ["_name", "lock", "_go", "job_queue", "waiting_threads", "triggered_by", "__weakref__"]
 
     def __init__(self, name=None):
         DEBUG and name and print(f"New signal {quote(name)}")
@@ -64,6 +64,7 @@ class Signal(object):
         self._go = False
         self.job_queue = None
         self.waiting_threads = None
+        self.triggered_by = None
 
     def __bool__(self):
         return self._go
@@ -114,6 +115,8 @@ class Signal(object):
         with self.lock:
             if self._go:
                 return self
+            if DEBUG:
+                self.triggered_by = get_stacktrace(1)
             self._go = True
 
         DEBUG and self._name and print(f"internal GO! {quote(self.name)}")

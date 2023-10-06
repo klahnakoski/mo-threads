@@ -143,6 +143,9 @@ class BaseThread(object):
             except Exception as cause:
                 logger.warning("parents of children must have remove_child() method", cause=cause)
 
+    def __repr__(self):
+        return f"Thread({self.name})"
+
 
 class MainThread(BaseThread):
     def __init__(self):
@@ -413,7 +416,7 @@ class Thread(BaseThread):
         if get_function_name(target) == "wrapper":
             pass  # GIVE THE override DECORATOR A PASS
         elif PLEASE_STOP not in target.__code__.co_varnames:
-            logger.error("function must have please_stop argument for signalling emergency shutdown")
+            logger.error("function must have please_stop argument for signalling shutdown")
 
         return Thread(name, target, *args, **kwargs).start()
 

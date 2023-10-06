@@ -85,6 +85,7 @@ class Process(object):
         self.stdout = Queue("stdout for process " + strings.quote(name), silent=not self.debug)
         self.stderr = Queue("stderr for process " + strings.quote(name), silent=not self.debug)
         self.timeout = timeout
+        self.monitor_period = 10 if self.debug else timeout
 
         try:
             if cwd == None:
@@ -158,16 +159,12 @@ class Process(object):
         self.join(raise_on_error=True)
 
     def stop(self):
-        try:
-            self.please_stop.go()
-            # MAYBE "exit" WORKS?
-            self.stdin.add("exit")
-        except Exception:
-            pass
+        self.please_stop.go()
         return self
 
     def join(self, till=None, raise_on_error=False):
-        self.stopped.wait()
+        on_error = logger.error if raise_on_error else logger.warning
+        self.stopped.wait(till=till)
         if not self.children:
             return
         try:
@@ -190,20 +187,12 @@ class Process(object):
             self.children = ()
 
         if self.returncode != 0:
-            if raise_on_error:
-                logger.error(
-                    "{process} FAIL: returncode={code}\n{stderr}",
-                    process=self.name,
-                    code=self.service.returncode,
-                    stderr=list(self.stderr),
-                )
-            else:
-                logger.warning(
-                    "{process} FAIL: returncode={code}\n{stderr}",
-                    process=self.name,
-                    code=self.service.returncode,
-                    stderr=list(self.stderr),
-                )
+            on_error(
+                "{process} FAIL: returncode={code}\n{stderr}",
+                process=self.name,
+                code=self.service.returncode,
+                stderr=list(self.stderr),
+            )
         return self
 
     def remove_child(self, child):
@@ -229,7 +218,8 @@ class Process(object):
                         logger.warning("{name} took too long to respond", name=self.name)
                     break
                 try:
-                    self.service.wait(timeout=timeout)
+                    self.service.wait(timeout=self.monitor_period)
+                    DEBUG_PROCESS and logger.info("{name} waiting for response", name=self.name)
                     break
                 except Exception:
                     # TIMEOUT, CHECK FOR LIVELINESS
@@ -244,15 +234,15 @@ class Process(object):
         """
         MOVE LINES fROM pipe TO receive QUEUE
         """
-        self.debug and logger.info("{process} ({name} is reading)", name=name, process=self.name)
+        self.debug and logger.info("is reading")
         try:
             while not please_stop and self.service.returncode is None:
-                line = pipe.readline()  # THIS MAY NEVER RETURN
-                self.debug and logger.info("got line: {line}", line=line)
+                data = pipe.readline()  # THIS MAY NEVER RETURN
                 status.last_read = unix_now()
-                if not line:
+                line = data.decode("utf8").rstrip()
+                self.debug and logger.info("got line: {line}", line=line)
+                if not data:
                     break
-                line = line.decode("utf8").rstrip()
                 receive.add(line)
         except Exception as cause:
             logger.warning("premature read failure", cause=cause)
@@ -274,7 +264,7 @@ class Process(object):
                 continue
 
             self.debug and logger.info(
-                "{process} (stdin): {line}", process=self.name, line=line.rstrip(),
+                "send line: {line}", process=self.name, line=line.rstrip(),
             )
             try:
                 pipe.write(line.encode("utf8"))
@@ -415,6 +405,7 @@ class Command(object):
 
         self.process.stdin.add(" ".join(cmd_escape(p) for p in params))
         self.process.stdin.add(LAST_RETURN_CODE)
+        self.returncode = None
         self.stdout_thread = Thread.run(
             name + " stdout", self._stream_relay, "stdout", self.process.stdout, self.stdout,
         )
@@ -422,7 +413,6 @@ class Command(object):
             name + " stderr", self._stream_relay, "stderr", self.process.stderr, self.stderr,
         )
         self.stderr_thread.stopped.then(self._cleanup)
-        self.returncode = None
 
     def _cleanup(self):
         global stale_command_killer
@@ -467,11 +457,11 @@ class Command(object):
         :param please_stop:
         :return:
         """
-        prompt_count = 0
-        prompt = PROMPT + ">"
-        line_count = 0
-
         try:
+            prompt_count = 0
+            prompt = PROMPT + ">"
+            line_count = 0
+
             while not please_stop:
                 value = source.pop(till=please_stop)
                 if value is None:
@@ -484,20 +474,26 @@ class Command(object):
                     logger.error("Problem with command: {desc}", desc=value)
                 elif value.startswith(prompt):
                     if prompt_count:
-                        DEBUG_COMMAND and logger.info("prompt located, clean finish")
                         # GET THE ERROR LEVEL
                         self.returncode = int(source.pop(till=please_stop))
+                        DEBUG_COMMAND and logger.info("prompt located, {code}, clean finish", code=self.returncode)
                         return
                     else:
                         prompt_count += 1
                 else:
                     line_count += 1
                     destination.add(value)
+        except Exception as cause:
+            logger.warning("unexpected problem processing {name}", name=name, cause=cause)
         finally:
             destination.add(THREAD_STOP)
         DEBUG_COMMAND and logger.info(
             "{name} done with {please_stop}", name=name, please_stop=bool(please_stop),
         )
+
+
+STALE_CHECK_PERIOD = 10
+STALE_MAX_AGE = 60
 
 
 def remove_stale_commands(please_stop):
@@ -506,19 +502,28 @@ def remove_stale_commands(please_stop):
     """
     global stale_command_killer
     while not please_stop:
-        Till(seconds=10).wait()
+        (Till(seconds=STALE_CHECK_PERIOD) | please_stop).wait()
         now = unix_now()
+        too_old = now - STALE_MAX_AGE
         with available_command_locker:
-            ac = list(available_command.items())
+            stale = [
+                (key, process, last_used)
+                for key, processes in available_command.items()
+                for process, last_used in processes
+                if process.stopped or too_old > last_used
+            ]
 
-        for key, processes in ac:
-            for process, last_used in processes:
-                if process.stopped or now - last_used > 60:
-                    DEBUG_COMMAND and logger.info(
-                        "removing stale process {process} for {key}", process=process.name, key=key,
-                    )
-                    process.stop()
-                    processes.remove((process, last_used))
+        for key, process, last_used in stale:
+            DEBUG_COMMAND and logger.info(
+                "removing stale process {process} for {key}", process=process.name, key=key,
+            )
+            try:
+                with available_command_locker:
+                    available_command[key].remove((process, last_used))
+                process.stdin.add("exit")
+                process.join()
+            except Exception:
+                pass
 
         if not any(available_command.values()):
             stale_command_killer = None
