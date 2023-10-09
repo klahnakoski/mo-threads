@@ -11,8 +11,7 @@
 import platform
 from time import time as unix_now
 
-from mo_dots import Null, Data
-from mo_future import first
+from mo_dots import Data
 from mo_logs import logger, strings
 
 from mo_threads import threads
@@ -22,13 +21,13 @@ from mo_threads.queues import Queue
 from mo_threads.threads import THREAD_STOP, Thread
 from mo_threads.till import Till
 
-DEBUG_COMMAND = False
+DEBUG = True
 
 STALE_CHECK_PERIOD = 10
 STALE_MAX_AGE = 60
 PROMPT = "READY_FOR_MORE"
 
-available_command_locker = Lock("cmd lock")
+locker = Lock("cmd lock")
 avail_processes = []
 inuse_processes = []
 lifetime_management_thread = None
@@ -44,42 +43,46 @@ class Command(object):
     def __init__(
         self, name, params, cwd=None, env=None, debug=False, shell=True, max_stdout=1024, bufsize=-1,
     ):
-        global lifetime_management_thread
-        with available_command_locker:
-            if not lifetime_management_thread:
-                lifetime_management_thread = Thread.run(
-                    "command management", lifetime_management_thread, parent_thread=threads.MAIN_THREAD
-                )
+        cwd = os_path(cwd)
 
         self.name = name
         self.params = params
-        self.key = (
-            cwd,
-            Data(**(env or {})),  # env WILL BE UPDATED BY CALLEE
-            debug,
-            shell,
-        )
+        self.key = (cwd, Data(**(env or {})), debug, shell)
         self.stdout = Queue("stdout for " + name, max=max_stdout)
         self.stderr = Queue("stderr for " + name, max=max_stdout)
-        self.process = None
-        with available_command_locker:
+        self.process = process =self.get_or_create_process(bufsize, cwd, debug, env, name, shell)
+        self.returncode = None
+        self.process.stdin.add(" ".join(cmd_escape(p) for p in params))
+        self.process.stdin.add(LAST_RETURN_CODE)
+        self.stdout_thread = Thread.run(f"{name} stdout", self._relay, "stdout", process.stdout, self.stdout)
+        self.stderr_thread = Thread.run(f"{name} stderr", self._relay, "stderr", process.stderr, self.stderr)
+        self.stderr_thread.stopped.then(self._return_process)
+
+    def get_or_create_process(self, bufsize, cwd, debug, env, name, shell):
+        global lifetime_management_thread
+        with locker:
             for i, (directory, process, last_used) in enumerate(avail_processes):
                 if self.key != directory or process.stopped:
                     continue
-                self.process = process
                 del avail_processes[i]
-                inuse_processes.append((directory, self.process, unix_now()))
-                DEBUG_COMMAND and logger.info(
-                    "Reuse process {process} for {command}", process=self.process.name, command=name,
+                inuse_processes.append((directory, process, unix_now()))
+                DEBUG and logger.info(
+                    "Reuse process {process} for {command}", process=process.name, command=name,
                 )
-                break
+                return process
 
-        if not self.process:
-            cwd = os_path(cwd)
-            self.process = Process(
+        with locker:
+            if not lifetime_management_thread:
+                lifetime_management_thread = Thread(
+                    "lifetime management",
+                    lifetime_management,
+                    parent_thread=threads.MAIN_THREAD
+                ).start()
+
+            process = Process(
                 name="command shell",
                 params=[cmd()],
-                cwd=os_path(cwd),
+                cwd=cwd,
                 env=env,
                 debug=debug,
                 shell=shell,
@@ -87,43 +90,48 @@ class Command(object):
                 timeout=60 * 60,
                 parent_thread=lifetime_management_thread,
             )
-            self.process.stdin.add(set_prompt())
-            self.process.stdin.add(LAST_RETURN_CODE)
-            inuse_processes.append((cwd, self.process, unix_now()))
-            DEBUG_COMMAND and logger.info(
-                "New process {process} for {command}", process=self.process.name, command=name,
-            )
-            _wait_for_start(self.process.stdout, Null)
+            inuse_processes.append((self.key, process, unix_now()))
 
-        self.process.stdin.add(" ".join(cmd_escape(p) for p in params))
-        self.process.stdin.add(LAST_RETURN_CODE)
-        self.returncode = None
-        self.stdout_thread = Thread.run(
-            name + " stdout", self._stream_relay, "stdout", self.process.stdout, self.stdout,
+        process.stdin.add(set_prompt())
+        process.stdin.add(LAST_RETURN_CODE)
+        DEBUG and logger.info(
+            "New process {process} for {command}", process=process.name, command=name,
         )
-        self.stderr_thread = Thread.run(
-            name + " stderr", self._stream_relay, "stderr", self.process.stderr, self.stderr,
-        )
-        self.stderr_thread.stopped.then(self._cleanup)
 
-    def _cleanup(self):
-        with available_command_locker:
-            item = first(self.process == p for p, _ in avail_processes[self.key])
-            inuse_processes.remove(item)
-            avail_processes[self.key].append((item.cwd, item.process, unix_now()))
+        # WAIT FOR START
+        timeout = Till(seconds=5)
+        prompt = PROMPT + ">" + LAST_RETURN_CODE
+        while True:
+            value = process.stdout.pop(till=timeout)
+            if value and value.startswith(prompt):
+                break
+        process.stdout.pop(till=timeout)  # GET THE ERROR LEVEL
+        if timeout:
+            process.kill()
+            process.join()
+            logger.error("Command line did not start in time")
+        return process
+
+    def _return_process(self):
+        with locker:
+            for i, (key, process, last_used) in enumerate(inuse_processes):
+                if process is self.process:
+                    del inuse_processes[i]
+                    avail_processes.append((key, process, unix_now()))
+                    break
 
     def join(self, raise_on_error=False, till=None):
         try:
             # WAIT FOR COMMAND LINE RESPONSE ON stdout
             self.stdout_thread.join(till=till)
-            DEBUG_COMMAND and logger.info("stdout IS DONE {params}", params=self.params)
+            DEBUG and logger.info("stdout IS DONE {params}", params=self.params)
         except Exception as cause:
             logger.error("unexpected problem processing stdout", cause=cause)
 
         try:
             self.stderr_thread.please_stop.go()
             self.stderr_thread.join(till=till)
-            DEBUG_COMMAND and logger.info("stderr IS DONE {params}", params=self.params)
+            DEBUG and logger.info("stderr IS DONE {params}", params=self.params)
         except Exception as cause:
             logger.error("unexpected problem processing stderr", cause=cause)
 
@@ -136,7 +144,7 @@ class Command(object):
             )
         return self
 
-    def _stream_relay(self, name, source, destination, please_stop=None):
+    def _relay(self, name, source, destination, please_stop=None):
         """
         :param source:
         :param destination:
@@ -153,16 +161,16 @@ class Command(object):
                 if value is None:
                     continue
                 elif value is THREAD_STOP:
-                    DEBUG_COMMAND and logger.info("got thread stop")
+                    DEBUG and logger.info("got thread stop")
                     return
                 elif line_count == 0 and "is not recognized as an internal or external command" in value:
-                    DEBUG_COMMAND and logger.info("exit with error")
+                    DEBUG and logger.info("exit with error")
                     logger.error("Problem with command: {desc}", desc=value)
                 elif value.startswith(prompt):
                     if prompt_count:
                         # GET THE ERROR LEVEL
                         self.returncode = int(source.pop(till=please_stop))
-                        DEBUG_COMMAND and logger.info("prompt located, {code}, clean finish", code=self.returncode)
+                        DEBUG and logger.info("prompt located, {code}, clean finish", code=self.returncode)
                         return
                     else:
                         prompt_count += 1
@@ -173,26 +181,26 @@ class Command(object):
             logger.warning("unexpected problem processing {name}", name=name, cause=cause)
         finally:
             destination.add(THREAD_STOP)
-        DEBUG_COMMAND and logger.info(
+        DEBUG and logger.info(
             "{name} done with {please_stop}", name=name, please_stop=bool(please_stop),
         )
 
 
 def _stop_stale_threads(too_old):
-    with available_command_locker:
+    with locker:
         stale = [
-            (cwd, process, last_used)
-            for cwd, process, last_used in avail_processes
+            (key, process, last_used)
+            for key, process, last_used in avail_processes
             if process.stopped or too_old > last_used
         ]
 
-    for cwd, process, last_used in stale:
-        DEBUG_COMMAND and logger.info(
-            "removing stale process {process} for {key}", process=process.name, key=cwd,
+    for key, process, last_used in stale:
+        DEBUG and logger.info(
+            "removing stale process {process} for {key}", process=process.name, key=key,
         )
         try:
-            with available_command_locker:
-                avail_processes.remove((cwd, process, last_used))
+            with locker:
+                avail_processes.remove((key, process, last_used))
             if not process.stopped:
                 process.stdin.add("exit")
             process.join()
@@ -200,7 +208,7 @@ def _stop_stale_threads(too_old):
             pass
 
 
-def lifetime_management_thread(please_stop):
+def lifetime_management(please_stop):
     """
     REMOVE COMMANDS THAT HAVE NOT BEEN USED IN A WHILE
     """
@@ -212,7 +220,7 @@ def lifetime_management_thread(please_stop):
         now = unix_now()
         too_old = now - STALE_MAX_AGE
         _stop_stale_threads(too_old)
-        with available_command_locker:
+        with locker:
             if not avail_processes and not inuse_processes:
                 lifetime_management_thread = None
                 return
@@ -222,23 +230,6 @@ def lifetime_management_thread(please_stop):
         Till(seconds=1).wait()
 
     _stop_stale_threads(unix_now())
-
-
-def _wait_for_start(source, destination):
-    prompt = PROMPT + ">" + LAST_RETURN_CODE
-
-    while True:
-        value = source.pop()
-        if value.startswith(prompt):
-            # GET THE ERROR LEVEL
-            line = source.pop()
-            try:
-                returncode = int(line)
-            except Exception:
-                logger.error("not an int ({line})", line=line)
-            destination.add(THREAD_STOP)
-            return
-        destination.add(value)
 
 
 WINDOWS_ESCAPE_DCT = {
