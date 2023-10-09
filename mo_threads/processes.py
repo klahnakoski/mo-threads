@@ -19,9 +19,9 @@ from mo_logs import logger, strings
 from mo_logs.exceptions import Except
 from mo_threads.queues import Queue
 from mo_threads.signals import Signal
-from mo_threads.threads import THREAD_STOP, Thread
+from mo_threads.threads import THREAD_STOP, Thread, EndOfThread
 from mo_threads.till import Till
-from mo_times import Timer
+from mo_times import Timer, Date
 
 DEBUG = False
 
@@ -76,6 +76,7 @@ class Process(object):
         self.name = f"{name} ({self.process_id})"
         self.stopped = Signal("stopped signal for " + strings.quote(name))
         self.please_stop = Signal("please stop for " + strings.quote(name))
+        self.last_stdin = None
         self.stdin = Queue("stdin for process " + strings.quote(name), silent=not self.debug)
         self.stdout = Queue("stdout for process " + strings.quote(name), silent=not self.debug)
         self.stderr = Queue("stderr for process " + strings.quote(name), silent=not self.debug)
@@ -158,43 +159,13 @@ class Process(object):
         self.please_stop.go()
         return self
 
-    def join(self, till=None, raise_on_error=False):
+    def join(self, till=None, raise_on_error=True):
         on_error = logger.error if raise_on_error else logger.warning
         self.stopped.wait(till=till)
         if not self.children:
             return
-        try:
-            stdin_thread, stdout_thread, stderr_thread, monitor_thread = self.children
-            try:
-                monitor_thread.join(till=till)
-            except Exception as cause:
-                self.debug and print(cause)
-
-            # stdout can lock up in windows, so do not wait too long
-            wait_limit = Till(seconds=1) | till
-            try:
-                stdout_thread.join(till=wait_limit)
-            except:
-                self._kill()
-            try:
-                stderr_thread.join(till=wait_limit)
-            except:
-                self._kill()
-
-            self.stdout.close()
-            self.stderr.close()
-
-            # THESE THREADS HAVE STOPPED OR ARE LOST ON PIPE.readline()
-            stdout_thread.release()
-            stdout_thread.stopped.go()
-
-            stderr_thread.release()
-            stderr_thread.stopped.go()
-
-            self.stdin.close()
-            stdin_thread.join(till=till)
-        finally:
-            self.children = ()
+        _, _, _, monitor_thread = self.children
+        monitor_thread.join(till=till)
 
         if self.returncode != 0:
             on_error(
@@ -225,14 +196,52 @@ class Process(object):
                 if timeout < 0:
                     self._kill()
                     if self.debug:
-                        logger.warning("{name} took too long to respond", name=self.name)
+                        logger.warning(
+                            "{last_sent} for {name} last used {last_used} took over {timeout} seconds to respond",
+                            last_sent=self.last_stdin,
+                            last_used=Date(last_out).format(),
+                            timeout=self.timeout,
+                            name=self.name,
+                        )
                     break
                 try:
                     self.service.wait(timeout=self.monitor_period)
+                    if self.service.returncode is not None:
+                        break
                     DEBUG and logger.info("{name} waiting for response", name=self.name)
                 except Exception:
                     # TIMEOUT, CHECK FOR LIVELINESS
                     pass
+
+        (stdin_thread, stdout_thread, stderr_thread, _), self.children = self.children, ()
+
+        kill = self._kill
+        # stdout can lock up in windows, so do not wait too long
+        wait_limit = Till(seconds=1)
+        try:
+            stdout_thread.join(till=wait_limit)
+        except:
+            # THREAD LOST ON PIPE.readline()
+            kill()
+            kill = Null  # CALL JUST ONCE
+            self.stdout.close()
+            stdout_thread.release()
+            stdout_thread.end_of_thread = EndOfThread(None, None)
+            stdout_thread.stopped.go()
+
+        try:
+            stderr_thread.join(till=wait_limit)
+        except:
+            # THREAD LOST ON PIPE.readline()
+            kill()
+            self.stderr.close()
+            stderr_thread.release()
+            stderr_thread.end_of_thread = EndOfThread(None, None)
+            stderr_thread.stopped.go()
+
+        self.stdin.close()
+        stdin_thread.join()
+
         self.stopped.go()
         self.debug and logger.info(
             "{process} STOP: returncode={returncode}", process=self.name, returncode=self.service.returncode,
@@ -240,7 +249,7 @@ class Process(object):
 
     def _reader(self, name, pipe, receive, status: Status, please_stop):
         """
-        MOVE LINES fROM pipe TO receive QUEUE
+        MOVE LINES FROM pipe TO receive QUEUE
         """
         self.debug and logger.info("is reading")
         try:
@@ -253,7 +262,8 @@ class Process(object):
                     break
                 receive.add(line)
         except Exception as cause:
-            logger.warning("premature read failure", cause=cause)
+            if not please_stop:
+                logger.warning("premature read failure", cause=cause)
         finally:
             self.debug and logger.info("{name} closed", name=name)
             self.please_stop.go()
@@ -265,10 +275,11 @@ class Process(object):
             line = send.pop(till=please_stop)
             if line is THREAD_STOP:
                 please_stop.go()
+                self.debug and logger.info("got THREAD_STOP")
                 break
             elif line is None:
                 continue
-
+            self.last_stdin = line
             self.debug and logger.info(
                 "send line: {line}", process=self.name, line=line.rstrip(),
             )
@@ -278,6 +289,7 @@ class Process(object):
                 pipe.flush()
             except Exception as cause:
                 # HAPPENS WHEN PROCESS IS DONE
+                self.debug and logger.info("pipe closed")
                 break
         self.debug and logger.info("writer closed")
 
