@@ -436,7 +436,7 @@ class ThreadedQueue(Queue):
         self.slow_queue = slow_queue
         self.thread = (
             Thread
-            .run(f"threaded queue for {name}", self.worker_bee, batch_size, period, error_target, parent_thread=self,)
+            .run(f"threaded queue for {name}", self.worker_bee, batch_size, period, error_target, parent_thread=self)
             .release()
         )
 
@@ -517,6 +517,9 @@ class ThreadedQueue(Queue):
             # ONE LAST PUSH, DO NOT HAVE TIME TO DEAL WITH ERRORS
             push_to_queue()
         self.slow_queue.add(THREAD_STOP)
+
+    def add_child(self, child):
+        pass
 
     def add(self, value, timeout=None):
         with self.lock:
