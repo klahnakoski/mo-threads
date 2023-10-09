@@ -34,7 +34,7 @@ from mo_logs.exceptions import ERROR
 from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till, TIMERS_NAME
 
-DEBUG = True
+DEBUG = False
 KNOWN_DEBUGGERS = ["pydevd.py"]
 
 PLEASE_STOP = "please_stop"  # REQUIRED thread PARAMETER TO SIGNAL STOP

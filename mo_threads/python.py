@@ -18,7 +18,7 @@ from mo_logs import Except, logger
 
 from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, DONE, python_worker
 
-DEBUG = True
+DEBUG = False
 
 
 class Python(object):

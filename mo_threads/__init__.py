@@ -13,8 +13,8 @@
 from mo_imports import export
 
 from mo_threads import threads
-from mo_threads.multiprocess import Process
-from mo_threads.command import Command
+from mo_threads.processes import Process
+from mo_threads.commands import Command
 from mo_threads.futures import Future
 from mo_threads.lock import Lock
 from mo_threads.queues import Queue, ThreadedQueue

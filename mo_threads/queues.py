@@ -38,7 +38,7 @@ class Queue(object):
     """
     SIMPLE MULTI-THREADED QUEUE
 
-    (multiprocessing.Queue REQUIRES SERIALIZATION, WHICH
+    (processes.Queue REQUIRES SERIALIZATION, WHICH
     IS DIFFICULT TO USE JUST BETWEEN THREADS)
     """
 
