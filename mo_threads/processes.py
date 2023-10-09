@@ -104,6 +104,7 @@ class Process(object):
 
             self.stdout_status = Status(unix_now() + startup_timeout)
             self.stderr_status = Status(unix_now() + startup_timeout)
+            self.kill_once = self.kill
             self.children = (
                 Thread.run(
                     self.name + " stdin",
@@ -194,15 +195,14 @@ class Process(object):
                 last_out = max(self.stdout_status.last_read, self.stderr_status.last_read)
                 timeout = last_out + self.timeout - now
                 if timeout < 0:
-                    self._kill()
-                    if self.debug:
-                        logger.warning(
-                            "{last_sent} for {name} last used {last_used} took over {timeout} seconds to respond",
-                            last_sent=self.last_stdin,
-                            last_used=Date(last_out).format(),
-                            timeout=self.timeout,
-                            name=self.name,
-                        )
+                    self.kill_once()
+                    logger.warning(
+                        "{last_sent} for {name} last used {last_used} took over {timeout} seconds to respond",
+                        last_sent=self.last_stdin,
+                        last_used=Date(last_out).format(),
+                        timeout=self.timeout,
+                        name=self.name,
+                    )
                     break
                 try:
                     self.service.wait(timeout=self.monitor_period)
@@ -215,15 +215,13 @@ class Process(object):
 
         (stdin_thread, stdout_thread, stderr_thread, _), self.children = self.children, ()
 
-        kill = self._kill
         # stdout can lock up in windows, so do not wait too long
         wait_limit = Till(seconds=1)
         try:
             stdout_thread.join(till=wait_limit)
         except:
             # THREAD LOST ON PIPE.readline()
-            kill()
-            kill = Null  # CALL JUST ONCE
+            self.kill_once()
             self.stdout.close()
             stdout_thread.release()
             stdout_thread.end_of_thread = EndOfThread(None, None)
@@ -233,7 +231,7 @@ class Process(object):
             stderr_thread.join(till=wait_limit)
         except:
             # THREAD LOST ON PIPE.readline()
-            kill()
+            self.kill_once()
             self.stderr.close()
             stderr_thread.release()
             stderr_thread.end_of_thread = EndOfThread(None, None)
@@ -293,10 +291,14 @@ class Process(object):
                 break
         self.debug and logger.info("writer closed")
 
+    def kill(self):
+        self._kill()
+        self.kill_once = Null
+
     def _kill(self):
         try:
             self.service.kill()
-            logger.info("{process} was successfully terminated.", process=self.name)
+            logger.info("{process} was successfully terminated.", process=self.name, stack_depth=1)
         except Exception as cause:
             cause = Except.wrap(cause)
             if "The operation completed successfully" in cause:

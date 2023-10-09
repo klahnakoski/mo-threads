@@ -56,7 +56,9 @@ class Command(object):
         self.name = name
         self.stdout = Queue("stdout for " + name, max=max_stdout)
         self.stderr = Queue("stderr for " + name, max=max_stdout)
-        self.process.stdin.add(" ".join(cmd_escape(p) for p in params))
+        command = " ".join(cmd_escape(p) for p in params)
+        DEBUG and logger.info("command: {command}", command=command)
+        self.process.stdin.add(command)
         self.stderr_thread = Thread.run(f"{name} stderr", _stderr_relay, process.stderr, self.stderr).release()
         self.stdout_thread = Thread.run(f"{name} stdout", self._stdout_relay, process.stdout, self.stdout).release()
 
@@ -68,12 +70,12 @@ class Command(object):
                 if self.key != key or process.stopped:
                     continue
                 del avail_processes[i]
+                process.stdout_status.last_read = now
+                process.timeout = self.timeout
                 inuse_processes.append((key, process, now))
                 DEBUG and logger.info(
                     "Reuse process {process} for {command}", process=process.name, command=name,
                 )
-                process.stdout_status.last_read = now
-                process.timeout = self.timeout
                 return process
 
         with locker:
@@ -111,7 +113,7 @@ class Command(object):
                 break
         process.stdout.pop(till=timeout)  # GET THE ERROR LEVEL
         if timeout:
-            process._kill()
+            process.kill_once()
             process.join()
             logger.error("Command line did not start in time")
         return process
@@ -190,6 +192,10 @@ def _stderr_relay(source, destination, please_stop=None):
             return
         if value:
             destination.add(value)
+    for value in source.pop_all():
+        if value and value is not THREAD_STOP:
+            destination.add(value)
+
     destination.add(THREAD_STOP)
 
 
