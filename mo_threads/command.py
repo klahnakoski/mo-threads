@@ -50,7 +50,7 @@ class Command(object):
         self.key = (cwd, Data(**(env or {})), debug, shell)
         self.stdout = Queue("stdout for " + name, max=max_stdout)
         self.stderr = Queue("stderr for " + name, max=max_stdout)
-        self.process = process =self.get_or_create_process(bufsize, cwd, debug, env, name, shell)
+        self.process = process = self.get_or_create_process(bufsize, cwd, debug, env, name, shell)
         self.returncode = None
         self.process.stdin.add(" ".join(cmd_escape(p) for p in params))
         self.process.stdin.add(LAST_RETURN_CODE)
@@ -74,9 +74,7 @@ class Command(object):
         with locker:
             if not lifetime_management_thread:
                 lifetime_management_thread = Thread(
-                    "lifetime management",
-                    lifetime_management,
-                    parent_thread=threads.MAIN_THREAD
+                    "lifetime management", lifetime_management, parent_thread=threads.MAIN_THREAD
                 ).start()
 
             process = Process(
