@@ -54,7 +54,7 @@ class Queue(object):
         self.allow_add_after_close = allow_add_after_close
         self.unique = unique
         self.closed = Signal(
-            "stop adding signal for " + name
+            "queue is closed signal for " + name
         )  # INDICATE THE PRODUCER IS DONE GENERATING ITEMS TO QUEUE
         self.lock = Lock("lock for queue " + name)
         self.queue = deque()

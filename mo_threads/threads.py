@@ -34,7 +34,7 @@ from mo_logs.exceptions import ERROR
 from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till, TIMERS_NAME
 
-DEBUG = False
+DEBUG = True
 KNOWN_DEBUGGERS = ["pydevd.py"]
 
 PLEASE_STOP = "please_stop"  # REQUIRED thread PARAMETER TO SIGNAL STOP
@@ -110,6 +110,8 @@ class BaseThread(object):
         if DEBUG:
             if child.name == TIMERS_NAME:
                 logger.error("timer thread should not be added as child")
+            if child is self:
+                logger.error("parent thread should not be added as child")
             logger.info("adding child {child} to {parent}", child=child.name, parent=self.name)
 
         with self.child_locker:
@@ -136,6 +138,8 @@ class BaseThread(object):
         except Exception as cause:
             logger.error(thread.name, cause=cause)
         finally:
+            if DEBUG:
+                logger.info("removing {name} ({id}) from ALL", id=self._ident, name=self.name)
             with ALL_LOCK:
                 del ALL[self._ident]
             try:
@@ -200,12 +204,14 @@ class MainThread(BaseThread):
             DEBUG and logger.info("Thread {name|quote} now stopped", name=self.name)
             self.stopped.go()
 
+        if DEBUG:
+            logger.info("removing {name} ({id}) from ALL", id=self.ident, name=self.name)
         with ALL_LOCK:
             del ALL[self._ident]
             residue = list(ALL.values())
             ALL.clear()
 
-        if not IN_DEBUGGER and residue:
+        if residue and (DEBUG or not IN_DEBUGGER):
             sys.stderr.write(f"Expecting no further threads: {[t.name for t in residue]}")
         for t in residue:
             t.stop()
@@ -218,13 +224,6 @@ class MainThread(BaseThread):
                 name=self.name,
                 cause=unwraplist(join_errors),
             )
-
-        if IN_DEBUGGER and residue:
-            import objgraph
-
-            objgraph.by_type("PyDB")[0].finish_debugging_session()
-            # the debugger may have monkey patched sys.exit() to raise an exception
-            raise RuntimeError("Got stop from debugger")
 
         return self
 
@@ -253,12 +252,10 @@ class Thread(BaseThread):
             self.please_stop = self.kwargs[PLEASE_STOP] = Signal(f"please_stop for {self.name}")
         self.joiner_is_waiting = Signal(f"joining with {self.name}")
         self.stopped = Signal(f"stopped signal for {self.name}")
-
-        if parent_thread is not None:  # IMPORTANT, USE Null FOR ORPHANS
-            self.parent = parent_thread
-        else:
-            self.parent = current_thread()
-            self.parent.add_child(self)
+        if parent_thread is None:
+            parent_thread = current_thread()
+        self.parent = parent_thread
+        self.parent.add_child(self)
 
     def __enter__(self):
         return self
@@ -299,11 +296,11 @@ class Thread(BaseThread):
     def _run(self):
         self._ident = get_ident()
         with RegisterThread(thread=self):
-            try:
-                try:
+            try:  # deal with join
+                try:  # deal with target exceptions
                     if self.target is not None:
-                        a, k, self.args, self.kwargs = self.args, self.kwargs, None, None
-                        self.end_of_thread = EndOfThread(self.target(*a, **k), None)
+                        args, kwargs, self.args, self.kwargs = self.args, self.kwargs, None, None
+                        self.end_of_thread = EndOfThread(self.target(*args, **kwargs), None)
                 except Exception as cause:
                     cause = Except.wrap(cause)
                     self.end_of_thread = EndOfThread(None, cause)
@@ -392,7 +389,7 @@ class Thread(BaseThread):
         join_all_threads(children, till=till)
 
         DEBUG and logger.note(
-            "{parent|quote} waiting on thread {child|quote}", parent=Thread.current().name, child=self.name,
+            "{parent|quote} waiting on thread {child|quote}", parent=current_thread().name, child=self.name,
         )
         self.joiner_is_waiting.go()
         (self.stopped | till).wait()
@@ -468,9 +465,12 @@ class RegisterThread(object):
         thread = self.thread
         ident = thread.ident
         with ALL_LOCK:
-            ALL[ident] = thread
             if DEBUG:
                 ALL_THREAD.append(thread)
+                logger.info("adding {name} ({id}) to ALL", id=thread.ident, name=thread.name)
+                if ident in ALL:
+                    logger.error("Thread {name|quote} ({id}) already registered", id=thread.ident, name=thread.name)
+            ALL[ident] = thread
         if cprofiler_stats is not None:
             from mo_threads.profiles import CProfiler
 
@@ -498,8 +498,19 @@ class RegisterThread(object):
                     children=[c.name for c in thread.children],
                     thread=thread.name,
                 )
+        if DEBUG:
+            logger.info("removing {name} ({id}) from ALL", id=thread.ident, name=thread.name)
         with all_lock:
-            del all[ident]
+            try:
+                del all[ident]
+            except Exception as cause:
+                logger.warning(
+                    "problem removing thread {name} ({id}) from ALL {all}",
+                    all=[k for k in all.keys()],
+                    id=thread.ident,
+                    name=thread.name,
+                    cause=cause,
+                )
 
 
 def register_thread(func):

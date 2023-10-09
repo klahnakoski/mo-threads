@@ -300,8 +300,7 @@ class TestThreads(FuzzyTestCase):
         ready.wait()
         print(name[0])
         self.assertTrue(
-            name[0].startswith("Dummy-")  # pycharm debugger
-            or name[0].startswith("Unknown Thread")  # regular run
+            name[0].startswith("Dummy-") or name[0].startswith("Unknown Thread")  # pycharm debugger  # regular run
         )
 
 

@@ -20,7 +20,6 @@ from tests.utils import add_error_reporting
 
 @add_error_reporting
 class TestLocks(FuzzyTestCase):
-
     def setUp(self):
         stop_main_thread()
         start_main_thread()
@@ -68,7 +67,11 @@ class TestLocks(FuzzyTestCase):
                 pass
 
         STDOUT, STDIN, STDERR = python_worker.STDOUT, python_worker.STDIN, python_worker.STDERR
-        stdout, stdin, strerr = python_worker.STDOUT, python_worker.STDIN, python_worker.STDERR = Stdout(), Stdin(), Stdout()
+        stdout, stdin, strerr = python_worker.STDOUT, python_worker.STDIN, python_worker.STDERR = (
+            Stdout(),
+            Stdin(),
+            Stdout(),
+        )
         try:
             start()
             self.assertEqual(len([line for line in stdout.lines if not line.startswith(b'{"log"')]), 2)

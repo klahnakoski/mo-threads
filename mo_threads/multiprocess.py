@@ -80,7 +80,7 @@ class Process(object):
         self.stdout = Queue("stdout for process " + strings.quote(name), silent=not self.debug)
         self.stderr = Queue("stderr for process " + strings.quote(name), silent=not self.debug)
         self.timeout = timeout
-        self.monitor_period = 10 if self.debug else timeout
+        self.monitor_period = 0.5
 
         try:
             if cwd == None:
@@ -132,9 +132,7 @@ class Process(object):
                     please_stop=self.please_stop,
                     parent_thread=Null,
                 ),
-                Thread.run(
-                    self.name + " waiter", self._monitor, please_stop=self.please_stop, parent_thread=self,
-                ),
+                Thread.run(self.name + " monitor", self._monitor, please_stop=self.please_stop, parent_thread=self,),
             )
         except Exception as cause:
             logger.error("Can not call  dir={cwd}", cwd=cwd, cause=cause)
@@ -153,6 +151,9 @@ class Process(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.join(raise_on_error=True)
 
+    def add_child(self, child):
+        pass
+
     def stop(self):
         self.please_stop.go()
         return self
@@ -164,20 +165,34 @@ class Process(object):
             return
         try:
             stdin_thread, stdout_thread, stderr_thread, monitor_thread = self.children
-            monitor_thread.join(till=till)
-            stdin_thread.join(till=till)
+            try:
+                monitor_thread.join(till=till)
+            except Exception as cause:
+                self.debug and print(cause)
+
             # stdout can lock up in windows, so do not wait too long
-            wait_limit = Till(seconds=0.5) | till
+            wait_limit = Till(seconds=1) | till
             try:
                 stdout_thread.join(till=wait_limit)
             except:
-                pass
+                self._kill()
             try:
                 stderr_thread.join(till=wait_limit)
             except:
-                pass
-            if stdout_thread.is_alive() or stderr_thread.is_alive():
                 self._kill()
+
+            self.stdout.close()
+            self.stderr.close()
+
+            # THESE THREADS HAVE STOPPED OR ARE LOST ON PIPE.readline()
+            stdout_thread.release()
+            stdout_thread.stopped.go()
+
+            stderr_thread.release()
+            stderr_thread.stopped.go()
+
+            self.stdin.close()
+            stdin_thread.join(till=till)
         finally:
             self.children = ()
 
@@ -218,8 +233,7 @@ class Process(object):
                 except Exception:
                     # TIMEOUT, CHECK FOR LIVELINESS
                     pass
-            self.stopped.go()
-            self.stdin.close()
+        self.stopped.go()
         self.debug and logger.info(
             "{process} STOP: returncode={returncode}", process=self.name, returncode=self.service.returncode,
         )
@@ -242,11 +256,9 @@ class Process(object):
             logger.warning("premature read failure", cause=cause)
         finally:
             self.debug and logger.info("{name} closed", name=name)
+            self.please_stop.go()
             receive.close()
             pipe.close()
-            self.service.stderr.close()
-            self.service.stdout.close()
-            self.please_stop.go()
 
     def _writer(self, pipe, send, please_stop):
         while not please_stop:

@@ -35,7 +35,7 @@ from tests.utils import add_error_reporting
 
 USE_PYTHON_THREADS = False
 DEBUG_SHOW_BACKREFS = True
-IN_DEBUGGER = any("pydevd.py" in line['file'] for line in get_stacktrace())
+IN_DEBUGGER = any("pydevd.py" in line["file"] for line in get_stacktrace())
 
 
 @add_error_reporting
