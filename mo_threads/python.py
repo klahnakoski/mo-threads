@@ -160,9 +160,9 @@ class Python(object):
             self.process.stop()
             self.watch_stdout.stop()
             self.watch_stderr.stop()
-            return self
         except Exception as cause:
             self.stop_error = cause
+        return self
 
     def join(self):
         if self.stop_error:

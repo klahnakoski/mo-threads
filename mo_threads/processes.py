@@ -23,7 +23,7 @@ from mo_threads.threads import THREAD_STOP, Thread, EndOfThread
 from mo_threads.till import Till
 from mo_times import Timer, Date
 
-DEBUG = False
+DEBUG = True
 
 next_process_id_locker = allocate_lock()
 next_process_id = 0
@@ -298,7 +298,7 @@ class Process(object):
     def _kill(self):
         try:
             self.service.kill()
-            logger.info("{process} was successfully terminated.", process=self.name, stack_depth=1)
+            logger.info("{process} was successfully terminated.", process=self.name, stack_depth=2)
         except Exception as cause:
             cause = Except.wrap(cause)
             if "The operation completed successfully" in cause:

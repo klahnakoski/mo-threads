@@ -34,7 +34,7 @@ from mo_logs.exceptions import ERROR
 from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till, TIMERS_NAME
 
-DEBUG = False
+DEBUG = True
 KNOWN_DEBUGGERS = ["pydevd.py"]
 
 PLEASE_STOP = "please_stop"  # REQUIRED thread PARAMETER TO SIGNAL STOP
@@ -128,7 +128,7 @@ class BaseThread(object):
         pass
 
     def join(self, till=None):
-        DEBUG and logger.info("Joining on thread {name|quote}", name=self.name)
+        DEBUG and logger.info("{thread} joining on thread {name|quote}", name=self.name)
         thread = self.threading_thread
         try:
             if not is_daemon(thread):
@@ -207,9 +207,8 @@ class MainThread(BaseThread):
         if DEBUG:
             logger.info("removing {name} ({id}) from ALL", id=self.ident, name=self.name)
         with ALL_LOCK:
-            del ALL[self._ident]
+            del ALL[self.ident]
             residue = list(ALL.values())
-            ALL.clear()
 
         if residue and (DEBUG or not IN_DEBUGGER):
             sys.stderr.write(f"Expecting no further threads: {[t.name for t in residue]}")
@@ -287,7 +286,7 @@ class Thread(BaseThread):
             c.stop()
         self.please_stop.go()
 
-        DEBUG and logger.note("Thread {name|quote} got request to stop", name=self.name)
+        DEBUG and logger.note("Thread {name|quote} got request to stop from {thread}", thread=current_thread().name, name=self.name)
         return self
 
     def is_alive(self):
@@ -576,6 +575,9 @@ def current_thread():
 
     if output is None:
         threading_thread = threading.current_thread()
+        if threading_thread is main_thread.threading_thread:
+            return main_thread
+
         thread = BaseThread(ident, threading_thread)
         if cprofiler_stats is not None:
             from mo_threads.profiles import CProfiler
@@ -602,7 +604,7 @@ def join_all_threads(threads, till=None):
     causes = []
     for c in threads:
         try:
-            DEBUG and logger.note(f"Joining on thread {c.name}\n")
+            DEBUG and logger.note(f"{current_thread().name} joining on thread {c.name}\n")
             c.join(till=till)
         except Exception as cause:
             causes.append(cause)
@@ -674,7 +676,7 @@ def stop_main_thread(signum=0, frame=None):
             logger.note("All threads have shutdown")
             return
 
-    if Thread.current() == MAIN_THREAD:
+    if current_thread() == MAIN_THREAD:
         MAIN_THREAD.stop()
     else:
         MAIN_THREAD.please_stop.go()
