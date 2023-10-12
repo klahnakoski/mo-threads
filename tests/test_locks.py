@@ -308,8 +308,8 @@ class TestLocks(FuzzyTestCase):
         with self.assertRaises(RuntimeError):
             lock.release()
 
-    # @skipIf(IN_DEBUGGER, "The debugger hangs onto threads ")
-    @skip("The debugger hangs onto threads ")
+    @skipIf(IN_DEBUGGER, "The debugger hangs onto threads ")
+    #@skip("The debugger hangs onto threads ")
     def test_memory_cleanup_with_signal(self):
         """
         LOOKING FOR A MEMORY LEAK THAT HAPPENS ONLY DURING THREADING

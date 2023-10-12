@@ -34,7 +34,7 @@ from mo_logs.exceptions import ERROR
 from mo_threads.signals import AndSignals, Signal
 from mo_threads.till import Till, TIMERS_NAME
 
-DEBUG = True
+DEBUG = False
 KNOWN_DEBUGGERS = ["pydevd.py"]
 
 PLEASE_STOP = "please_stop"  # REQUIRED thread PARAMETER TO SIGNAL STOP
@@ -148,9 +148,8 @@ class BaseThread(object):
 
 class AlienThread(BaseThread):
 
-    def __init__(self):
-        ident = get_ident()
-        BaseThread.__init__(self, ident, threading.current_thread())
+    def __init__(self, ident, threading_thread):
+        BaseThread.__init__(self, ident, threading_thread)
 
         with ALL_LOCK:
             if DEBUG:
