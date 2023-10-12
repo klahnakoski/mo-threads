@@ -83,6 +83,7 @@ class TestLocks(FuzzyTestCase):
             for i in range(SCALE):
                 locks[i].release()
 
+    @skipIf(IN_DEBUGGER, "The debugger is too slow")
     def test_queue_speed(self):
         if "PyPy" in machine_metadata().python:
             # PyPy requires some warmup time
@@ -169,6 +170,7 @@ class TestLocks(FuzzyTestCase):
         self.assertTrue(bool(thread_a.stopped), "Thread should be done by now")
         self.assertTrue(bool(thread_b.stopped), "Thread should be done by now")
 
+    @skipIf(IN_DEBUGGER, "The debugger is too slow")
     def test_till_create_speed(self):
         tills = []
         done = time() + 1
@@ -278,6 +280,7 @@ class TestLocks(FuzzyTestCase):
                 logger.info("problem: {cause}", cause=cause_description)
         logger.error("object counts did not go down")
 
+    @skipIf(IN_DEBUGGER, "The debugger is too slow")
     def test_job_queue_in_signal(self):
 
         gc.collect()

@@ -23,7 +23,7 @@ from mo_threads.threads import THREAD_STOP, Thread, EndOfThread
 from mo_threads.till import Till
 from mo_times import Timer, Date
 
-DEBUG = True
+DEBUG = False
 
 next_process_id_locker = allocate_lock()
 next_process_id = 0
@@ -134,7 +134,7 @@ class Process(object):
                     please_stop=self.please_stop,
                     parent_thread=Null,
                 ),
-                Thread.run(self.name + " monitor", self._monitor, please_stop=self.please_stop, parent_thread=self,),
+                Thread.run(self.name + " monitor", self._monitor, please_stop=self.please_stop, parent_thread=self),
             )
         except Exception as cause:
             logger.error("Can not call  dir={cwd}", cwd=cwd, cause=cause)

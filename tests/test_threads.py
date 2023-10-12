@@ -32,7 +32,6 @@ class TestThreads(FuzzyTestCase):
         old_log.stop()
 
     def tearDown(self):
-        logger.stop()
         stop_main_thread()
 
     def test_lock_wait_timeout(self):
