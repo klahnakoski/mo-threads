@@ -198,6 +198,8 @@ class LifetimeManager:
         prompt = PROMPT + ">" + LAST_RETURN_CODE
         while True:
             value = process.stdout.pop(till=timeout)
+            if value == THREAD_STOP:
+                logger.error("Could not start command, stdout closed early")
             if value and value.startswith(prompt):
                 break
         process.stdout.pop(till=timeout)  # GET THE ERROR LEVEL
