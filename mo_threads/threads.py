@@ -69,7 +69,6 @@ else:
     def is_daemon(thread):
         return thread.isDaemon()
 
-
 IN_DEBUGGER = any(debugger in line.filename for line in traceback.extract_stack() for debugger in KNOWN_DEBUGGERS)
 
 
@@ -238,8 +237,10 @@ class MainThread(BaseThread):
                 del ALL[self.ident]
             residue = list(ALL.values())
 
+        DEBUG and logger.info("MainThread has {count} threads left", count=[t.name for t in threading.enumerate()])
+
         if residue and (DEBUG or not IN_DEBUGGER):
-            sys.stderr.write("Expecting no further threads: "+", ".join(f"{t.name} ({t.ident})" for t in residue))
+            sys.stderr.write("Expecting no further threads: " + ", ".join(f"{t.name} ({t.ident})" for t in residue))
         for t in residue:
             t.stop()
         join_all_threads(residue)
@@ -264,8 +265,8 @@ class Thread(BaseThread):
     run() ENHANCED TO CAPTURE EXCEPTIONS
     """
 
-    def __init__(self, name, target, *args, parent_thread=None, **kwargs):
-        threading_thread = threading.Thread(None, self._run, name)
+    def __init__(self, name, target, *args, parent_thread=None, daemon=False, **kwargs):
+        threading_thread = threading.Thread(None, self._run, name, daemon=daemon)
         BaseThread.__init__(self, 0, threading_thread, name or f"thread_{object.__hash__(self)}")
         self.target = target
         self.end_of_thread = None
@@ -523,16 +524,7 @@ class RegisterThread(object):
                     children=[c.name for c in thread.children],
                     thread=thread.name,
                 )
-        if DEBUG:
-            logger.info("registered removing {name} ({id}) from ALL", id=thread.ident, name=thread.name)
-
-
-def deregister(ident):
-    """
-    REMOVE THREAD FROM ALL
-    """
-    with ALL_LOCK:
-        ALL.remove(ident)
+        DEBUG and logger.info("deregistered {name}", name=thread.name)
 
 
 def register_thread(func):
@@ -632,7 +624,7 @@ def join_all_threads(threads, till=None):
         except Exception as cause:
             causes.append(cause)
         finally:
-            DEBUG and logger.note("Joined on thread {name}\n", name=c.name)
+            DEBUG and logger.note("Joined on thread {name}", name=c.name)
     if causes:
         logger.error("At least one thread failed", cause=causes)
 
@@ -651,9 +643,9 @@ def _wait_for_interrupt(please_stop):
 
 
 def wait_for_shutdown_signal(
-    please_stop=False,  # ASSIGN SIGNAL TO STOP EARLY
-    allow_exit=False,  # ALLOW "exit" COMMAND ON CONSOLE TO ALSO STOP THE APP
-    wait_forever=True,  # IGNORE CHILD THREADS, NEVER EXIT.  False => IF NO CHILD THREADS LEFT, THEN EXIT
+        please_stop=False,  # ASSIGN SIGNAL TO STOP EARLY
+        allow_exit=False,  # ALLOW "exit" COMMAND ON CONSOLE TO ALSO STOP THE APP
+        wait_forever=True,  # IGNORE CHILD THREADS, NEVER EXIT.  False => IF NO CHILD THREADS LEFT, THEN EXIT
 ):
     """
     FOR USE BY PROCESSES THAT NEVER DIE UNLESS EXTERNAL SHUTDOWN IS REQUESTED

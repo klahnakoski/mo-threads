@@ -123,6 +123,7 @@ class Process(object):
                     self.stdout_status,
                     please_stop=self.please_stop,
                     parent_thread=Null,
+                    daemon=True  # MIGHT LOCKUP, ONLY WAY TO KILL IT
                 ),
                 Thread.run(
                     self.name + " stderr",
@@ -133,6 +134,7 @@ class Process(object):
                     self.stderr_status,
                     please_stop=self.please_stop,
                     parent_thread=Null,
+                    daemon=True  # MIGHT LOCKUP, ONLY WAY TO KILL IT
                 ),
                 Thread.run(self.name + " monitor", self._monitor, please_stop=self.please_stop, parent_thread=self),
             )
@@ -298,11 +300,10 @@ class Process(object):
         self.debug and logger.info("writer closed")
 
     def kill(self):
-        self._kill()
         self.kill_once = Null
-
-    def _kill(self):
         try:
+            if self.service.returncode is not None:
+                return
             self.service.kill()
             logger.info("{process} was successfully terminated.", process=self.name, stack_depth=2)
         except Exception as cause:
