@@ -110,6 +110,8 @@ class TestProcesses(FuzzyTestCase):
         self.assertIn("All threads have shutdown", lines)
 
     def test_command_shutdown(self):
-        threads.DEBUG, old = True, threads.DEBUG
+        commands.DEBUG, commands_debug = True, commands.DEBUG
+        threads.DEBUG, threads_debug = True, threads.DEBUG
         c = Command("test", [sys.executable, "-c", "print('test')"]).join()
-        commands.DEBUG = old
+        commands.DEBUG = commands_debug
+        threads.DEBUG = threads_debug
