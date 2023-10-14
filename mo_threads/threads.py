@@ -167,7 +167,8 @@ class AlienThread(BaseThread):
                 logger.info("removing {name} ({id}) from ALL", id=self._ident, name=self.name)
             with ALL_LOCK:
                 try:
-                    del ALL[self._ident]
+                    if self._ident in ALL:
+                        del ALL[self._ident]
                 except Exception as cause:
                     logger.warning(
                         "problem removing thread {name} ({id}) from ALL {all}",
@@ -359,7 +360,8 @@ class Thread(BaseThread):
                         DEBUG and logger.warning("problem with thread {name|quote}", cause=cause, name=self.name)
                     finally:
                         with ALL_LOCK:
-                            del ALL[ident]
+                            if ident in ALL:
+                                del ALL[ident]
                         self.stopped.go()
             finally:
                 if self.joiner_is_waiting:
@@ -497,7 +499,6 @@ class RegisterThread(object):
 
     def __enter__(self):
         thread = self.thread
-        ident = thread.ident
         if cprofiler_stats is not None:
             from mo_threads.profiles import CProfiler
 
@@ -511,10 +512,7 @@ class RegisterThread(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # PYTHON WILL REMOVE GLOBAL VAR BEFORE END-OF-THREAD
-        all_lock = ALL_LOCK
-        all = ALL
         thread = self.thread
-        ident = thread._ident
 
         if cprofiler_stats is not None:
             thread.cprofiler.__exit__(exc_type, exc_val, exc_tb)
@@ -527,6 +525,14 @@ class RegisterThread(object):
                 )
         if DEBUG:
             logger.info("registered removing {name} ({id}) from ALL", id=thread.ident, name=thread.name)
+
+
+def deregister(ident):
+    """
+    REMOVE THREAD FROM ALL
+    """
+    with ALL_LOCK:
+        ALL.remove(ident)
 
 
 def register_thread(func):

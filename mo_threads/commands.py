@@ -130,6 +130,11 @@ class Command(object):
             else:
                 logger.error("process not found")
 
+    def stop(self):
+        self.process.stdin("exit")
+        self.process.stop()
+        return self
+
     def join(self, raise_on_error=False, till=None):
         # WAIT FOR COMMAND LINE RESPONSE ON stdout
         self.stdout_thread.join(till=till)
@@ -178,6 +183,7 @@ class Command(object):
                     line_count += 1
                     destination.add(value)
         finally:
+            self.process.stdin.add("exit")
             destination.add(THREAD_STOP)
             self.stderr_thread.please_stop.go()
             self.stderr_thread.join()
