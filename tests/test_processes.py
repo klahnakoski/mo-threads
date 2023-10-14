@@ -14,7 +14,7 @@ from unittest import skipIf
 from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
-from mo_threads import Process, start_main_thread, stop_main_thread, Command
+from mo_threads import Process, start_main_thread, stop_main_thread, Command, commands, threads
 from mo_threads import Till
 from tests import IS_WINDOWS
 from tests.utils import add_error_reporting
@@ -110,4 +110,6 @@ class TestProcesses(FuzzyTestCase):
         self.assertIn("All threads have shutdown", lines)
 
     def test_command_shutdown(self):
+        threads.DEBUG, old = True, threads.DEBUG
         c = Command("test", [sys.executable, "-c", "print('test')"]).join()
+        commands.DEBUG = old

@@ -131,7 +131,6 @@ def start():
     except Exception as e:
         logger.error("problem staring worker", cause=e)
     finally:
-        logger.stop()
         stop_main_thread()
 
 
