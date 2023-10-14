@@ -69,7 +69,7 @@ class Command(object):
         self.process.stdin.add(command)
         self.stderr_thread = Thread.run(f"{name} stderr", _stderr_relay, process.stderr, self.stderr).release()
         # stdout_thread IS CONSIDERED THE LIFETIME OF THE COMMAND
-        self.worker_thread = Thread.run(f"{name} stdout", self._worker, process.stdout, self.stdout).release()
+        self.worker_thread = Thread.run(f"{name} worker", self._worker, process.stdout, self.stdout).release()
 
     def stop(self):
         """
