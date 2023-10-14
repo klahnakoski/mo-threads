@@ -56,8 +56,7 @@ class Command(object):
             if not lifetime_manager:
                 lifetime_manager = LifetimeManager()
             self.manager = lifetime_manager
-        self.process = process = self.manager.get_or_create_process(bufsize, cwd, debug, env, name, shell,
-                                                                    timeout=self.timeout)
+        self.process = process = self.manager.get_or_create_process(bufsize, cwd, debug, env, name, shell,timeout=self.timeout)
 
         if DEBUG:
             name = f"{name} (using {process.name})"
@@ -356,7 +355,7 @@ else:
 
 
     def set_prompt():
-        return "set prompt=" + cmd_escape(PROMPT + ">")
+        return f"export PS1=\"{cmd_escape(PROMPT + ">")}\""
 
 
     def cmd():
