@@ -196,9 +196,11 @@ class LifetimeManager:
         process.stdin.add(LAST_RETURN_CODE)
         timeout = Till(seconds=5)
         prompt = PROMPT + ">" + LAST_RETURN_CODE
-        while True:
+        while not timeout:
             value = process.stdout.pop(till=timeout)
             if value == THREAD_STOP:
+                process.kill_once()
+                process.join()
                 logger.error("Could not start command, stdout closed early")
             if value and value.startswith(prompt):
                 break
