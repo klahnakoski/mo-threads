@@ -355,7 +355,7 @@ else:
 
 
     def set_prompt():
-        return f"export PS1=\"{cmd_escape(PROMPT + '>')}\""
+        return f"PS1=\"{cmd_escape(PROMPT + '>')}\""
 
 
     def cmd():
