@@ -38,7 +38,6 @@ DEBUG_SHOW_BACKREFS = True
 IN_DEBUGGER = any("pydevd.py" in line["file"] for line in get_stacktrace())
 
 
-@skip("")
 @add_error_reporting
 class TestLocks(FuzzyTestCase):
     @classmethod
