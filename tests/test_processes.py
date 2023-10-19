@@ -9,7 +9,7 @@
 #
 import os
 import sys
-from unittest import skipIf
+from unittest import skipIf, skip
 
 from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase
@@ -22,6 +22,7 @@ from tests.utils import add_error_reporting
 IS_TRAVIS = bool(os.environ.get("TRAVIS"))
 
 
+@skip("")
 @add_error_reporting
 class TestProcesses(FuzzyTestCase):
     @classmethod

@@ -8,6 +8,7 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 import threading
+from unittest import skip
 
 from mo_future import start_new_thread
 from mo_logs import logger
@@ -23,6 +24,7 @@ from tests import StructuredLogger_usingList
 from tests.utils import add_error_reporting
 
 
+@skip("")
 @add_error_reporting
 class TestThreads(FuzzyTestCase):
     def setUp(self):

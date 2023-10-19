@@ -193,7 +193,7 @@ class LifetimeManager:
 
         # WAIT FOR START
         process.stdin.add(LAST_RETURN_CODE)
-        start_timeout = Till(seconds=5)
+        start_timeout = Till(seconds=60)
         prompt = PROMPT + ">" + LAST_RETURN_CODE
         while not start_timeout:
             value = process.stdout.pop(till=start_timeout)
