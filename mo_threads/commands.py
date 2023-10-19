@@ -56,7 +56,7 @@ class Command(object):
             if not lifetime_manager:
                 lifetime_manager = LifetimeManager()
             self.manager = lifetime_manager
-        self.process = process = self.manager.get_or_create_process(bufsize, cwd, debug, env, name, shell,timeout=self.timeout)
+        self.process = process = self.manager.get_or_create_process(params, bufsize, cwd, debug, env, name, shell,timeout=self.timeout)
 
         if DEBUG:
             name = f"{name} (using {process.name})"
@@ -155,7 +155,7 @@ class LifetimeManager:
         self.wakeup = Signal()
         self.worker_thread = Thread.run("lifetime manager", self._worker, parent_thread=threads.MAIN_THREAD).release()
 
-    def get_or_create_process(self, bufsize, cwd, debug, env, name, shell, *, timeout):
+    def get_or_create_process(self, params, bufsize, cwd, debug, env, name, shell, *, timeout):
         now = unix_now()
         key = (cwd, env, debug, shell)
         with self.locker:
@@ -193,21 +193,21 @@ class LifetimeManager:
 
         # WAIT FOR START
         process.stdin.add(LAST_RETURN_CODE)
-        timeout = Till(seconds=5)
+        start_timeout = Till(seconds=5)
         prompt = PROMPT + ">" + LAST_RETURN_CODE
-        while not timeout:
-            value = process.stdout.pop(till=timeout)
+        while not start_timeout:
+            value = process.stdout.pop(till=start_timeout)
             if value == THREAD_STOP:
                 process.kill_once()
                 process.join()
                 logger.error("Could not start command, stdout closed early")
             if value and value.startswith(prompt):
                 break
-        process.stdout.pop(till=timeout)  # GET THE ERROR LEVEL
-        if timeout:
+        process.stdout.pop(till=start_timeout)  # GET THE ERROR LEVEL
+        if start_timeout:
             process.kill_once()
             process.join()
-            logger.error("Command line did not start in time")
+            logger.error("Command line did not start in time ({command})", command=params)
         return process
 
     def return_process(self, process):
