@@ -17,6 +17,7 @@ from mo_times.dates import Date
 from mo_times.durations import SECOND
 
 from mo_threads import *
+from mo_threads import threads
 from tests import StructuredLogger_usingList
 from tests.utils import add_error_reporting
 

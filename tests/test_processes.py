@@ -22,7 +22,6 @@ from tests.utils import add_error_reporting
 IS_TRAVIS = bool(os.environ.get("TRAVIS"))
 
 
-@skip("")
 @add_error_reporting
 class TestProcesses(FuzzyTestCase):
     @classmethod
