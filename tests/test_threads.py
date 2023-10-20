@@ -24,7 +24,6 @@ from tests import StructuredLogger_usingList
 from tests.utils import add_error_reporting
 
 
-@skip("")
 @add_error_reporting
 class TestThreads(FuzzyTestCase):
     def setUp(self):
