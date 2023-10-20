@@ -22,7 +22,7 @@ from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, Thread
 from mo_threads.till import Till
 
-DEBUG = False
+DEBUG = True
 
 STALE_MAX_AGE = 60
 INUSE_TIMEOUT = 5
@@ -42,7 +42,7 @@ class Command(object):
     """
 
     def __init__(
-            self, name, params, cwd=None, env=None, debug=False, shell=True, timeout=None, max_stdout=1024, bufsize=-1,
+        self, name, params, cwd=None, env=None, debug=False, shell=True, timeout=None, max_stdout=1024, bufsize=-1,
     ):
         global lifetime_manager
 
@@ -57,7 +57,9 @@ class Command(object):
             if not lifetime_manager:
                 lifetime_manager = LifetimeManager()
             self.manager = lifetime_manager
-        self.process = process = self.manager.get_or_create_process(params, bufsize, cwd, debug, env, name, shell,timeout=self.timeout)
+        self.process = process = self.manager.get_or_create_process(
+            params, bufsize, cwd, debug, env, name, shell, timeout=self.timeout
+        )
 
         if DEBUG:
             name = f"{name} (using {process.name})"
@@ -154,7 +156,9 @@ class LifetimeManager:
         self.inuse_processes = []
         self.locker = Lock()
         self.wakeup = Signal()
-        self.worker_thread = Thread.run("lifetime manager", self._worker, parent_thread=threads.MAIN_THREAD).release()
+        self.worker_thread = (
+            Thread.run("lifetime manager", self._worker, parent_thread=threads.MAIN_THREAD).release()
+        )
 
     def get_or_create_process(self, params, bufsize, cwd, debug, env, name, shell, *, timeout):
         now = unix_now()
@@ -251,7 +255,8 @@ class LifetimeManager:
         if DEBUG and stale:
             for key, process, last_used in stale:
                 logger.info(
-                    "removed stale process {process} (key={key})", process=process.name,
+                    "removed stale process {process} (key={key})",
+                    process=process.name,
                     key=json.dumps(key, default=from_data),
                 )
             for key, process, last_used in list(self.avail_processes):
@@ -288,14 +293,13 @@ class LifetimeManager:
             with lifetime_manager_locker:
                 with self.locker:
                     if not self.inuse_processes:
-                        DEBUG and logger.info("manager to shutdown")
+                        DEBUG and logger.info("lifetime manager to shutdown")
                         lifetime_manager = None
                         break
                     wakeup = self.wakeup = Signal()
 
         # wait for inuse to finish
         for _, process, _ in self.inuse_processes:
-
             process.stop()
         while True:
             with self.locker:
@@ -305,7 +309,7 @@ class LifetimeManager:
             wakeup.wait()
 
         self._stop_stale_processes(unix_now())
-        DEBUG and logger.info("manager done")
+        DEBUG and logger.info("lifetime manager done")
 
 
 WINDOWS_ESCAPE_DCT = {
@@ -338,14 +342,11 @@ def cmd_escape(value):
 if "windows" in platform.system().lower():
     LAST_RETURN_CODE = "echo %errorlevel%"
 
-
     def set_prompt():
         return "prompt " + PROMPT + "$g"
 
-
     def cmd():
         return "%windir%\\system32\\cmd.exe"
-
 
     def to_text(value):
         return value.decode("latin1")
@@ -354,14 +355,11 @@ if "windows" in platform.system().lower():
 else:
     LAST_RETURN_CODE = "echo $?"
 
-
     def set_prompt():
         return f"PS1=\"{cmd_escape(PROMPT + '>')}\""
 
-
     def cmd():
         return "bash"
-
 
     def to_text(value):
         return value.decode("latin1")

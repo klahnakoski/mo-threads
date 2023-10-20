@@ -9,7 +9,7 @@
 #
 import os
 import sys
-from unittest import skipIf, skip
+from unittest import skipIf
 
 from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase
