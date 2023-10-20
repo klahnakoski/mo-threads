@@ -35,7 +35,7 @@ class TestProcesses(FuzzyTestCase):
         stop_main_thread()
 
     def test_exit(self):
-        p = Process("waiting", [sys.executable, "-u", "tests/programs/exit_test.py"], debug=True)
+        p = Process("run exit_test", [sys.executable, "-u", "tests/programs/exit_test.py"], debug=True)
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         p.stdin.add("exit\n")
@@ -47,7 +47,7 @@ class TestProcesses(FuzzyTestCase):
         """
         CAN WE CATCH A SIGINT?
         """
-        p = Process("waiting", [sys.executable, "-u", "tests/programs/exit_test.py"], debug=True)
+        p = Process("run exit_test", [sys.executable, "-u", "tests/programs/exit_test.py"], debug=True)
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         command = ["kill", "-s", "int", p.pid]
@@ -61,7 +61,7 @@ class TestProcesses(FuzzyTestCase):
         """
         CAN WE CATCH A SIGINT?
         """
-        p = Process("waiting", [sys.executable, "-u", "tests/programs/sigint_test.py"], debug=True)
+        p = Process("run sigint_test", [sys.executable, "-u", "tests/programs/sigint_test.py"], debug=True)
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         if IS_WINDOWS:
             import signal
@@ -77,7 +77,7 @@ class TestProcesses(FuzzyTestCase):
         """
         DO WE STILL EXIT WITHOUT SIGINT?
         """
-        p = Process("waiting", [sys.executable, "-u", "tests/programs/sigint_test.py"], debug=True)
+        p = Process("run sigint_test", [sys.executable, "-u", "tests/programs/sigint_test.py"], debug=True)
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         p.join(raise_on_error=True)
@@ -88,7 +88,7 @@ class TestProcesses(FuzzyTestCase):
         """
         CAN WE CATCH A SIGINT?
         """
-        p = Process("waiting", [sys.executable, "-u", "tests/programs/sigint_test.py"], debug=True)
+        p = Process("run sigint_test", [sys.executable, "-u", "tests/programs/sigint_test.py"], debug=True)
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
         Process("killer", ["kill", "-SIGTERM", p.pid]).join()
@@ -99,12 +99,12 @@ class TestProcesses(FuzzyTestCase):
         """
         CAN PROCESS STOP ITSELF??
         """
-        p = Process("waiting", [sys.executable, "-u", "tests/programs/stop_test.py"], debug=True)
+        p = Process("run stop_test", [sys.executable, "-u", "tests/programs/stop_test.py"], debug=True)
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
     def test_stop_does_not_throw_after_warning(self):
-        p = Process("waiting", [sys.executable, "-u", "tests/programs/simple_test.py"], debug=True)
+        p = Process("run simple_test", [sys.executable, "-u", "tests/programs/simple_test.py"], debug=True)
         p.join()
         lines = p.stdout.pop_all()
         self.assertIn("All threads have shutdown", lines)
