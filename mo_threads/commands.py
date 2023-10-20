@@ -185,7 +185,7 @@ class LifetimeManager:
                 debug=debug,
                 shell=shell,
                 bufsize=bufsize,
-                timeout=timeout,
+                timeout=START_TIMEOUT,
                 parent_thread=self.worker_thread,
             )
             self.inuse_processes.append((key, process, unix_now()))
@@ -214,6 +214,8 @@ class LifetimeManager:
                 process.kill_once()
                 process.join()
                 logger.error("Command line did not start in time ({command})", command=params)
+
+            process.timeout = timeout
             return process
         except Exception as cause:
             self.return_process(process)
