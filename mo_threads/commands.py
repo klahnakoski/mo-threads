@@ -197,23 +197,27 @@ class LifetimeManager:
         )
 
         # WAIT FOR START
-        process.stdin.add(LAST_RETURN_CODE)
-        start_timeout = Till(seconds=START_TIMEOUT)
-        prompt = PROMPT + ">" + LAST_RETURN_CODE
-        while not start_timeout:
-            value = process.stdout.pop(till=start_timeout)
-            if value == THREAD_STOP:
+        try:
+            process.stdin.add(LAST_RETURN_CODE)
+            start_timeout = Till(seconds=START_TIMEOUT)
+            prompt = PROMPT + ">" + LAST_RETURN_CODE
+            while not start_timeout:
+                value = process.stdout.pop(till=start_timeout)
+                if value == THREAD_STOP:
+                    process.kill_once()
+                    process.join()
+                    logger.error("Could not start command, stdout closed early")
+                if value and value.startswith(prompt):
+                    break
+            process.stdout.pop(till=start_timeout)  # GET THE ERROR LEVEL
+            if start_timeout:
                 process.kill_once()
                 process.join()
-                logger.error("Could not start command, stdout closed early")
-            if value and value.startswith(prompt):
-                break
-        process.stdout.pop(till=start_timeout)  # GET THE ERROR LEVEL
-        if start_timeout:
-            process.kill_once()
-            process.join()
-            logger.error("Command line did not start in time ({command})", command=params)
-        return process
+                logger.error("Command line did not start in time ({command})", command=params)
+            return process
+        except Exception as cause:
+            self.return_process(process)
+            raise cause
 
     def return_process(self, process):
         with self.locker:
