@@ -27,6 +27,7 @@ DEBUG = False
 STALE_MAX_AGE = 60
 INUSE_TIMEOUT = 5
 AVAIL_TIMEOUT = 60 * 60
+START_TIMEOUT = 60
 PROMPT = "READY_FOR_MORE"
 
 lifetime_manager_locker = Lock("cmd lock")
@@ -193,7 +194,7 @@ class LifetimeManager:
 
         # WAIT FOR START
         process.stdin.add(LAST_RETURN_CODE)
-        start_timeout = Till(seconds=60)
+        start_timeout = Till(seconds=START_TIMEOUT)
         prompt = PROMPT + ">" + LAST_RETURN_CODE
         while not start_timeout:
             value = process.stdout.pop(till=start_timeout)
