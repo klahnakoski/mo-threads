@@ -8,7 +8,6 @@
 # Author: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 import threading
-from unittest import skip
 
 from mo_future import start_new_thread
 from mo_logs import logger
@@ -17,9 +16,7 @@ from mo_times import Timer
 from mo_times.dates import Date
 from mo_times.durations import SECOND
 
-from mo_threads import Lock, Thread, Signal, Till, till, threads, start_main_thread, DONE, signals
-from mo_threads.signals import NEVER, current_thread
-from mo_threads.threads import wait_for_shutdown_signal, stop_main_thread, join_all_threads
+from mo_threads import *
 from tests import StructuredLogger_usingList
 from tests.utils import add_error_reporting
 
@@ -258,12 +255,17 @@ class TestThreads(FuzzyTestCase):
 
     def test_blocking_then(self):
         signals.DEBUG, old_value = True, signals.DEBUG
+        done = Signal()
         try:
 
             def blocking_function():
-                return Till(seconds=0.1).wait()
+                try:
+                    return Till(seconds=0.1).wait()
+                finally:
+                    done.go()
 
             Till(seconds=0.1).then(blocking_function).wait()
+            done.wait()
             self.assertTrue(any("Deadlock detected" in line for line in logger.main_log.lines))
         finally:
             signals.DEBUG = old_value

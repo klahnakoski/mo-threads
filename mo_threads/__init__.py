@@ -18,7 +18,7 @@ from mo_threads.commands import Command
 from mo_threads.futures import Future
 from mo_threads.lock import Lock
 from mo_threads.queues import Queue, ThreadedQueue
-from mo_threads.signals import Signal, DONE
+from mo_threads.signals import Signal, DONE, NEVER
 from mo_threads.threads import (
     MainThread,
     THREAD_STOP,
@@ -28,6 +28,8 @@ from mo_threads.threads import (
     register_thread,
     wait_for_shutdown_signal,
     start_main_thread,
+    join_all_threads,
+    current_thread
 )
 from mo_threads.till import Till
 
