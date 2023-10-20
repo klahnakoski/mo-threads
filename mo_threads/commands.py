@@ -306,8 +306,10 @@ class LifetimeManager:
             with self.locker:
                 if not self.inuse_processes:
                     break
+                if DEBUG:
+                    name = self.inuse_processes[0][1].name
                 wakeup = self.wakeup = Signal()
-            DEBUG and logger.info("wait on process to stop")
+            DEBUG and logger.info("wait on process {name} to stop", name=name)
             wakeup.wait()
 
         DEBUG and logger.info("stop stale processes")
