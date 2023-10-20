@@ -299,6 +299,7 @@ class LifetimeManager:
                     wakeup = self.wakeup = Signal()
 
         # wait for inuse to finish
+        DEBUG and logger.info("got {num} processes to stop", num=len(self.inuse_processes))
         for _, process, _ in self.inuse_processes:
             process.stop()
         while True:
@@ -306,8 +307,10 @@ class LifetimeManager:
                 if not self.inuse_processes:
                     break
                 wakeup = self.wakeup = Signal()
+            DEBUG and logger.info("wait on process to stop")
             wakeup.wait()
 
+        DEBUG and logger.info("stop stale processes")
         self._stop_stale_processes(unix_now())
         DEBUG and logger.info("lifetime manager done")
 

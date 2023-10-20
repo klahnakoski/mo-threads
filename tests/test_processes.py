@@ -28,7 +28,7 @@ class TestProcesses(FuzzyTestCase):
     def setUpClass(cls):
         stop_main_thread()
         start_main_thread()
-        logger.start()
+        logger.start(trace=True)
 
     @classmethod
     def tearDownClass(cls):
