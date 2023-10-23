@@ -213,7 +213,7 @@ class LifetimeManager:
             if start_timeout:
                 process.kill_once()
                 process.join()
-                logger.error("Command line did not start in time ({command})", command=params)
+                logger.error("Command line did not start within {timeout} seconds: ({command})", timeout=START_TIMEOUT, command=params)
 
             process.timeout = timeout
             return process
