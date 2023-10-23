@@ -237,7 +237,7 @@ class TestThreads(FuzzyTestCase):
         Thread.run("test_failure_during_wait_for_shutdown", bad_worker)
 
         with self.assertRaises("bad worker failure"):
-            wait_for_shutdown_signal(None, False, False)
+            wait_for_shutdown_signal(please_stop=None, allow_exit=False, wait_forever=False)
 
         self.assertGreater(len(list_log.lines), 1)
         self.assertIn("logger stopped", list_log.lines)
