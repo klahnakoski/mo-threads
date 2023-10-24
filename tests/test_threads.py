@@ -241,7 +241,7 @@ class TestThreads(FuzzyTestCase):
 
         self.assertGreater(len(list_log.lines), 1)
         self.assertIn("logger stopped", list_log.lines)
-        self.assertIn("ERROR", list_log.lines[-2])
+        self.assertTrue(any("ERROR: Exception: bad worker failure" in line for line in list_log.lines))
         self.assertEqual(bool(threads.MAIN_THREAD.timers.stopped), True)
 
     def test_signal_or(self):

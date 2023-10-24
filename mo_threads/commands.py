@@ -22,7 +22,7 @@ from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, Thread
 from mo_threads.till import Till
 
-DEBUG = True
+DEBUG = False
 
 STALE_MAX_AGE = 60
 INUSE_TIMEOUT = 5
