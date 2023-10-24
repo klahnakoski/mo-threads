@@ -28,7 +28,7 @@ STALE_MAX_AGE = 60
 INUSE_TIMEOUT = 5
 AVAIL_TIMEOUT = 60 * 60
 START_TIMEOUT = 60
-PROMPT = "READY_FOR_MORE"
+PROMPT = "READY_FOR_MORE>"
 
 lifetime_manager_locker = Lock("cmd lock")
 lifetime_manager = None
@@ -101,7 +101,6 @@ class Command(object):
         """
         try:
             prompt_count = 0
-            prompt = PROMPT + ">"
             line_count = 0
 
             while not please_stop:
@@ -114,7 +113,7 @@ class Command(object):
                 elif line_count == 0 and "is not recognized as an internal or external command" in value:
                     DEBUG and logger.info("exit with error")
                     logger.error("Problem with command: {desc}", desc=value)
-                elif value.startswith(prompt):
+                elif value.startswith(PROMPT):
                     if prompt_count:
                         # GET THE ERROR LEVEL
                         self.returncode = int(source.pop(till=please_stop))
@@ -200,9 +199,10 @@ class LifetimeManager:
         try:
             process.stdin.add(LAST_RETURN_CODE)
             start_timeout = Till(seconds=START_TIMEOUT)
-            prompt = PROMPT + ">" + LAST_RETURN_CODE
+            prompt = PROMPT + LAST_RETURN_CODE
             while not start_timeout:
                 value = process.stdout.pop(till=start_timeout)
+                logger.info("wait for stArt get {line}", line=value)
                 if value == THREAD_STOP:
                     process.kill_once()
                     process.join()
@@ -354,7 +354,7 @@ if "windows" in platform.system().lower():
     LAST_RETURN_CODE = "echo %errorlevel%"
 
     def set_prompt():
-        return "prompt " + PROMPT + "$g"
+        return "prompt " + PROMPT.replace(">", "$g")
 
     def cmd():
         return "%windir%\\system32\\cmd.exe"
@@ -367,7 +367,7 @@ else:
     LAST_RETURN_CODE = "echo $?"
 
     def set_prompt():
-        return f"PS1=\"{cmd_escape(PROMPT + '>')}\""
+        return f"PS1=\"{cmd_escape(PROMPT)}\""
 
     def cmd():
         return "bash"
