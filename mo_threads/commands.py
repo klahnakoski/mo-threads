@@ -364,10 +364,10 @@ if "windows" in platform.system().lower():
 
 
 else:
-    LAST_RETURN_CODE = "echo $?"
+    LAST_RETURN_CODE = f"echo {cmd_escape(PROMPT)}\necho $?"
 
     def set_prompt():
-        return f"PS1=\"{cmd_escape(PROMPT)}\""
+        return f"echo"
 
     def cmd():
         return "bash"
