@@ -364,7 +364,7 @@ if "windows" in platform.system().lower():
 
 
 else:
-    LAST_RETURN_CODE = f"echo {cmd_escape(PROMPT)};echo $?"
+    LAST_RETURN_CODE = f"echo \"{cmd_escape(PROMPT)}\";echo $?"
 
     def set_prompt():
         return f"echo"
