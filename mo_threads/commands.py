@@ -361,8 +361,6 @@ if "windows" in platform.system().lower():
 
     def to_text(value):
         return value.decode("latin1")
-
-
 else:
     LAST_RETURN_CODE = f"echo \"{cmd_escape(PROMPT)}\";echo $?"
 
