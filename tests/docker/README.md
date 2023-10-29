@@ -12,7 +12,7 @@ To run the tests, build and run:
 
 
 ```bash
-docker build --file tests\docker\dev.dockerfile --tag mo-threads .
+docker build --file tests\docker\Dockerfile --tag mo-threads .
 docker run mo-threads
 ```
 
@@ -21,5 +21,11 @@ docker run mo-threads
 Instead of running may start the image, without running tests:
 
 ```bash
-docker run -it mo-threads bash
+Dockerfile run -it mo-threads bash
 ```
+
+Then run tests
+
+    .venv/bin/python -m unittest discover tests -v
+
+ .venv/bin/python -m unittest tests.test_processes.TestProcesses.test_sigint_no_exit

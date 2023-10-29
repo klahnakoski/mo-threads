@@ -25,6 +25,7 @@ TIMERS_NAME = "timers daemon"
 DEBUG = False
 INTERVAL = 0.1
 enabled: Signal
+warning_not_sent = []
 
 
 class Till(Signal):
@@ -40,7 +41,9 @@ class Till(Signal):
 
     def __new__(cls, till=None, seconds=None):
         if not enabled:
-            logger.info("Till daemon not enabled", stack_depth=1)
+            if warning_not_sent:
+                logger.info("Till daemon not enabled", stack_depth=1)
+                warning_not_sent.append(1)
             return DONE
         elif till != None:
             return object.__new__(cls)

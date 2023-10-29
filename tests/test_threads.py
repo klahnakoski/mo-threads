@@ -12,12 +12,12 @@ import threading
 from mo_future import start_new_thread
 from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase
+from mo_times import Timer
 from mo_times.dates import Date
 from mo_times.durations import SECOND
 
-from mo_threads import Lock, Thread, Signal, Till, till, threads, start_main_thread, DONE, signals
-from mo_threads.signals import NEVER, current_thread
-from mo_threads.threads import wait_for_shutdown_signal, stop_main_thread
+from mo_threads import *
+from mo_threads import threads
 from tests import StructuredLogger_usingList
 from tests.utils import add_error_reporting
 
@@ -25,11 +25,13 @@ from tests.utils import add_error_reporting
 @add_error_reporting
 class TestThreads(FuzzyTestCase):
     def setUp(self):
+        stop_main_thread()
+        start_main_thread()
         old_log, logger.main_log = logger.main_log, StructuredLogger_usingList()
         old_log.stop()
 
     def tearDown(self):
-        logger.stop()
+        stop_main_thread()
 
     def test_lock_wait_timeout(self):
         locker = Lock("test")
@@ -157,6 +159,37 @@ class TestThreads(FuzzyTestCase):
 
         self.assertEqual(acc, ["worker", "done"])
 
+    def test_or_signal_stop2(self):
+        acc = []
+        time_to_fail = Till(seconds=0.3)
+
+        def worker(this, please_stop):
+            (time_to_fail | please_stop).wait()
+            this.assertTrue(not not please_stop, "Expecting to have the stop signal")
+            acc.append("worker")
+
+        w = Thread.run("worker", worker, self)
+        w.stop()
+        w.join()
+        w.stopped.wait()
+        acc.append("done")
+
+        self.assertEqual(acc, ["worker", "done"])
+
+    def test_thread_create_speed(self):
+        num = 100
+        signals = [Signal() for i in range(num)]
+
+        def worker(i, please_stop):
+            signals[i].go()
+
+        with Timer("create threads", verbose=True) as timer:
+            threads = [Thread.run(f"worker {i}", worker, i) for i in range(num)]
+            for i in range(num):
+                signals[i].wait()
+        join_all_threads(threads)
+        self.assertLess(timer.duration.seconds, 1, "Expecting to create 100 threads in less than 1 second")
+
     def test_and_signals(self):
         acc = []
         locker = Lock()
@@ -196,8 +229,6 @@ class TestThreads(FuzzyTestCase):
         self.assertIn("started", done)
 
     def test_failure_during_wait_for_shutdown(self):
-        stop_main_thread()
-        start_main_thread()
         list_log = StructuredLogger_usingList()
         old_log, logger.main_log = logger.main_log, list_log
         old_log.stop()
@@ -206,11 +237,11 @@ class TestThreads(FuzzyTestCase):
         Thread.run("test_failure_during_wait_for_shutdown", bad_worker)
 
         with self.assertRaises("bad worker failure"):
-            wait_for_shutdown_signal(None, False, False)
+            wait_for_shutdown_signal(please_stop=None, allow_exit=False, wait_forever=False)
 
         self.assertGreater(len(list_log.lines), 1)
         self.assertIn("logger stopped", list_log.lines)
-        self.assertIn("ERROR", list_log.lines[-2])
+        self.assertTrue(any("ERROR: Exception: bad worker failure" in line for line in list_log.lines))
         self.assertEqual(bool(threads.MAIN_THREAD.timers.stopped), True)
 
     def test_signal_or(self):
@@ -225,11 +256,17 @@ class TestThreads(FuzzyTestCase):
 
     def test_blocking_then(self):
         signals.DEBUG, old_value = True, signals.DEBUG
+        done = Signal()
         try:
+
             def blocking_function():
-                return Till(seconds=0.1).wait()
+                try:
+                    return Till(seconds=0.1).wait()
+                finally:
+                    done.go()
 
             Till(seconds=0.1).then(blocking_function).wait()
+            done.wait()
             self.assertTrue(any("Deadlock detected" in line for line in logger.main_log.lines))
         finally:
             signals.DEBUG = old_value
@@ -266,8 +303,7 @@ class TestThreads(FuzzyTestCase):
         ready.wait()
         print(name[0])
         self.assertTrue(
-            name[0].startswith("Dummy-")  # pycharm debugger
-            or name[0].startswith("Unknown Thread")  # regular run
+            name[0].startswith("Dummy-") or name[0].startswith("Unknown Thread")  # pycharm debugger  # regular run
         )
 
 

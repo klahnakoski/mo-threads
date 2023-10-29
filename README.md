@@ -2,10 +2,10 @@
 # More Threads!
 
 
-|Branch      |Status   |
-|------------|---------|
-|master      | [![Build Status](https://app.travis-ci.com/klahnakoski/mo-threads.svg?branch=master)](https://travis-ci.com/github/klahnakoski/mo-threads) |
-|dev         | [![Build Status](https://app.travis-ci.com/klahnakoski/mo-threads.svg?branch=dev)](https://travis-ci.com/github/klahnakoski/mo-threads)  [![Coverage Status](https://coveralls.io/repos/github/klahnakoski/mo-threads/badge.svg?branch=dev)](https://coveralls.io/github/klahnakoski/mo-threads?branch=dev) ← thread coverage is missing  |
+|Branch      | Status                                                                                                                                                                                                                                                                                                                                         |
+|------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|master      | [![Build Status](https://app.travis-ci.com/klahnakoski/mo-threads.svg?branch=master)](https://travis-ci.com/github/klahnakoski/mo-threads)                                                                                                                                                                                                     |
+|dev         | [![Build Status](https://app.travis-ci.com/klahnakoski/mo-threads.svg?branch=dev)](https://travis-ci.com/github/klahnakoski/mo-threads)  [![Coverage Status](https://coveralls.io/repos/github/klahnakoski/mo-threads/badge.svg?branch=dev)](https://coveralls.io/github/klahnakoski/mo-threads?branch=dev) ← child thread coverage is missing |
 
 ## Module `threads`
 
@@ -19,11 +19,9 @@ not changed, which is not ominous demand.
 2. **Shutdown order is deterministic and explicit** - Python's threading 
 library is missing strict conventions for controlled and orderly shutdown. 
 Each thread can shutdown on its own terms, but is expected to do so expediently.
-  * All threads are required to accept a `please_stop` signal; are 
-  expected to test it in a timely manner; and expected to exit when signalled.
-  * All threads have a parent - The parent is responsible for ensuring their 
-  children get the `please_stop` signal, and are dead, before stopping 
-  themselves. This responsibility is baked into the thread spawning process, 
+    * All threads are required to accept a `please_stop` signal; are 
+    expected to test it in a timely manner; and expected to exit when signalled.
+    * All threads have a parent - The parent is responsible for ensuring their children get the `please_stop` signal, and are dead, before stopping themselves. This responsibility is baked into the thread spawning process, 
   so you need not deal with it unless you want.
 3. Uses [**Signals**](#signal-class) to simplify logical 
 dependencies among multiple threads, events, and timeouts.
@@ -56,14 +54,14 @@ at the multi-threaded queue.
 
 Python's async efforts are still immature; a re-invention of threading functionality by another name. Expect to experience a decade of problems that are already solved by threading; [here is an example](https://www.python.org/dev/peps/pep-0550/).  
 
-**Reading**
+## Reading
 
 * Fibers were an async experiment using a stack, as opposed to the state-machine-based async Python uses now. It does not apply to my argument, but is an interesting read: [[Fibers are] not an appropriate solution for writing scalable concurrent software](http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2018/p1364r0.pdf)
 
 
 ## Writing threaded functions
 
-All threaded functions must accept a `please_stop` parameter, which is a `Signal` to indicate the desire to stop.  The function should do it's best to promptly return. 
+All threaded functions must accept a `please_stop` parameter, which is a `Signal` to indicate the desire to stop.  The function should check this signal often, and do it's best to promptly return. 
 
 #### Simple work loop
 
@@ -102,7 +100,7 @@ def worker(please_stop):
     while not please_stop:
         next_event = Till(seconds=1000)
         (next_event | please_stop).wait()
-        if please_stop:  # is wait done becasue of please_stop?
+        if please_stop:  # is wait done because of please_stop?
             return
         chunk_of_work()
 ```
@@ -141,7 +139,7 @@ Threads created without this module can call your code; You want to ensure these
 
     def my_method():
         with RegisterThread():
-            t = Thread.current()   # we can now use this library on this thread 
+            t = Thread.current()   # we can now use mo-threads on this thread 
             print(t.name)          # a name is always given to the alien thread 
 
 

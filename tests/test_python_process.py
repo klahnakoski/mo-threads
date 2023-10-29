@@ -11,7 +11,7 @@
 
 from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase
-from mo_threads import python_worker
+from mo_threads import python_worker, start_main_thread, stop_main_thread
 
 from mo_threads.python import Python
 from mo_threads.python_worker import start
@@ -20,13 +20,14 @@ from tests.utils import add_error_reporting
 
 @add_error_reporting
 class TestLocks(FuzzyTestCase):
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
+        stop_main_thread()
+        start_main_thread()
         logger.start({"trace": True})
 
-    @classmethod
-    def tearDownClass(cls):
+    def tearDown(self):
         logger.stop()
+        stop_main_thread()
 
     def test_stop(self):
         p = Python("test_stop", {})
@@ -66,7 +67,11 @@ class TestLocks(FuzzyTestCase):
                 pass
 
         STDOUT, STDIN, STDERR = python_worker.STDOUT, python_worker.STDIN, python_worker.STDERR
-        stdout, stdin, strerr = python_worker.STDOUT, python_worker.STDIN, python_worker.STDERR = Stdout(), Stdin(), Stdout()
+        stdout, stdin, strerr = python_worker.STDOUT, python_worker.STDIN, python_worker.STDERR = (
+            Stdout(),
+            Stdin(),
+            Stdout(),
+        )
         try:
             start()
             self.assertEqual(len([line for line in stdout.lines if not line.startswith(b'{"log"')]), 2)

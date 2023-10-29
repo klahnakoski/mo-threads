@@ -1,5 +1,5 @@
 mo-future
 mo-dots
-mo-logs
+mo-logs>=8.444
 mo-math
 mo-times

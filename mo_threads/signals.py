@@ -55,7 +55,7 @@ class Signal(object):
     then() - METHOD FOR OTHER THREAD TO RUN WHEN ACTIVATING SIGNAL
     """
 
-    __slots__ = ["_name", "lock", "_go", "job_queue", "waiting_threads", "__weakref__"]
+    __slots__ = ["_name", "lock", "_go", "job_queue", "waiting_threads", "triggered_by", "__weakref__"]
 
     def __init__(self, name=None):
         DEBUG and name and print(f"New signal {quote(name)}")
@@ -64,6 +64,7 @@ class Signal(object):
         self._go = False
         self.job_queue = None
         self.waiting_threads = None
+        self.triggered_by = None
 
     def __bool__(self):
         return self._go
@@ -83,8 +84,10 @@ class Signal(object):
         if self._go:
             return True
 
+        thread = None
         if DEBUG:
-            if threads.MAIN_THREAD.timers == current_thread():
+            thread = current_thread()
+            if threads.MAIN_THREAD.timers is thread:
                 logger.error("Deadlock detected", stack_depth=1)
 
         with self.lock:
@@ -93,20 +96,20 @@ class Signal(object):
             stopper = _allocate_lock()
             stopper.acquire()
             if not self.waiting_threads:
-                self.waiting_threads = [stopper]
+                self.waiting_threads = [(stopper, thread)]
             else:
-                self.waiting_threads.append(stopper)
+                self.waiting_threads.append((stopper, thread))
 
-        DEBUG and self._name and print(f"wait for go {quote(self.name)}")
+        DEBUG and self._name and print(f"{quote(thread.name)} wait on {quote(self.name)}")
         stopper.acquire()
-        DEBUG and self._name and print(f"GOing! {quote(self.name)}")
+        DEBUG and self._name and print(f"{quote(thread.name)} released on {quote(self.name)}")
         return True
 
     def go(self):
         """
         ACTIVATE SIGNAL (DOES NOTHING IF SIGNAL IS ALREADY ACTIVATED)
         """
-        DEBUG and self._name and print(f"GO! {quote(self.name)}")
+        DEBUG and self._name and print(f"requesting GO! {quote(self.name)}")
 
         if self._go:
             return self
@@ -114,16 +117,23 @@ class Signal(object):
         with self.lock:
             if self._go:
                 return self
+            if DEBUG:
+                self.triggered_by = get_stacktrace(1)
             self._go = True
 
-        DEBUG and self._name and print(f"internal GO! {quote(self.name)}")
+        DEBUG and self._name and print(f"GO! {quote(self.name)}")
         jobs, self.job_queue = self.job_queue, None
-        threads, self.waiting_threads = self.waiting_threads, None
+        stoppers, self.waiting_threads = self.waiting_threads, None
 
-        if threads:
-            DEBUG and self._name and print(f"Release {len(threads)} threads")
-            for t in threads:
-                t.release()
+        if stoppers:
+            if DEBUG:
+                if len(stoppers) == 1:
+                    s, t = stoppers[0]
+                    print(f"Releasing thread {quote(t.name)}")
+                else:
+                    print(f"Release {len(stoppers)} threads")
+            for s, t in stoppers:
+                s.release()
 
         if jobs:
             for j, e in jobs:

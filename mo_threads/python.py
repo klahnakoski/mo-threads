@@ -117,6 +117,7 @@ class Python(object):
         while not please_stop:
             try:
                 line = self.process.stderr.pop(till=please_stop)
+                DEBUG and logger.info("stderr got {line}", line=line)
                 if line is None or line == THREAD_STOP:
                     please_stop.go()
                     break
@@ -125,6 +126,7 @@ class Python(object):
                 )
             except Exception as cause:
                 logger.error("could not process line", cause=cause)
+        DEBUG and logger.info("stderr reader is done")
 
     def import_module(self, module_name, var_names=None):
         if var_names is None:
@@ -158,9 +160,9 @@ class Python(object):
             self.process.stop()
             self.watch_stdout.stop()
             self.watch_stderr.stop()
-            return self
         except Exception as cause:
             self.stop_error = cause
+        return self
 
     def join(self):
         if self.stop_error:

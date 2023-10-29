@@ -56,7 +56,7 @@ class Lock(object):
         :param till: WHEN TO GIVE UP WAITING FOR ANOTHER THREAD TO SIGNAL, LOCK IS STILL ACQUIRED
         :return: True IF SIGNALED TO GO, False IF till WAS SIGNALED
         """
-        self.debug and print(f"wait on lock: {quote(self.name)}")
+        self.debug and print(f"wait on {self.name}")
         waiter = Signal()
         if self.waiting:
             # TELL ANOTHER THAT THE LOCK IS READY SOON

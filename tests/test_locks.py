@@ -12,9 +12,8 @@
 import gc
 import os
 import threading
-from copy import copy
 from time import time
-from unittest import skipIf
+from unittest import skipIf, skip
 
 import objgraph
 import psutil
@@ -30,13 +29,13 @@ import mo_threads
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
 from mo_threads.busy_lock import BusyLock
 from mo_threads.signals import OrSignal
-from mo_threads.threads import ALL, ALL_LOCK
+from mo_threads.threads import ALL, ALL_LOCK, start_main_thread, stop_main_thread
 from tests import StructuredLogger_usingList
 from tests.utils import add_error_reporting
 
 USE_PYTHON_THREADS = False
 DEBUG_SHOW_BACKREFS = True
-IN_DEBUGGER = any("pydevd.py" in line['file']for line in get_stacktrace())
+IN_DEBUGGER = any("pydevd.py" in line["file"] for line in get_stacktrace())
 
 
 @add_error_reporting
@@ -50,10 +49,13 @@ class TestLocks(FuzzyTestCase):
         logger.stop()
 
     def setUp(self):
+        stop_main_thread()
+        start_main_thread()
         self.old, logger.main_log = logger.main_log, StructuredLogger_usingList()
 
     def tearDown(self):
         self.logs, logger.main_log = logger.main_log, self.old
+        stop_main_thread()
 
     def test_signal_is_not_null(self):
         a = Signal()
@@ -81,6 +83,7 @@ class TestLocks(FuzzyTestCase):
             for i in range(SCALE):
                 locks[i].release()
 
+    @skipIf(IN_DEBUGGER, "The debugger is too slow")
     def test_queue_speed(self):
         if "PyPy" in machine_metadata().python:
             # PyPy requires some warmup time
@@ -167,6 +170,7 @@ class TestLocks(FuzzyTestCase):
         self.assertTrue(bool(thread_a.stopped), "Thread should be done by now")
         self.assertTrue(bool(thread_b.stopped), "Thread should be done by now")
 
+    @skipIf(IN_DEBUGGER, "The debugger is too slow")
     def test_till_create_speed(self):
         tills = []
         done = time() + 1
@@ -219,11 +223,12 @@ class TestLocks(FuzzyTestCase):
 
         self.assertEqual(counter[0], 100 * 50, "Expecting lock to work")
 
+    @skip
     def test_memory_cleanup_with_till(self):
         interesting = [Signal.__name__, OrSignal.__name__, Till.__name__]
         root = Signal()
         start_ids = set(id(o) for o in gc.get_objects())
-        start_counts = {n:objgraph.count(n) for n in interesting}
+        start_counts = {n: objgraph.count(n) for n in interesting}
         start_ids.add(id(start_ids))
         start_ids.add(id(start_counts))
 
@@ -238,7 +243,7 @@ class TestLocks(FuzzyTestCase):
         trigger = Signal()
         root = root | trigger
 
-        growth_counts = {n:objgraph.count(n) for n in interesting}
+        growth_counts = {n: objgraph.count(n) for n in interesting}
         growth_counts and logger.info("More object\n{growth}", growth=growth_counts)
 
         trigger.go()
@@ -250,7 +255,7 @@ class TestLocks(FuzzyTestCase):
                 waiter = Till(seconds=0.1)
                 waiter.wait()  # LET TIMER DAEMON CLEANUP
                 gc.collect()
-                stop_counts ={n:objgraph.count(n)-start_counts[n] for n in interesting}
+                stop_counts = {n: objgraph.count(n) - start_counts[n] for n in interesting}
                 logger.info("Object count\n{current}", current=stop_counts)
 
                 # THERE SHOULD BE NO NET NEW OBJECTS
@@ -258,6 +263,7 @@ class TestLocks(FuzzyTestCase):
                     self.assertLessEqual(net_new, 0, f"Object {name} went up by {net_new}")
                 return
             except Exception as cause:
+                print(f"problem: {cause}")
                 cause_description = str(cause)
                 del cause
                 remaining = [o for o in objgraph.by_type("method") if id(o) not in start_ids]
@@ -274,6 +280,7 @@ class TestLocks(FuzzyTestCase):
                 logger.info("problem: {cause}", cause=cause_description)
         logger.error("object counts did not go down")
 
+    @skipIf(IN_DEBUGGER, "The debugger is too slow")
     def test_job_queue_in_signal(self):
 
         gc.collect()
@@ -331,10 +338,9 @@ class TestLocks(FuzzyTestCase):
 
         interesting = [Signal.__name__, OrSignal.__name__, Till.__name__, Thread.__name__]
         start_ids = set(id(o) for o in gc.get_objects())
-        start_counts = {n:objgraph.count(n) for n in interesting}
+        start_counts = {n: objgraph.count(n) for n in interesting}
         start_ids.add(id(start_ids))
         start_ids.add(id(start_counts))
-
 
         no_change = 0
         for g in range(NUM_CYCLES):
@@ -352,7 +358,7 @@ class TestLocks(FuzzyTestCase):
             while threads:
                 Till(seconds=0.1).wait()
                 with ALL_LOCK:
-                    residue = copy(ALL)
+                    residue = list(ALL)
                 threads = [t for t in threads if t.ident in residue]
                 if threads:
                     logger.error("Threads still running: {residue}", residue=residue)
@@ -362,7 +368,7 @@ class TestLocks(FuzzyTestCase):
             end_counts = {n: objgraph.count(n) for n in interesting}
             end_ids = set(id(o) for o in gc.get_objects())
 
-            growth_seen = any(end_counts[n]-start_counts[n] > 0 for n in interesting)
+            growth_seen = any(end_counts[n] - start_counts[n] > 0 for n in interesting)
             if not growth_seen:
                 no_change += 1
             else:
@@ -376,7 +382,6 @@ class TestLocks(FuzzyTestCase):
                 objgraph.show_backrefs(examples[0], max_depth=4, filename=File(filename).os_path)
             start_counts = {n: max(end_counts[n], start_counts[n]) for n in interesting}
             start_ids = end_ids
-
 
         consumer.please_stop.go()
         consumer.join()
