@@ -8,10 +8,11 @@
 #
 import json
 import platform
+from shlex import quote
 from time import time as unix_now
 
 from mo_dots import Data, from_data
-from mo_logs import logger, strings
+from mo_logs import logger
 from mo_times import Date, SECOND
 
 from mo_threads import threads
@@ -28,7 +29,7 @@ STALE_MAX_AGE = 60
 INUSE_TIMEOUT = 5
 AVAIL_TIMEOUT = 60 * 60
 START_TIMEOUT = 60
-PROMPT = "READY_FOR_MORE>"
+END_OF_COMMAND_MARKER = "END-OF-COMMAND-MARKER"
 
 lifetime_manager_locker = Lock("cmd lock")
 lifetime_manager = None
@@ -68,10 +69,11 @@ class Command(object):
         self.stderr = Queue("stderr for " + name, max=max_stdout)
         command = " ".join(cmd_escape(p) for p in params)
         DEBUG and logger.info("command: {command}", command=command)
-        self.process.stdin.add(command)
         self.stderr_thread = Thread.run(f"{name} stderr", _stderr_relay, process.stderr, self.stderr).release()
         # stdout_thread IS CONSIDERED THE LIFETIME OF THE COMMAND
         self.worker_thread = Thread.run(f"{name} worker", self._worker, process.stdout, self.stdout).release()
+        self.process.stdin.add(command)
+        self.process.stdin.add(LAST_RETURN_CODE)
 
     def stop(self):
         """
@@ -100,11 +102,11 @@ class Command(object):
         :return:
         """
         try:
-            prompt_count = 0
             line_count = 0
 
             while not please_stop:
                 value = source.pop(till=please_stop)
+                logger.info("command worker got {line}", line=value)
                 if value is None:
                     continue
                 elif value is THREAD_STOP:
@@ -113,20 +115,17 @@ class Command(object):
                 elif line_count == 0 and "is not recognized as an internal or external command" in value:
                     DEBUG and logger.info("exit with error")
                     logger.error("Problem with command: {desc}", desc=value)
-                elif value.startswith(PROMPT):
-                    if prompt_count:
-                        # GET THE ERROR LEVEL
-                        self.returncode = int(source.pop(till=please_stop))
-                        DEBUG and logger.info("prompt located, {code}, clean finish", code=self.returncode)
-                        return
-                    else:
-                        self.process.stdin.add(LAST_RETURN_CODE)
-                        prompt_count += 1
+                elif value.startswith(END_OF_COMMAND_MARKER):
+                    # GET THE ERROR LEVEL
+                    self.returncode = int(source.pop(till=please_stop))
+                    DEBUG and logger.info("prompt located, {code}, clean finish", code=self.returncode)
+                    return
                 else:
                     line_count += 1
                     destination.add(value)
         finally:
             destination.add(THREAD_STOP)
+            # self.process.stderr.add(THREAD_STOP)
             self.stderr_thread.please_stop.go()
             self.stderr_thread.join()
             self.manager.return_process(self.process)
@@ -137,7 +136,7 @@ def _stderr_relay(source, destination, please_stop=None):
     while not please_stop:
         value = source.pop(till=please_stop)
         if value is THREAD_STOP:
-            return
+            break
         if value:
             destination.add(value)
     for value in source.pop_all():
@@ -189,7 +188,7 @@ class LifetimeManager:
             )
             self.inuse_processes.append((key, process, unix_now()))
 
-            process.stdin.add(set_prompt())
+            set_prompt(process.stdin)
 
         DEBUG and logger.info(
             "New process {process} for {command}", process=process.name, command=name,
@@ -199,7 +198,6 @@ class LifetimeManager:
         try:
             process.stdin.add(LAST_RETURN_CODE)
             start_timeout = Till(seconds=START_TIMEOUT)
-            prompt = PROMPT + LAST_RETURN_CODE
             while not start_timeout:
                 value = process.stdout.pop(till=start_timeout)
                 logger.info("wait for stArt get {line}", line=value)
@@ -207,9 +205,10 @@ class LifetimeManager:
                     process.kill_once()
                     process.join()
                     logger.error("Could not start command, stdout closed early")
-                if value and value.startswith(prompt):
+                if value and value.startswith(END_OF_COMMAND_MARKER):
                     break
             process.stdout.pop(till=start_timeout)  # GET THE ERROR LEVEL
+            logger.info("wait for stArt get error code {line}", line=value)
             if start_timeout:
                 process.kill_once()
                 process.join()
@@ -338,23 +337,14 @@ WINDOWS_ESCAPE_DCT = {
 }
 
 
-def cmd_escape(value):
-    if hasattr(value, "os_path"):  # File
-        value = value.os_path
-    quoted = strings.quote(value)
-
-    if " " not in quoted and quoted == '"' + value + '"':
-        # SIMPLE
-        quoted = value
-
-    return quoted
-
-
 if "windows" in platform.system().lower():
-    LAST_RETURN_CODE = "echo %errorlevel%"
+    def cmd_escape(value):
+        return '"' + value.replace('"', '""') + '"'
 
-    def set_prompt():
-        return "prompt " + PROMPT.replace(">", "$g")
+    LAST_RETURN_CODE = f"echo {END_OF_COMMAND_MARKER} & echo %errorlevel%"
+
+    def set_prompt(stdin):
+        stdin.add('set "PROMPT= "')
 
     def cmd():
         return "%windir%\\system32\\cmd.exe"
@@ -362,13 +352,17 @@ if "windows" in platform.system().lower():
     def to_text(value):
         return value.decode("latin1")
 else:
-    LAST_RETURN_CODE = f"echo \"{cmd_escape(PROMPT)}\";echo $?"
+    def cmd_escape(value):
+        return quote(value)
 
-    def set_prompt():
-        return f"echo"
+    LAST_RETURN_CODE = f"echo {cmd_escape(END_OF_COMMAND_MARKER)};echo $?"
+
+    def set_prompt(stdin):
+        pass
 
     def cmd():
         return "bash"
 
     def to_text(value):
         return value.decode("latin1")
+

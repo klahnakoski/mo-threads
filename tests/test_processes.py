@@ -50,8 +50,9 @@ class TestProcesses(FuzzyTestCase):
         p = Process("run exit_test", [sys.executable, "-u", "tests/programs/exit_test.py"], debug=True)
         p.stdout.pop()  # WAIT FOR PROCESS TO START
         Till(seconds=2).wait()
+        logger.alert("SENDING SIGINT to {{pid}}", pid=p.pid)
         command = ["kill", "-s", "int", p.pid]
-        k = Process("killer", command, shell=True)
+        k = Process("killer", command, shell=False)
         k.join(raise_on_error=True)
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
@@ -110,10 +111,4 @@ class TestProcesses(FuzzyTestCase):
         self.assertIn("All threads have shutdown", lines)
 
     def test_command_shutdown(self):
-        commands.DEBUG, commands_debug = True, commands.DEBUG
-        processes.DEBUG, processes_debug = True, processes.DEBUG
-        threads.DEBUG, threads_debug = True, threads.DEBUG
-        c = Command("test", [sys.executable, "-c", "print('test')"]).join()
-        commands.DEBUG = commands_debug
-        processes.DEBUG = processes_debug
-        threads.DEBUG = threads_debug
+        Command("test", [sys.executable, "-c", "print('test')"]).join()

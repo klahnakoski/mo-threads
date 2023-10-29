@@ -15,8 +15,8 @@ To run the tests, build and run:
 
 
 ```bash
-docker build --file tests\docker\dev.dockerfile --tag mo-threads .
-docker run mo-threads
+Dockerfile build --file tests\docker\dev.dockerfile --tag mo-threads .
+Dockerfile run mo-threads
 ```
 
 #### Interactive
@@ -24,7 +24,7 @@ docker run mo-threads
 Instead of running all tests, you may start the image without running tests:
 
 ```bash
-docker run --interactive --tty mo-threads bash
+Dockerfile run --interactive --tty mo-threads bash
 ```
 
 

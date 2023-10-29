@@ -106,7 +106,7 @@ class Process(object):
             self.stderr_status = Status(unix_now() + startup_timeout)
             self.kill_once = self.kill
             self.children = (
-                Thread.run(
+                Thread(
                     self.name + " stdin",
                     self._writer,
                     service.stdin,
@@ -114,7 +114,7 @@ class Process(object):
                     please_stop=self.please_stop,
                     parent_thread=Null,
                 ),
-                Thread.run(
+                Thread(
                     self.name + " stdout",
                     self._reader,
                     "stdout",
@@ -125,7 +125,7 @@ class Process(object):
                     parent_thread=Null,
                     daemon=True  # MIGHT LOCKUP, ONLY WAY TO KILL IT
                 ),
-                Thread.run(
+                Thread(
                     self.name + " stderr",
                     self._reader,
                     "stderr",
@@ -136,8 +136,10 @@ class Process(object):
                     parent_thread=Null,
                     daemon=True  # MIGHT LOCKUP, ONLY WAY TO KILL IT
                 ),
-                Thread.run(self.name + " monitor", self._monitor, please_stop=self.please_stop, parent_thread=self),
+                Thread(self.name + " monitor", self._monitor, please_stop=self.please_stop, parent_thread=self),
             )
+            for child in self.children:
+                child.start()
         except Exception as cause:
             logger.error("Can not call  dir={cwd}", cwd=cwd, cause=cause)
 
