@@ -21,7 +21,7 @@ docker run mo-threads
 Instead of running may start the image, without running tests:
 
 ```bash
-Dockerfile run -it mo-threads bash
+python310.dockerfile run -it mo-threads bash
 ```
 
 Then run tests
