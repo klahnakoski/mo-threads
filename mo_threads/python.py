@@ -14,6 +14,7 @@ import sys
 from json import dumps as value2json, loads as json2value
 
 from mo_dots import to_data, from_data
+from mo_future import is_windows
 from mo_logs import Except, logger
 
 from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, DONE, python_worker
@@ -30,7 +31,7 @@ class Python(object):
 
         logger.info("begin process in dir={dir}", dir=os.getcwd())
         # WINDOWS REQUIRED shell, WHILE LINUX NOT
-        shell = "windows" in platform.system().lower()
+        shell = is_windows
         python_worker_file = os.path.abspath(python_worker.__file__)
         self.process = Process(
             name,

@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from time import time as unix_now
 
 from mo_dots import set_default, Null
+from mo_future import is_windows
 from mo_logs import logger, strings
 from mo_logs.exceptions import Except
 from mo_threads.queues import Queue
@@ -76,6 +77,7 @@ class Process(object):
         self.name = f"{name} ({self.process_id})"
         self.stopped = Signal("stopped signal for " + strings.quote(name))
         self.please_stop = Signal("please stop for " + strings.quote(name))
+        self.second_last_stdin = None
         self.last_stdin = None
         self.stdin = Queue("stdin for process " + strings.quote(name), silent=not self.debug)
         self.stdout = Queue("stdout for process " + strings.quote(name), silent=not self.debug)
@@ -202,7 +204,7 @@ class Process(object):
                     self.kill_once()
                     logger.warning(
                         "{last_sent} for {name} last used {last_used} took over {timeout} seconds to respond",
-                        last_sent=self.last_stdin,
+                        last_sent=self.second_last_stdin,
                         last_used=Date(last_out).format(),
                         timeout=self.timeout,
                         name=self.name,
@@ -225,7 +227,6 @@ class Process(object):
             stdout_thread.join(till=wait_limit)
         except:
             # THREAD LOST ON PIPE.readline()
-            self.kill_once()
             self.stdout.close()
             stdout_thread.release()
             stdout_thread.end_of_thread = EndOfThread(None, None)
@@ -238,7 +239,6 @@ class Process(object):
             stderr_thread.join(till=wait_limit)
         except:
             # THREAD LOST ON PIPE.readline()
-            self.kill_once()
             self.stderr.close()
             stderr_thread.release()
             stderr_thread.end_of_thread = EndOfThread(None, None)
@@ -287,13 +287,14 @@ class Process(object):
                 break
             elif line is None:
                 continue
+            self.second_last_stdin = self.last_stdin
             self.last_stdin = line
             self.debug and logger.info(
                 "send line: {line}", process=self.name, line=line.rstrip(),
             )
             try:
                 pipe.write(line.encode("utf8"))
-                pipe.write(b"\n")
+                pipe.write(EOL)
                 pipe.flush()
             except Exception as cause:
                 # HAPPENS WHEN PROCESS IS DONE
@@ -307,7 +308,7 @@ class Process(object):
             if self.service.returncode is not None:
                 return
             self.service.kill()
-            logger.info("{process} was successfully terminated.", process=self.name, stack_depth=2)
+            logger.info("{process} was successfully terminated.", process=self.name, stack_depth=1)
         except Exception as cause:
             cause = Except.wrap(cause)
             if "The operation completed successfully" in cause:
@@ -318,6 +319,11 @@ class Process(object):
             logger.warning(
                 "Failure to kill process {process|quote}", process=self.name, cause=cause,
             )
+
+if is_windows:
+    EOL = b"\r\n"
+else:
+    EOL = b"\n"
 
 
 def os_path(path):
