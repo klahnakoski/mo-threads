@@ -168,6 +168,8 @@ class LifetimeManager:
 
     def get_or_create_process(self, *, params, bufsize, cwd, debug, env, name, shell, timeout):
         now = unix_now()
+        cwd = os_path(cwd or File("."))
+        env = Data(env)
         key = (cwd, env, debug, shell)
         with self.locker:
             for i, (key, process, last_used) in enumerate(self.avail_processes):
