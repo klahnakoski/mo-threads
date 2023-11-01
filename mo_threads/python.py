@@ -9,14 +9,12 @@
 
 
 import os
-import platform
 import sys
 from json import dumps as value2json, loads as json2value
 
 from mo_dots import to_data, from_data
 from mo_future import is_windows
 from mo_logs import Except, logger
-
 from mo_threads import Lock, Process, Signal, THREAD_STOP, Thread, DONE, python_worker
 
 DEBUG = False

@@ -100,7 +100,7 @@ class Process(object):
                 stderr=subprocess.PIPE,
                 bufsize=bufsize,
                 cwd=cwd,
-                env={str(k): str(v) for k, v in set_default(env, os.environ).items()},
+                env={str(k): str(v) for k, v in {**os.environ, **env}.items()},
                 shell=shell,
             )
 

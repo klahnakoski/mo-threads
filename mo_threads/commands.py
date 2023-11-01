@@ -7,17 +7,13 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 import json
-import platform
 from shlex import quote
 from time import time as unix_now
 
-from mo_files import File
-
 from mo_dots import Data, from_data
+from mo_files import File
 from mo_future import is_windows
 from mo_logs import logger
-from mo_times import Date, SECOND
-
 from mo_threads import threads
 from mo_threads.lock import Lock
 from mo_threads.processes import os_path, Process
@@ -25,6 +21,7 @@ from mo_threads.queues import Queue
 from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, Thread
 from mo_threads.till import Till
+from mo_times import Date, SECOND
 
 DEBUG = False
 
@@ -51,10 +48,10 @@ class Command(object):
         global lifetime_manager
 
         cwd = os_path(cwd)
-        env = Data(**(env or {}))
+        env_ = Data(**(env or {}))
 
         self.params = params
-        self.key = (cwd, env, debug, shell)
+        self.key = (cwd, env_, debug, shell)
         self.timeout = timeout or INUSE_TIMEOUT
         self.returncode = None
         self.debug = debug = debug or DEBUG
@@ -63,17 +60,14 @@ class Command(object):
                 lifetime_manager = LifetimeManager()
             self.manager = lifetime_manager
         self.process = process = self.manager.get_or_create_process(
-            params=params, bufsize=bufsize, cwd=cwd, debug=debug, env=env, name=name, shell=shell, timeout=self.timeout
+            params=params, bufsize=bufsize, cwd=cwd, debug=debug, env=env_, name=name, shell=shell, timeout=self.timeout
         )
         if debug:
             name = f"{name} (using {process.name})"
         self.name = name
         self.stdout = Queue("stdout for " + name, max=max_stdout)
         self.stderr = Queue("stderr for " + name, max=max_stdout)
-        try:
-            command = " ".join(cmd_escape(p) for p in params)
-        except Exception as e:
-            print(e)
+        command = " ".join(cmd_escape(p) for p in params)
         self.debug and logger.info("command: {command}", command=command)
         self.stderr_thread = Thread.run(f"{name} stderr", _stderr_relay, process.stderr, self.stderr).release()
         # stdout_thread IS CONSIDERED THE LIFETIME OF THE COMMAND
@@ -180,7 +174,7 @@ class LifetimeManager:
                 process.timeout = timeout
                 self.inuse_processes.append((key, process, now))
                 DEBUG and logger.info(
-                    "Reuse process {process} for {command}", process=process.name, command=name,
+                    "Reuse process {process} for {command} ({key})", process=process.name, command=name, key=key
                 )
                 return process
 
@@ -201,7 +195,7 @@ class LifetimeManager:
             set_prompt(process.stdin)
 
         DEBUG and logger.info(
-            "New process {process} for {command}", process=process.name, command=name,
+            "New process {process} for {command}", process=process.name, command=name
         )
 
         # WAIT FOR START
