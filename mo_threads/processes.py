@@ -125,7 +125,7 @@ class Process(object):
                     self.stdout_status,
                     please_stop=self.please_stop,
                     parent_thread=Null,
-                    daemon=True  # MIGHT LOCKUP, ONLY WAY TO KILL IT
+                    daemon=True,  # MIGHT LOCKUP, ONLY WAY TO KILL IT
                 ),
                 Thread(
                     self.name + " stderr",
@@ -136,7 +136,7 @@ class Process(object):
                     self.stderr_status,
                     please_stop=self.please_stop,
                     parent_thread=Null,
-                    daemon=True  # MIGHT LOCKUP, ONLY WAY TO KILL IT
+                    daemon=True,  # MIGHT LOCKUP, ONLY WAY TO KILL IT
                 ),
                 Thread(self.name + " monitor", self._monitor, please_stop=self.please_stop, parent_thread=self),
             )
@@ -319,6 +319,7 @@ class Process(object):
             logger.warning(
                 "Failure to kill process {process|quote}", process=self.name, cause=cause,
             )
+
 
 if is_windows:
     EOL = b"\r\n"
