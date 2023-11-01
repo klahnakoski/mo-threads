@@ -29,7 +29,7 @@ from mo_threads.threads import (
     wait_for_shutdown_signal,
     start_main_thread,
     join_all_threads,
-    current_thread
+    current_thread,
 )
 from mo_threads.till import Till
 

@@ -7,14 +7,13 @@
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
 import json
-import platform
+import os
 from shlex import quote
 from time import time as unix_now
 
-from mo_dots import Data, from_data
+from mo_dots import Data, from_data, to_data
+from mo_future import is_windows
 from mo_logs import logger
-from mo_times import Date, SECOND
-
 from mo_threads import threads
 from mo_threads.lock import Lock
 from mo_threads.processes import os_path, Process
@@ -22,6 +21,7 @@ from mo_threads.queues import Queue
 from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, Thread
 from mo_threads.till import Till
+from mo_times import Date, SECOND
 
 DEBUG = False
 
@@ -43,36 +43,44 @@ class Command(object):
     """
 
     def __init__(
-        self, name, params, cwd=None, env=None, debug=False, shell=True, timeout=None, max_stdout=1024, bufsize=-1,
+        self, name, params, *, cwd=None, env=None, debug=False, shell=True, timeout=None, max_stdout=1024, bufsize=-1,
     ):
         global lifetime_manager
 
         cwd = os_path(cwd)
-        env = Data(**(env or {}))
+        env_ = Data(**(env or {}))
 
         self.params = params
-        self.key = (cwd, env, debug, shell)
+        self.key = (cwd, env_, debug, shell)
         self.timeout = timeout or INUSE_TIMEOUT
         self.returncode = None
+        self.debug = debug = debug or DEBUG
         with lifetime_manager_locker:
             if not lifetime_manager:
                 lifetime_manager = LifetimeManager()
             self.manager = lifetime_manager
         self.process = process = self.manager.get_or_create_process(
-            params, bufsize, cwd, debug, env, name, shell, timeout=self.timeout
+            params=params,
+            bufsize=bufsize,
+            cwd=cwd,
+            debug=debug,
+            env=env_,
+            name=name,
+            shell=shell,
+            timeout=self.timeout,
         )
-
-        if DEBUG:
+        if debug:
             name = f"{name} (using {process.name})"
         self.name = name
         self.stdout = Queue("stdout for " + name, max=max_stdout)
         self.stderr = Queue("stderr for " + name, max=max_stdout)
         command = " ".join(cmd_escape(p) for p in params)
-        DEBUG and logger.info("command: {command}", command=command)
+        self.debug and logger.info("command: {command}", command=command)
         self.stderr_thread = Thread.run(f"{name} stderr", _stderr_relay, process.stderr, self.stderr).release()
         # stdout_thread IS CONSIDERED THE LIFETIME OF THE COMMAND
         self.worker_thread = Thread.run(f"{name} worker", self._worker, process.stdout, self.stdout).release()
         self.process.stdin.add(command)
+        self.process.stdin.add("")
         self.process.stdin.add(LAST_RETURN_CODE)
 
     def stop(self):
@@ -106,19 +114,21 @@ class Command(object):
 
             while not please_stop:
                 value = source.pop(till=please_stop)
-                logger.info("command worker got {line}", line=value)
                 if value is None:
                     continue
                 elif value is THREAD_STOP:
-                    DEBUG and logger.info("got thread stop")
+                    self.debug and logger.info("got thread stop")
                     return
                 elif line_count == 0 and "is not recognized as an internal or external command" in value:
-                    DEBUG and logger.info("exit with error")
+                    self.debug and logger.info("exit with error")
                     logger.error("Problem with command: {desc}", desc=value)
+                elif value.startswith(PROMPT):
+                    # DO NOT RETURN WHAT WAS SENT
+                    continue
                 elif value.startswith(END_OF_COMMAND_MARKER):
                     # GET THE ERROR LEVEL
                     self.returncode = int(source.pop(till=please_stop))
-                    DEBUG and logger.info("prompt located, {code}, clean finish", code=self.returncode)
+                    self.debug and logger.info("prompt located, {code}, clean finish", code=self.returncode)
                     return
                 else:
                     line_count += 1
@@ -129,7 +139,7 @@ class Command(object):
             self.stderr_thread.please_stop.go()
             self.stderr_thread.join()
             self.manager.return_process(self.process)
-            DEBUG and logger.info("command worker done")
+            self.debug and logger.info("command worker done")
 
 
 def _stderr_relay(source, destination, please_stop=None):
@@ -154,12 +164,12 @@ class LifetimeManager:
         self.inuse_processes = []
         self.locker = Lock()
         self.wakeup = Signal()
-        self.worker_thread = (
-            Thread.run("lifetime manager", self._worker, parent_thread=threads.MAIN_THREAD).release()
-        )
+        self.worker_thread = Thread.run("lifetime manager", self._worker, parent_thread=threads.MAIN_THREAD).release()
 
-    def get_or_create_process(self, params, bufsize, cwd, debug, env, name, shell, *, timeout):
+    def get_or_create_process(self, *, params, bufsize, cwd, debug, env, name, shell, timeout):
         now = unix_now()
+        cwd = os_path(cwd or os.getcwd())
+        env = to_data(env)
         key = (cwd, env, debug, shell)
         with self.locker:
             for i, (key, process, last_used) in enumerate(self.avail_processes):
@@ -170,13 +180,13 @@ class LifetimeManager:
                 process.timeout = timeout
                 self.inuse_processes.append((key, process, now))
                 DEBUG and logger.info(
-                    "Reuse process {process} for {command}", process=process.name, command=name,
+                    "Reuse process {process} for {command} ({key})", process=process.name, command=name, key=key
                 )
                 return process
 
         with self.locker:
             process = Process(
-                name="command shell",
+                name=f"shell {cwd}",
                 params=[cmd()],
                 cwd=cwd,
                 env=env,
@@ -190,17 +200,15 @@ class LifetimeManager:
 
             set_prompt(process.stdin)
 
-        DEBUG and logger.info(
-            "New process {process} for {command}", process=process.name, command=name,
-        )
+        DEBUG and logger.info("New process {process} for {command}", process=process.name, command=name)
 
         # WAIT FOR START
         try:
+            process.stdin.add("cd " + cmd_escape(cwd))
             process.stdin.add(LAST_RETURN_CODE)
             start_timeout = Till(seconds=START_TIMEOUT)
             while not start_timeout:
                 value = process.stdout.pop(till=start_timeout)
-                logger.info("wait for stArt get {line}", line=value)
                 if value == THREAD_STOP:
                     process.kill_once()
                     process.join()
@@ -208,11 +216,14 @@ class LifetimeManager:
                 if value and value.startswith(END_OF_COMMAND_MARKER):
                     break
             process.stdout.pop(till=start_timeout)  # GET THE ERROR LEVEL
-            logger.info("wait for stArt get error code {line}", line=value)
             if start_timeout:
                 process.kill_once()
                 process.join()
-                logger.error("Command line did not start within {timeout} seconds: ({command})", timeout=START_TIMEOUT, command=params)
+                logger.error(
+                    "Command line did not start within {timeout} seconds: ({command})",
+                    timeout=START_TIMEOUT,
+                    command=params,
+                )
 
             process.timeout = timeout
             return process
@@ -322,39 +333,36 @@ class LifetimeManager:
         DEBUG and logger.info("lifetime manager done")
 
 
-WINDOWS_ESCAPE_DCT = {
-    "%": "%%",
-    "&": "^&",
-    "\\": "^\\",
-    "<": "^<",
-    ">": "^>",
-    "^": "^^",
-    "|": "^|",
-    "\t": "^\t",
-    "\n": "^\n",
-    "\r": "^\r",
-    " ": "^ ",
-}
+if is_windows:
 
-
-if "windows" in platform.system().lower():
     def cmd_escape(value):
-        return '"' + value.replace('"', '""') + '"'
+        if value.__class__.__name__ == "File":
+            value = value.os_path
+        if " " in value or '"' in value:
+            return '"' + value.replace('"', '""') + '"'
+        return value
 
+    PROMPT = "******PROMPT******"
     LAST_RETURN_CODE = f"echo {END_OF_COMMAND_MARKER} & echo %errorlevel%"
 
     def set_prompt(stdin):
-        stdin.add('set "PROMPT= "')
+        stdin.add(f"set PROMPT={PROMPT}")
 
     def cmd():
         return "%windir%\\system32\\cmd.exe"
 
     def to_text(value):
         return value.decode("latin1")
+
+
 else:
+
     def cmd_escape(value):
+        if value.__class__.__name__ == "File":
+            value = value.os_path
         return quote(value)
 
+    PROMPT = None
     LAST_RETURN_CODE = f"echo {cmd_escape(END_OF_COMMAND_MARKER)};echo $?"
 
     def set_prompt(stdin):
@@ -365,4 +373,3 @@ else:
 
     def to_text(value):
         return value.decode("latin1")
-

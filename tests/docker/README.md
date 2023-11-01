@@ -6,14 +6,12 @@ This docker image is meant for testing Linux on Windows. If you are using Linux,
 
 All commands are meant to be run from the root directory for this repo; not this directory, rather this' grandparent.
 
-### Build and Run
+### Build
 
-To run the tests, build and run:
-
+To run the tests, build:
 
 ```bash
-docker build --file tests\docker\Dockerfile --tag mo-threads .
-docker run mo-threads
+docker build --file tests\docker\python310.dockerfile --tag mo-threads .
 ```
 
 ### Interactive
@@ -21,7 +19,7 @@ docker run mo-threads
 Instead of running may start the image, without running tests:
 
 ```bash
-Dockerfile run -it mo-threads bash
+python310.dockerfile run -it mo-threads bash
 ```
 
 Then run tests

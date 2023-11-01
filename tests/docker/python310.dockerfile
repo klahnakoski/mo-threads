@@ -19,10 +19,10 @@ RUN .venv/bin/pip install -r packaging/requirements.txt
 COPY mo_threads/ /app/mo_threads/
 COPY tests/ /app/tests/
 
-RUN .venv/bin/pip install -r tests/requirements.txt
-RUN .venv/bin/pip install -r packaging/requirements.txt
+RUN .venv/bin/pip install --upgrade -r tests/requirements.txt
+RUN .venv/bin/pip install --upgrade -r packaging/requirements.txt
 
 ENV PYTHONPATH=.
-# RUN .venv/bin/python tests/smoke_test.py
-# RUN .venv/bin/python -m unittest discover tests -v
+RUN .venv/bin/python tests/smoke_test.py
+RUN .venv/bin/python -m unittest discover tests -v
 

@@ -24,7 +24,7 @@ def timeout(please_stop):
     done_waiting = Till(till=end_time) | please_stop
     while not done_waiting:
         Till(seconds=1).wait()
-        logger.info("{remaining}", remaining=math.ceil(end_time-unix_now()))
+        logger.info("{remaining}", remaining=math.ceil(end_time - unix_now()))
     if please_stop:
         logger.info("EXIT DETECTED")
     else:
