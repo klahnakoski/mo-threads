@@ -10,7 +10,7 @@ import json
 from shlex import quote
 from time import time as unix_now
 
-from mo_dots import Data, from_data
+from mo_dots import Data, from_data, to_data
 from mo_files import File
 from mo_future import is_windows
 from mo_logs import logger
@@ -73,7 +73,9 @@ class Command(object):
         # stdout_thread IS CONSIDERED THE LIFETIME OF THE COMMAND
         self.worker_thread = Thread.run(f"{name} worker", self._worker, process.stdout, self.stdout).release()
         self.process.stdin.add(command)
+        self.process.stdin.add("")
         self.process.stdin.add(LAST_RETURN_CODE)
+
 
     def stop(self):
         """
@@ -163,7 +165,7 @@ class LifetimeManager:
     def get_or_create_process(self, *, params, bufsize, cwd, debug, env, name, shell, timeout):
         now = unix_now()
         cwd = os_path(cwd or File("."))
-        env = Data(env)
+        env = to_data(env)
         key = (cwd, env, debug, shell)
         with self.locker:
             for i, (key, process, last_used) in enumerate(self.avail_processes):

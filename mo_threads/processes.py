@@ -199,8 +199,8 @@ class Process(object):
             while not please_stop:
                 now = unix_now()
                 last_out = max(self.stdout_status.last_read, self.stderr_status.last_read)
-                timeout = last_out + self.timeout - now
-                if timeout < 0:
+                took = now - last_out
+                if took > self.timeout:
                     self.kill_once()
                     logger.warning(
                         "{last_sent} for {name} last used {last_used} took over {timeout} seconds to respond",
