@@ -122,7 +122,7 @@ class Command(object):
                 elif line_count == 0 and "is not recognized as an internal or external command" in value:
                     self.debug and logger.info("exit with error")
                     logger.error("Problem with command: {desc}", desc=value)
-                elif value.startswith(PROMPT):
+                elif PROMPT and value.startswith(PROMPT):
                     # DO NOT RETURN WHAT WAS SENT
                     continue
                 elif value.startswith(END_OF_COMMAND_MARKER):
