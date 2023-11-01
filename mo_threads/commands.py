@@ -60,7 +60,14 @@ class Command(object):
                 lifetime_manager = LifetimeManager()
             self.manager = lifetime_manager
         self.process = process = self.manager.get_or_create_process(
-            params=params, bufsize=bufsize, cwd=cwd, debug=debug, env=env_, name=name, shell=shell, timeout=self.timeout
+            params=params,
+            bufsize=bufsize,
+            cwd=cwd,
+            debug=debug,
+            env=env_,
+            name=name,
+            shell=shell,
+            timeout=self.timeout,
         )
         if debug:
             name = f"{name} (using {process.name})"
@@ -75,7 +82,6 @@ class Command(object):
         self.process.stdin.add(command)
         self.process.stdin.add("")
         self.process.stdin.add(LAST_RETURN_CODE)
-
 
     def stop(self):
         """
@@ -158,9 +164,7 @@ class LifetimeManager:
         self.inuse_processes = []
         self.locker = Lock()
         self.wakeup = Signal()
-        self.worker_thread = (
-            Thread.run("lifetime manager", self._worker, parent_thread=threads.MAIN_THREAD).release()
-        )
+        self.worker_thread = Thread.run("lifetime manager", self._worker, parent_thread=threads.MAIN_THREAD).release()
 
     def get_or_create_process(self, *, params, bufsize, cwd, debug, env, name, shell, timeout):
         now = unix_now()
@@ -196,9 +200,7 @@ class LifetimeManager:
 
             set_prompt(process.stdin)
 
-        DEBUG and logger.info(
-            "New process {process} for {command}", process=process.name, command=name
-        )
+        DEBUG and logger.info("New process {process} for {command}", process=process.name, command=name)
 
         # WAIT FOR START
         try:
@@ -217,7 +219,11 @@ class LifetimeManager:
             if start_timeout:
                 process.kill_once()
                 process.join()
-                logger.error("Command line did not start within {timeout} seconds: ({command})", timeout=START_TIMEOUT, command=params)
+                logger.error(
+                    "Command line did not start within {timeout} seconds: ({command})",
+                    timeout=START_TIMEOUT,
+                    command=params,
+                )
 
             process.timeout = timeout
             return process
@@ -328,8 +334,9 @@ class LifetimeManager:
 
 
 if is_windows:
+
     def cmd_escape(value):
-        if isinstance(value, File):
+        if value.__class__.__name__ == "File":
             value = value.os_path
         if " " in value or '"' in value:
             return '"' + value.replace('"', '""') + '"'
@@ -339,16 +346,19 @@ if is_windows:
     LAST_RETURN_CODE = f"echo {END_OF_COMMAND_MARKER} & echo %errorlevel%"
 
     def set_prompt(stdin):
-        stdin.add(f'set PROMPT={PROMPT}')
+        stdin.add(f"set PROMPT={PROMPT}")
 
     def cmd():
         return "%windir%\\system32\\cmd.exe"
 
     def to_text(value):
         return value.decode("latin1")
+
+
 else:
+
     def cmd_escape(value):
-        if isinstance(value, File):
+        if value.__class__.__name__ == "File":
             value = value.os_path
         return quote(value)
 
@@ -363,4 +373,3 @@ else:
 
     def to_text(value):
         return value.decode("latin1")
-
