@@ -363,18 +363,15 @@ class Thread(BaseThread):
                         # FROM NOW ON, USING logger WILL RE-REGISTER THIS THREAD
                         self.stopped.go()
             finally:
+                DEBUG and safe_info("thread {name|quote} is done, wait for join", name=self.name)
+                # WHERE DO WE PUT THE THREAD RESULT?
+                # IF NO THREAD JOINS WITH THIS, THEN WHAT DO WE DO WITH THE RESULT?
+                # HOW LONG DO WE WAIT FOR ANOTHER TO ACCEPT THE RESULT?
+                #
+                # WAIT 60seconds, THEN SEND RESULT TO LOGGER
+                (Till(seconds=60) | self.joiner_is_waiting).wait()
                 if self.joiner_is_waiting:
-                    DEBUG and safe_info("thread {name|quote} stopped", name=self.name)
                     return
-                if not self.joiner_is_waiting:
-                    DEBUG and safe_info("thread {name|quote} is done, wait for join", name=self.name)
-                    # WHERE DO WE PUT THE THREAD RESULT?
-                    # IF NO THREAD JOINS WITH THIS, THEN WHAT DO WE DO WITH THE RESULT?
-                    # HOW LONG DO WE WAIT FOR ANOTHER TO ACCEPT THE RESULT?
-                    #
-                    # WAIT 60seconds, THEN SEND RESULT TO LOGGER
-                    (Till(seconds=60) | self.joiner_is_waiting).wait()
-
                 res, exp = self.end_of_thread
                 if exp:
                     # THREAD FAILURES ARE A PROBLEM ONLY IF NO ONE WILL BE JOINING WITH IT
