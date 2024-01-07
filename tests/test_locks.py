@@ -38,6 +38,10 @@ DEBUG_SHOW_BACKREFS = True
 IN_DEBUGGER = any("pydevd.py" in line["file"] for line in get_stacktrace())
 IN_COVERAGE = any("coverage/execfile.py'" in line["file"].replace("\\", "/") for line in get_stacktrace())
 
+print(f"IN_DEBUGGER={IN_DEBUGGER}")
+print(f"IN_COVERAGE={IN_COVERAGE}")
+print(get_stacktrace())
+
 
 @add_error_reporting
 class TestLocks(FuzzyTestCase):
