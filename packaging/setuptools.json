@@ -2,7 +2,6 @@
     "author": "Kyle Lahnakoski",
     "author_email": "kyle@lahnakoski.com",
     "classifiers": [
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Development Status :: 4 - Beta",
@@ -10,7 +9,8 @@
         "Topic :: Software Development :: Libraries :: Python Modules",
         "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
         "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11"
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12"
     ],
     "description": "More Threads! Simpler and faster threading.",
     "extras_require": {"tests": [
@@ -19,8 +19,8 @@
     ]},
     "include_package_data": true,
     "install_requires": [
-          "mo-dots==9.455.23316", "mo-future==7.449.23304",   "mo-logs==8.456.23316",
-          "mo-math==7.455.23316",  "mo-times==5.458.23316"
+          "mo-dots==9.476.24007", "mo-future==7.476.24007",   "mo-logs==8.477.24007",
+          "mo-math==7.476.24007",  "mo-times==5.478.24007"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -314,6 +314,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "6.458.23316",
+    "version": "6.479.24007",
     "zip_safe": false
 }
