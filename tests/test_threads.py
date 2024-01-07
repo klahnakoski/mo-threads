@@ -28,6 +28,7 @@ class TestThreads(FuzzyTestCase):
         stop_main_thread()
         start_main_thread()
         old_log, logger.main_log = logger.main_log, StructuredLogger_usingList()
+        print(f"new logger {logger.main_log.__class__} ({id(logger.main_log)})")
         old_log.stop()
 
     def tearDown(self):
@@ -263,10 +264,14 @@ class TestThreads(FuzzyTestCase):
                 try:
                     return Till(seconds=0.1).wait()
                 finally:
+                    # there is still a then.jobs exception handler that runs after this
+                    # which reports this failure to the logs, and that can take time
                     done.go()
 
             Till(seconds=0.1).then(blocking_function).wait()
             done.wait()
+            # wait for then.jobs exception handler to fill the logs
+            Till(seconds=0.1).wait()
             self.assertTrue(any("Deadlock detected" in line for line in logger.main_log.lines))
         finally:
             signals.DEBUG = old_value
