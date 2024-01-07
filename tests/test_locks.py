@@ -36,6 +36,7 @@ from tests.utils import add_error_reporting
 USE_PYTHON_THREADS = False
 DEBUG_SHOW_BACKREFS = True
 IN_DEBUGGER = any("pydevd.py" in line["file"] for line in get_stacktrace())
+IN_COVERAGE = any("coverage/execfile.py'" in line["file"].replace("\\", "/") for line in get_stacktrace())
 
 
 @add_error_reporting
@@ -83,7 +84,7 @@ class TestLocks(FuzzyTestCase):
             for i in range(SCALE):
                 locks[i].release()
 
-    @skipIf(IN_DEBUGGER, "The debugger is too slow")
+    @skipIf(IN_DEBUGGER or IN_COVERAGE, "The debugger is too slow")
     def test_queue_speed(self):
         if "PyPy" in machine_metadata().python:
             # PyPy requires some warmup time
@@ -170,7 +171,7 @@ class TestLocks(FuzzyTestCase):
         self.assertTrue(bool(thread_a.stopped), "Thread should be done by now")
         self.assertTrue(bool(thread_b.stopped), "Thread should be done by now")
 
-    @skipIf(IN_DEBUGGER, "The debugger is too slow")
+    @skipIf(IN_DEBUGGER or IN_COVERAGE, "The debugger is too slow")
     def test_till_create_speed(self):
         tills = []
         done = time() + 1
@@ -280,7 +281,7 @@ class TestLocks(FuzzyTestCase):
                 logger.info("problem: {cause}", cause=cause_description)
         logger.error("object counts did not go down")
 
-    @skipIf(IN_DEBUGGER, "The debugger is too slow")
+    @skipIf(IN_DEBUGGER or IN_COVERAGE, "The debugger is too slow")
     def test_job_queue_in_signal(self):
 
         gc.collect()
@@ -308,7 +309,7 @@ class TestLocks(FuzzyTestCase):
         with self.assertRaises(RuntimeError):
             lock.release()
 
-    @skipIf(IN_DEBUGGER, "The debugger hangs onto threads ")
+    @skipIf(IN_DEBUGGER or IN_COVERAGE, "The debugger hangs onto threads ")
     def test_memory_cleanup_with_signal(self):
         """
         LOOKING FOR A MEMORY LEAK THAT HAPPENS ONLY DURING THREADING
