@@ -37,10 +37,6 @@ export("mo_threads.signals", threads)
 del threads
 
 
-def __deploy__():
-    stop_main_thread()
-
-
 def coverage_detector():
     try:
         # DETECT COVERAGE
@@ -51,6 +47,11 @@ def coverage_detector():
             threads.COVERAGE_COLLECTOR = Collector
     except Exception:
         pass
+
+
+def __deploy__():
+    # nothing needs to be done for deployment
+    stop_main_thread()
 
 
 coverage_detector()

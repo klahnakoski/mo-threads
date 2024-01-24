@@ -30,6 +30,9 @@ class TestThreads(FuzzyTestCase):
         print(f"new logger {logger.main_log.__class__} ({id(logger.main_log)})")
         old_log.stop()
 
+    def tearDown(self):
+        stop_main_thread()
+
     def test_lock_wait_timeout(self):
         locker = Lock("test")
 

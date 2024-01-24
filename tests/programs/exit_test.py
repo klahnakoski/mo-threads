@@ -15,7 +15,7 @@ from time import time as unix_now
 
 from mo_logs import logger
 
-from mo_threads import Thread, Till, wait_for_shutdown_signal
+from mo_threads import Thread, Till, wait_for_shutdown_signal, stop_main_thread
 
 
 def timeout(please_stop):
@@ -37,3 +37,5 @@ try:
     wait_for_shutdown_signal(allow_exit=True, wait_forever=False)
 except Exception as cause:
     logger.error("can not wait", cause=cause)
+finally:
+    stop_main_thread()
