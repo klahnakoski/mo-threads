@@ -688,9 +688,9 @@ def wait_for_shutdown_signal(
         main.stop()
 
 
-def stop_main_thread(signum=0, frame=None):
+def stop_main_thread(silent=False):
     if not ALL:
-        logger.note("All threads have shutdown")
+        silent and logger.note("All threads have shutdown")
         return
 
     if current_thread() == MAIN_THREAD:
@@ -702,7 +702,7 @@ def stop_main_thread(signum=0, frame=None):
 def start_main_thread():
     global MAIN_THREAD
 
-    stop_main_thread()
+    stop_main_thread(silent=True)
     MAIN_THREAD = MainThread()
     MAIN_THREAD.shutdown_locker.acquire()
 

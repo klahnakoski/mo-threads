@@ -51,7 +51,7 @@ def coverage_detector():
 
 def __deploy__():
     # nothing needs to be done for deployment
-    exit()
+    stop_main_thread()
 
 
 coverage_detector()
