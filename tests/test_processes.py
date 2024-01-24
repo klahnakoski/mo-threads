@@ -26,7 +26,6 @@ IS_TRAVIS = bool(os.environ.get("TRAVIS"))
 class TestProcesses(FuzzyTestCase):
     @classmethod
     def setUpClass(cls):
-        stop_main_thread()
         start_main_thread()
         logger.start(trace=True)
 

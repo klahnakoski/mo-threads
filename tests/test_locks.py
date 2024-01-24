@@ -54,7 +54,6 @@ class TestLocks(FuzzyTestCase):
         logger.stop()
 
     def setUp(self):
-        stop_main_thread()
         start_main_thread()
         self.old, logger.main_log = logger.main_log, StructuredLogger_usingList()
 

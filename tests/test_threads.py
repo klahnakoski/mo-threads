@@ -25,7 +25,6 @@ from tests.utils import add_error_reporting
 @add_error_reporting
 class TestThreads(FuzzyTestCase):
     def setUp(self):
-        stop_main_thread()
         start_main_thread()
         old_log, logger.main_log = logger.main_log, StructuredLogger_usingList()
         print(f"new logger {logger.main_log.__class__} ({id(logger.main_log)})")

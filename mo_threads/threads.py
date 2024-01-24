@@ -11,7 +11,7 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-
+import atexit
 import signal as _signal
 import sys
 import threading
@@ -688,9 +688,9 @@ def wait_for_shutdown_signal(
         main.stop()
 
 
-def stop_main_thread(signum=0, frame=None):
+def stop_main_thread(silent=False):
     if not ALL:
-        logger.note("All threads have shutdown")
+        silent and logger.note("All threads have shutdown")
         return
 
     if current_thread() == MAIN_THREAD:
@@ -702,6 +702,7 @@ def stop_main_thread(signum=0, frame=None):
 def start_main_thread():
     global MAIN_THREAD
 
+    stop_main_thread(silent=True)
     MAIN_THREAD = MainThread()
     MAIN_THREAD.shutdown_locker.acquire()
 
@@ -731,6 +732,8 @@ def start_main_thread():
 
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
+atexit.register(stop_main_thread)
+
 
 MAIN_THREAD = None
 ALL_LOCK = allocate_lock()

@@ -1,4 +1,4 @@
-from mo_threads import stop_main_thread, wait_for_shutdown_signal
+from mo_threads import wait_for_shutdown_signal
 
 try:
     print("hello")
