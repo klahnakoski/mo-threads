@@ -29,7 +29,7 @@ import mo_threads
 from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
 from mo_threads.busy_lock import BusyLock
 from mo_threads.signals import OrSignal
-from mo_threads.threads import ALL, ALL_LOCK, start_main_thread, stop_main_thread
+from mo_threads.threads import ALL, ALL_LOCK, start_main_thread
 from tests import StructuredLogger_usingList
 from tests.utils import add_error_reporting
 
@@ -54,13 +54,11 @@ class TestLocks(FuzzyTestCase):
         logger.stop()
 
     def setUp(self):
-        stop_main_thread()
         start_main_thread()
         self.old, logger.main_log = logger.main_log, StructuredLogger_usingList()
 
     def tearDown(self):
         self.logs, logger.main_log = logger.main_log, self.old
-        stop_main_thread()
 
     def test_signal_is_not_null(self):
         a = Signal()

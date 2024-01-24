@@ -15,7 +15,7 @@ from mo_logs import logger, constants, Except
 from mo_logs.log_usingNothing import StructuredLogger
 
 from mo_threads import Signal
-from mo_threads.threads import STDOUT, STDIN, STDERR, THREAD_STOP, stop_main_thread
+from mo_threads.threads import STDOUT, STDIN, STDERR
 
 try:
     from mo_json import value2json, json2value
@@ -130,8 +130,6 @@ def start():
         command_loop({"config": config})
     except Exception as e:
         logger.error("problem staring worker", cause=e)
-    finally:
-        stop_main_thread()
 
 
 if __name__ == "__main__":
