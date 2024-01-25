@@ -741,7 +741,7 @@ if sys.version_info < (3, 9):
         # after main thread exits, we must stop MAIN_THREAD
         # spoof the current_thread() to be MAIN_THREAD
         current_thread = lambda: MAIN_THREAD
-        MAIN_THREAD.stop()
+        stop_main_thread()
     threading.Thread(None, wait_for_join, args=[], daemon=False).start()
 else:
     threading._register_atexit(stop_main_thread)
