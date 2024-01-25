@@ -735,9 +735,11 @@ _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
 if sys.version_info < (3, 9):
     def wait_for_join():
-        threading.main_thread().join()
-        # after main thread exits, we must stop the main thread
         global current_thread
+
+        threading.main_thread().join()
+        # after main thread exits, we must stop MAIN_THREAD
+        # spoof the current_thread() to be MAIN_THREAD
         current_thread = lambda: MAIN_THREAD
         MAIN_THREAD.stop()
     threading.Thread(None, wait_for_join, args=[], daemon=False).start()
