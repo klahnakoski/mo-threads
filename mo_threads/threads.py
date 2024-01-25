@@ -690,7 +690,7 @@ def wait_for_shutdown_signal(
 
 def stop_main_thread(silent=False):
     if not ALL:
-        silent and logger.note("All threads have shutdown")
+        silent or logger.note("All threads have shutdown")
         return
 
     if current_thread() == MAIN_THREAD:
@@ -732,7 +732,7 @@ def start_main_thread():
 
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
-atexit.register(stop_main_thread)
+threading._register_atexit(stop_main_thread)
 
 
 MAIN_THREAD = None
