@@ -734,9 +734,10 @@ def start_main_thread():
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
 if sys.version_info < (3, 9):
-    import atexit
-
-    atexit.register(stop_main_thread)
+    def wait_for_join():
+        threading.main_thread().join()
+        stop_main_thread()
+    threading.Thread(None, wait_for_join, args=[], daemon=False).start()
 else:
     threading._register_atexit(stop_main_thread)
 
