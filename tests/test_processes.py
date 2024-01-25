@@ -95,7 +95,7 @@ class TestProcesses(FuzzyTestCase):
         """
         CAN PROCESS STOP ITSELF??
         """
-        p = Process("run stop_test", [sys.executable, "-u", "tests/programs/stop_test.py"], debug=True)
+        p = Process("run stop_test", [sys.executable, "-u", "tests/programs/stop_test.py"], debug=True, timeout=10)
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 
