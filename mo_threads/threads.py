@@ -11,7 +11,6 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-import atexit
 import signal as _signal
 import sys
 import threading
@@ -619,17 +618,19 @@ def join_all_threads(threads, till=None):
     :param threads: list of threads to join
     :param till: signal to stop waiting for threads
     """
+    result = [None] * len(threads)
     causes = []
-    for c in threads:
+    for i, c in enumerate(threads):
         try:
             DEBUG and logger.note("{parent} joining on thread {name}", parent=current_thread().name, name=c.name)
-            c.join(till=till)
+            result[i] = c.join(till=till)
         except Exception as cause:
             causes.append(cause)
         finally:
             DEBUG and logger.note("Joined on thread {name}", name=c.name)
     if causes:
         logger.error("At least one thread failed", cause=causes)
+    return result
 
 
 export("mo_threads.signals", current_thread)
@@ -690,7 +691,7 @@ def wait_for_shutdown_signal(
 
 def stop_main_thread(silent=False):
     if not ALL:
-        silent and logger.note("All threads have shutdown")
+        silent or logger.note("All threads have shutdown")
         return
 
     if current_thread() == MAIN_THREAD:
@@ -732,7 +733,18 @@ def start_main_thread():
 
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
-atexit.register(stop_main_thread)
+if sys.version_info < (3, 9):
+    def wait_for_join():
+        global current_thread
+
+        threading.main_thread().join()
+        # after main thread exits, we must stop MAIN_THREAD
+        # spoof the current_thread() to be MAIN_THREAD
+        current_thread = lambda: MAIN_THREAD
+        stop_main_thread()
+    threading.Thread(None, wait_for_join, args=[], daemon=False).start()
+else:
+    threading._register_atexit(stop_main_thread)
 
 
 MAIN_THREAD = None

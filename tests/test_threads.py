@@ -30,9 +30,6 @@ class TestThreads(FuzzyTestCase):
         print(f"new logger {logger.main_log.__class__} ({id(logger.main_log)})")
         old_log.stop()
 
-    def tearDown(self):
-        stop_main_thread()
-
     def test_lock_wait_timeout(self):
         locker = Lock("test")
 
@@ -309,6 +306,17 @@ class TestThreads(FuzzyTestCase):
         self.assertTrue(
             name[0].startswith("Dummy-") or name[0].startswith("Unknown Thread")  # pycharm debugger  # regular run
         )
+
+    def test_join_all_threads(self):
+
+        def worker(i, please_stop):
+            return str(i)
+
+        num = 100
+        threads = [Thread.run(f"worker {i}", worker, i) for i in range(num)]
+        results = join_all_threads(threads)
+        self.assertEqual(results, [str(i) for i in range(num)])
+
 
 
 def bad_worker(please_stop):

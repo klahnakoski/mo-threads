@@ -14,7 +14,7 @@ from unittest import skipIf
 from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase
 
-from mo_threads import Process, start_main_thread, stop_main_thread, Command, commands, threads, processes
+from mo_threads import Process, start_main_thread, Command
 from mo_threads import Till
 from tests import IS_WINDOWS
 from tests.utils import add_error_reporting
@@ -28,10 +28,6 @@ class TestProcesses(FuzzyTestCase):
     def setUpClass(cls):
         start_main_thread()
         logger.start(trace=True)
-
-    @classmethod
-    def tearDownClass(cls):
-        stop_main_thread()
 
     def test_exit(self):
         p = Process("run exit_test", [sys.executable, "-u", "tests/programs/exit_test.py"], debug=True)
@@ -99,7 +95,7 @@ class TestProcesses(FuzzyTestCase):
         """
         CAN PROCESS STOP ITSELF??
         """
-        p = Process("run stop_test", [sys.executable, "-u", "tests/programs/stop_test.py"], debug=True)
+        p = Process("run stop_test", [sys.executable, "-u", "tests/programs/stop_test.py"], debug=True, timeout=10)
         p.join()
         self.assertTrue(any("EXIT DETECTED" in line for line in p.stdout.pop_all()))
 

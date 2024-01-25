@@ -37,5 +37,3 @@ try:
     wait_for_shutdown_signal(allow_exit=True, wait_forever=False)
 except Exception as cause:
     logger.error("can not wait", cause=cause)
-finally:
-    stop_main_thread()
