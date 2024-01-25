@@ -11,7 +11,6 @@
 # THIS SIGNAL IS IMPORTANT FOR PROPER SIGNALLING WHICH ALLOWS
 # FOR FAST AND PREDICTABLE SHUTDOWN AND CLEANUP OF THREADS
 
-import atexit
 import signal as _signal
 import sys
 import threading
@@ -734,7 +733,12 @@ def start_main_thread():
 
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
-threading._register_atexit(stop_main_thread)
+if sys.version_info < (3, 9):
+    import atexit
+
+    atexit.register(stop_main_thread)
+else:
+    threading._register_atexit(stop_main_thread)
 
 
 MAIN_THREAD = None
