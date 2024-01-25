@@ -619,17 +619,19 @@ def join_all_threads(threads, till=None):
     :param threads: list of threads to join
     :param till: signal to stop waiting for threads
     """
+    result = [None] * len(threads)
     causes = []
-    for c in threads:
+    for i, c in enumerate(threads):
         try:
             DEBUG and logger.note("{parent} joining on thread {name}", parent=current_thread().name, name=c.name)
-            c.join(till=till)
+            result[i] = c.join(till=till)
         except Exception as cause:
             causes.append(cause)
         finally:
             DEBUG and logger.note("Joined on thread {name}", name=c.name)
     if causes:
         logger.error("At least one thread failed", cause=causes)
+    return result
 
 
 export("mo_threads.signals", current_thread)

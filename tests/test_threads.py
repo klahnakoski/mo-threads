@@ -307,6 +307,17 @@ class TestThreads(FuzzyTestCase):
             name[0].startswith("Dummy-") or name[0].startswith("Unknown Thread")  # pycharm debugger  # regular run
         )
 
+    def test_join_all_threads(self):
+
+        def worker(i, please_stop):
+            return str(i)
+
+        num = 100
+        threads = [Thread.run(f"worker {i}", worker, i) for i in range(num)]
+        results = join_all_threads(threads)
+        self.assertEqual(results, [str(i) for i in range(num)])
+
+
 
 def bad_worker(please_stop):
     raise Exception("bad worker failure")
