@@ -317,6 +317,10 @@ class TestThreads(FuzzyTestCase):
         results = join_all_threads(threads)
         self.assertEqual(results, [str(i) for i in range(num)])
 
+    def test_shutdown_w_two_param(self):
+        # SIGNALS CALL FUNCTION WITH TWO PARAMETERS
+        # EG _signal.signal(_signal.SIGTERM, stop_main_thread)
+        stop_main_thread(0, None)
 
 
 def bad_worker(please_stop):
