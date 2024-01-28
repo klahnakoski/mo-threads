@@ -689,7 +689,7 @@ def wait_for_shutdown_signal(
         main.stop()
 
 
-def stop_main_thread(silent=False):
+def stop_main_thread(signum=0, frame=None, silent=False):
     if not ALL:
         silent or logger.note("All threads have shutdown")
         return
