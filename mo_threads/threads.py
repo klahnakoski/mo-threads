@@ -69,7 +69,6 @@ else:
     def is_daemon(thread):
         return thread.isDaemon()
 
-
 IN_DEBUGGER = any(debugger in line.filename for line in traceback.extract_stack() for debugger in KNOWN_DEBUGGERS)
 
 
@@ -618,6 +617,7 @@ def join_all_threads(threads, till=None):
     :param threads: list of threads to join
     :param till: signal to stop waiting for threads
     """
+    threads = list(threads)
     result = [None] * len(threads)
     causes = []
     for i, c in enumerate(threads):
@@ -647,10 +647,10 @@ def _wait_for_interrupt(please_stop):
 
 
 def wait_for_shutdown_signal(
-    *,
-    please_stop=False,  # ASSIGN SIGNAL TO STOP EARLY
-    allow_exit=False,  # ALLOW "exit" COMMAND ON CONSOLE TO ALSO STOP THE APP
-    wait_forever=True,  # IGNORE CHILD THREADS, NEVER EXIT.  False => IF NO CHILD THREADS LEFT, THEN EXIT
+        *,
+        please_stop=False,  # ASSIGN SIGNAL TO STOP EARLY
+        allow_exit=False,  # ALLOW "exit" COMMAND ON CONSOLE TO ALSO STOP THE APP
+        wait_forever=True,  # IGNORE CHILD THREADS, NEVER EXIT.  False => IF NO CHILD THREADS LEFT, THEN EXIT
 ):
     """
     FOR USE BY PROCESSES THAT NEVER DIE UNLESS EXTERNAL SHUTDOWN IS REQUESTED
@@ -742,10 +742,11 @@ if sys.version_info < (3, 9):
         # spoof the current_thread() to be MAIN_THREAD
         current_thread = lambda: MAIN_THREAD
         stop_main_thread()
+
+
     threading.Thread(None, wait_for_join, args=[], daemon=False).start()
 else:
     threading._register_atexit(stop_main_thread)
-
 
 MAIN_THREAD = None
 ALL_LOCK = allocate_lock()

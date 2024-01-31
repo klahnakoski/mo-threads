@@ -322,6 +322,13 @@ class TestThreads(FuzzyTestCase):
         # EG _signal.signal(_signal.SIGTERM, stop_main_thread)
         stop_main_thread(0, None)
 
+    def test_join_all_threads(self):
+        def worker(i, please_stop):
+            return str(i)
+
+        result = join_all_threads(Thread.run(f"i", worker, i) for i in range(10))
+        self.assertEqual(result, [str(i) for i in range(10)])
+
 
 def bad_worker(please_stop):
     raise Exception("bad worker failure")
