@@ -160,9 +160,9 @@ class LifetimeManager:
     def __init__(self):
         global lifetime_manager
         DEBUG and logger.info("new manager")
+        self.locker = Lock()
         self.avail_processes = []
         self.inuse_processes = []
-        self.locker = Lock()
         self.wakeup = Signal()
         self.worker_thread = Thread.run("lifetime manager", self._worker, parent_thread=threads.MAIN_THREAD).release()
 
@@ -170,10 +170,10 @@ class LifetimeManager:
         now = unix_now()
         cwd = os_path(cwd or os.getcwd())
         env = to_data(env)
-        key = (cwd, env, debug, shell)
+        process_key = (cwd, env, debug, shell)
         with self.locker:
             for i, (key, process, last_used) in enumerate(self.avail_processes):
-                if key != key or process.stopped:
+                if process_key != key or process.stopped:
                     continue
                 del self.avail_processes[i]
                 process.stdout_status.last_read = now
@@ -196,7 +196,7 @@ class LifetimeManager:
                 timeout=START_TIMEOUT,
                 parent_thread=self.worker_thread,
             )
-            self.inuse_processes.append((key, process, unix_now()))
+            self.inuse_processes.append((process_key, process, unix_now()))
 
             set_prompt(process.stdin)
 
