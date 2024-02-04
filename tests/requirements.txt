@@ -3,4 +3,4 @@ jx-python>=4.525.24033
 psutil>=5.9.8
 objgraph>=3.6.0
 mo-files>=6.522.24033
-mo-json
+mo-json>=6.522.24033
