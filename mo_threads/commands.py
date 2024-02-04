@@ -13,8 +13,9 @@ from time import time as unix_now
 
 from mo_dots import Data, from_data, to_data
 from mo_future import is_windows
-from mo_json import value2json
 from mo_logs import logger
+from mo_times import Date, SECOND
+
 from mo_threads import threads
 from mo_threads.lock import Lock
 from mo_threads.processes import os_path, Process
@@ -22,7 +23,6 @@ from mo_threads.queues import Queue
 from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, Thread
 from mo_threads.till import Till
-from mo_times import Date, SECOND
 
 DEBUG = False
 
@@ -180,9 +180,15 @@ class LifetimeManager:
                 process.stdout_status.last_read = now
                 process.timeout = timeout
                 self.inuse_processes.append((key, process, now))
-                DEBUG and logger.info(
-                    "Reuse process {process} for {command} (key={key})", process=process.name, command=name, key=value2json(key)
-                )
+                if DEBUG:
+                    from mo_json import value2json
+
+                    logger.info(
+                        "Reuse process {process} for {command} (key={key})",
+                        process=process.name,
+                        command=name,
+                        key=value2json(key),
+                    )
                 return process
 
         process = Process(
