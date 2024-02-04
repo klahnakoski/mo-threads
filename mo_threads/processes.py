@@ -14,15 +14,16 @@ from _thread import allocate_lock
 from dataclasses import dataclass
 from time import time as unix_now
 
-from mo_dots import set_default, Null
-from mo_future import is_windows
+from mo_dots import Null
+from mo_future import is_windows, utcnow
 from mo_logs import logger, strings
 from mo_logs.exceptions import Except
+from mo_times import Timer, Date
+
 from mo_threads.queues import Queue
 from mo_threads.signals import Signal
 from mo_threads.threads import THREAD_STOP, Thread, EndOfThread, ALL_LOCK, ALL
 from mo_threads.till import Till
-from mo_times import Timer, Date
 
 DEBUG = False
 
@@ -171,7 +172,7 @@ class Process(object):
         self.stopped.wait(till=till)  # TRIGGERED BY _monitor THREAD WHEN DONE (self.children is None)
         if self.returncode is None:
             self.kill()
-            logger.error(
+            on_error(
                 "{process} TIMEOUT\n{stderr}",
                 process=self.name,
                 stderr=list(self.stderr),

@@ -701,7 +701,10 @@ def stop_main_thread(signum=0, frame=None, silent=False):
 def start_main_thread():
     global MAIN_THREAD
 
-    stop_main_thread(silent=True)
+    try:
+        stop_main_thread(silent=True)
+    except Exception:
+        pass
     MAIN_THREAD = MainThread()
     MAIN_THREAD.shutdown_locker.acquire()
 

@@ -9,7 +9,7 @@
 #
 import threading
 
-from mo_future import start_new_thread
+from mo_future import start_new_thread, utcnow
 from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times import Timer
@@ -27,7 +27,6 @@ class TestThreads(FuzzyTestCase):
     def setUp(self):
         start_main_thread()
         old_log, logger.main_log = logger.main_log, StructuredLogger_usingList()
-        print(f"new logger {logger.main_log.__class__} ({id(logger.main_log)})")
         old_log.stop()
 
     def test_lock_wait_timeout(self):
@@ -328,6 +327,12 @@ class TestThreads(FuzzyTestCase):
 
         result = join_all_threads(Thread.run(f"i", worker, i) for i in range(10))
         self.assertEqual(result, [str(i) for i in range(10)])
+
+    def test_till_second_is_second(self):
+        start = utcnow()
+        Till(seconds=1).wait()
+        end = utcnow()
+        self.assertGreaterEqual((end - start).total_seconds(), 1)
 
 
 def bad_worker(please_stop):
