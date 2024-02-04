@@ -15,7 +15,7 @@ from time import time as unix_now
 
 from mo_logs import logger
 
-from mo_threads import Thread, Till, wait_for_shutdown_signal, stop_main_thread
+from mo_threads import Thread, Till, wait_for_shutdown_signal
 
 
 def timeout(please_stop):
@@ -24,7 +24,7 @@ def timeout(please_stop):
     done_waiting = Till(till=end_time) | please_stop
     while not done_waiting:
         Till(seconds=1).wait()
-        logger.info("{remaining}", remaining=math.ceil(end_time - unix_now()))
+        logger.info("{remaining} seconds remaining", remaining=math.ceil(end_time - unix_now()))
     if please_stop:
         logger.info("EXIT DETECTED")
     else:
