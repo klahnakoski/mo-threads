@@ -339,16 +339,14 @@ class Thread(BaseThread):
                         except Exception as cause:
                             sys.stderr.write(f"ERROR in thread: {self.name}  {cause}\n")
                 finally:
+                    with self.child_locker:
+                        children, self.children = list(self.children), []
                     try:
-                        with self.child_locker:
-                            children = list(self.children)
                         for c in children:
                             DEBUG and logger.note(f"Stopping thread {c.name}\n")
                             c.stop()
 
                         join_all_threads(children)
-                        with self.child_locker:
-                            self.children = []
                         del self.target, self.args, self.kwargs
                         DEBUG and logger.note("thread {name|quote} stopping", name=self.name)
                     except Exception as cause:

@@ -13,6 +13,7 @@ from time import time as unix_now
 
 from mo_dots import Data, from_data, to_data
 from mo_future import is_windows
+from mo_json import value2json
 from mo_logs import logger
 from mo_threads import threads
 from mo_threads.lock import Lock
@@ -49,12 +50,14 @@ class Command(object):
 
         cwd = os_path(cwd)
         env_ = Data(**(env or {}))
+        command = " ".join(cmd_escape(p) for p in params)
+        self.debug = debug = debug or DEBUG
+        self.debug and logger.info("command: {command}", command=command)
 
         self.params = params
         self.key = (cwd, env_, debug, shell)
         self.timeout = timeout or INUSE_TIMEOUT
         self.returncode = None
-        self.debug = debug = debug or DEBUG
         with lifetime_manager_locker:
             if not lifetime_manager:
                 lifetime_manager = LifetimeManager()
@@ -74,8 +77,6 @@ class Command(object):
         self.name = name
         self.stdout = Queue("stdout for " + name, max=max_stdout)
         self.stderr = Queue("stderr for " + name, max=max_stdout)
-        command = " ".join(cmd_escape(p) for p in params)
-        self.debug and logger.info("command: {command}", command=command)
         self.stderr_thread = Thread.run(f"{name} stderr", _stderr_relay, process.stderr, self.stderr).release()
         # stdout_thread IS CONSIDERED THE LIFETIME OF THE COMMAND
         self.worker_thread = Thread.run(f"{name} worker", self._worker, process.stdout, self.stdout).release()
@@ -180,25 +181,25 @@ class LifetimeManager:
                 process.timeout = timeout
                 self.inuse_processes.append((key, process, now))
                 DEBUG and logger.info(
-                    "Reuse process {process} for {command} ({key})", process=process.name, command=name, key=key
+                    "Reuse process {process} for {command} (key={key})", process=process.name, command=name, key=value2json(key)
                 )
                 return process
 
+        process = Process(
+            name=f"shell {cwd}",
+            params=[cmd()],
+            cwd=cwd,
+            env=env,
+            debug=debug,
+            shell=shell,
+            bufsize=bufsize,
+            timeout=START_TIMEOUT,
+            parent_thread=self.worker_thread,
+        )
         with self.locker:
-            process = Process(
-                name=f"shell {cwd}",
-                params=[cmd()],
-                cwd=cwd,
-                env=env,
-                debug=debug,
-                shell=shell,
-                bufsize=bufsize,
-                timeout=START_TIMEOUT,
-                parent_thread=self.worker_thread,
-            )
             self.inuse_processes.append((process_key, process, unix_now()))
 
-            set_prompt(process.stdin)
+        set_prompt(process.stdin)
 
         DEBUG and logger.info("New process {process} for {command}", process=process.name, command=name)
 
@@ -245,6 +246,7 @@ class LifetimeManager:
                 logger.error("process not found")
 
     def _stop_stale_processes(self, too_old):
+        DEBUG and logger.info("stop stale processes")
         with self.locker:
             stale = []
             fresh = []
@@ -302,33 +304,38 @@ class LifetimeManager:
             elif wakeup:
                 DEBUG and logger.info("got wakeup")
             else:
-                DEBUG and logger.info("got period")
+                DEBUG and logger.info("time for next review")
 
             too_old = unix_now() - STALE_MAX_AGE
             self._stop_stale_processes(too_old)
             with lifetime_manager_locker:
                 with self.locker:
-                    if not self.inuse_processes:
+                    if not self.inuse_processes and not self.avail_processes:
                         DEBUG and logger.info("lifetime manager to shutdown")
                         lifetime_manager = None
                         break
                     wakeup = self.wakeup = Signal()
 
         # wait for inuse to finish
-        DEBUG and logger.info("got {num} processes to stop", num=len(self.inuse_processes))
-        for _, process, _ in self.inuse_processes:
-            process.stop()
+        DEBUG and logger.info("got {num} inuse processes to stop", num=len(self.inuse_processes))
         while True:
             with self.locker:
                 if not self.inuse_processes:
                     break
                 if DEBUG:
-                    name = self.inuse_processes[0][1].name
+                    _, process, _ = self.inuse_processes[0]
                 wakeup = self.wakeup = Signal()
-            DEBUG and logger.info("wait on process {name} to stop", name=name)
+            DEBUG and logger.info("wait on process {name} to stop", name=process.name)
             wakeup.wait()
 
-        DEBUG and logger.info("stop stale processes")
+        with self.locker:
+            avail_processes = list(self.avail_processes)
+        DEBUG and logger.info("exit {num} available processes", num=len(avail_processes))
+        for _, process, _ in avail_processes:
+            if not process.stopped:
+                process.stdin.add("exit")
+        for _, process, _ in avail_processes:
+            process.stopped.wait()
         self._stop_stale_processes(unix_now())
         DEBUG and logger.info("lifetime manager done")
 

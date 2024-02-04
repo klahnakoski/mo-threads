@@ -168,15 +168,17 @@ class Process(object):
 
     def join(self, till=None, raise_on_error=True):
         on_error = logger.error if raise_on_error else logger.warning
-        self.stopped.wait(till=till)
-        if not self.children:
-            return
-        _, _, _, monitor_thread = self.children
-        monitor_thread.join(till=till)
-
+        self.stopped.wait(till=till)  # TRIGGERED BY _monitor THREAD WHEN DONE (self.children is None)
+        if self.returncode is None:
+            self.kill()
+            logger.error(
+                "{process} TIMEOUT\n{stderr}",
+                process=self.name,
+                stderr=list(self.stderr),
+            )
         if self.returncode != 0:
             on_error(
-                "{process} FAIL: returncode={code}\n{stderr}",
+                "{process} FAIL: returncode={code|quote}\n{stderr}",
                 process=self.name,
                 code=self.service.returncode,
                 stderr=list(self.stderr),
