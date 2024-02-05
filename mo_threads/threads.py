@@ -734,7 +734,7 @@ def start_main_thread():
 
 _signal.signal(_signal.SIGTERM, stop_main_thread)
 _signal.signal(_signal.SIGINT, stop_main_thread)
-if sys.version_info < (3, 9):
+if sys.version_info[:2] < (3, 9):
     def wait_for_join():
         global current_thread
 
