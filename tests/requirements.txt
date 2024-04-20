@@ -1,6 +1,6 @@
-mo-testing>=7.559.24071
-jx-python>=4.556.24070
+mo-testing>=7.587.24110
+jx-python>=4.586.24095
 psutil>=5.9.8
 objgraph>=3.6.1
-mo-files>=6.556.24070
-mo-json>=6.556.24070
+mo-files>=6.585.24095
+mo-json>=6.584.24095
