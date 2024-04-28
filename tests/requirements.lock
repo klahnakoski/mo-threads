@@ -16,7 +16,7 @@ mo-kwargs==7.606.24115
 mo-logs==8.608.24119
 mo-math==7.606.24115
 mo-testing==7.587.24110
-mo-times==5.608.24119
+mo-times==5.609.24119
 objgraph==3.6.1
 psutil==5.9.8
 requests==2.31.0
