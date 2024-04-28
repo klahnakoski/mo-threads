@@ -1,4 +1,4 @@
-# Tests pass with these versions 2024-04-24
+# Tests pass with these versions 2024-04-28
 # pip install --no-deps -r tests/requirements.lock
 certifi==2024.2.2
 charset-normalizer==3.3.2
@@ -13,10 +13,10 @@ mo-imports==7.584.24095
 mo-json==6.584.24095
 mo-json-config==4.586.24095
 mo-kwargs==7.606.24115
-mo-logs==8.606.24115
+mo-logs==8.608.24119
 mo-math==7.606.24115
 mo-testing==7.587.24110
-mo-times==5.606.24115
+mo-times==5.608.24119
 objgraph==3.6.1
 psutil==5.9.8
 requests==2.31.0
