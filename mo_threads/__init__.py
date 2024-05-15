@@ -21,7 +21,7 @@ from mo_threads.queues import Queue, ThreadedQueue
 from mo_threads.signals import Signal, DONE, NEVER
 from mo_threads.threads import (
     MainThread,
-    THREAD_STOP,
+    PLEASE_STOP,
     THREAD_TIMEOUT,
     Thread,
     stop_main_thread,
@@ -33,6 +33,7 @@ from mo_threads.threads import (
 )
 from mo_threads.till import Till
 
+THREAD_STOP = PLEASE_STOP
 export("mo_threads.signals", threads)
 del threads
 

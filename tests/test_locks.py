@@ -26,7 +26,7 @@ from mo_testing.fuzzytestcase import FuzzyTestCase
 from mo_times.timer import Timer
 
 import mo_threads
-from mo_threads import Lock, THREAD_STOP, Signal, Thread, ThreadedQueue, Till
+from mo_threads import Lock, PLEASE_STOP, Signal, Thread, ThreadedQueue, Till
 from mo_threads.busy_lock import BusyLock
 from mo_threads.signals import OrSignal
 from mo_threads.threads import ALL, ALL_LOCK, start_main_thread
@@ -105,7 +105,7 @@ class TestLocks(FuzzyTestCase):
         def empty(please_stop):
             while not please_stop:
                 item = slow.pop()
-                if item is THREAD_STOP:
+                if item is PLEASE_STOP:
                     break
 
             done.go()
@@ -116,7 +116,7 @@ class TestLocks(FuzzyTestCase):
         with timer:
             for i in range(SCALE):
                 q.add(i)
-            q.add(THREAD_STOP)
+            q.add(PLEASE_STOP)
             logger.info("Done insert")
             done.wait()
 

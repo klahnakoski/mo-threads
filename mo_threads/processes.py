@@ -22,7 +22,7 @@ from mo_times import Timer, Date
 
 from mo_threads.queues import Queue
 from mo_threads.signals import Signal
-from mo_threads.threads import THREAD_STOP, Thread, EndOfThread, ALL_LOCK, ALL
+from mo_threads.threads import PLEASE_STOP, Thread, EndOfThread, ALL_LOCK, ALL
 from mo_threads.till import Till
 
 DEBUG = False
@@ -284,9 +284,9 @@ class Process(object):
     def _writer(self, pipe, send, please_stop):
         while not please_stop:
             line = send.pop(till=please_stop)
-            if line is THREAD_STOP:
+            if line is PLEASE_STOP:
                 please_stop.go()
-                self.debug and logger.info("got THREAD_STOP")
+                self.debug and logger.info("got PLEASE_STOP")
                 break
             elif line is None:
                 continue

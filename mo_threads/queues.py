@@ -23,7 +23,7 @@ from mo_logs import Except, logger
 
 from mo_threads.lock import Lock
 from mo_threads.signals import Signal
-from mo_threads.threads import THREAD_STOP, THREAD_TIMEOUT, Thread
+from mo_threads.threads import PLEASE_STOP, THREAD_TIMEOUT, Thread
 from mo_threads.till import Till
 
 DEBUG = False
@@ -63,7 +63,7 @@ class Queue(object):
         try:
             while True:
                 value = self.pop()
-                if value is THREAD_STOP:
+                if value is PLEASE_STOP:
                     break
                 if value is not None:
                     yield value
@@ -78,7 +78,7 @@ class Queue(object):
         :return: self
         """
         with self.lock:
-            if value is THREAD_STOP:
+            if value is PLEASE_STOP:
                 # INSIDE THE lock SO THAT EXITING WILL RELEASE wait()
                 self.queue.append(value)
                 self.closed.go()
@@ -139,14 +139,14 @@ class Queue(object):
             if not self.closed:
                 if self.unique:
                     for v in values:
-                        if v is THREAD_STOP:
+                        if v is PLEASE_STOP:
                             self.closed.go()
                             continue
                         if v not in self.queue:
                             self.queue.append(v)
                 else:
                     for v in values:
-                        if v is THREAD_STOP:
+                        if v is PLEASE_STOP:
                             self.closed.go()
                             continue
                         self.queue.append(v)
@@ -192,16 +192,16 @@ class Queue(object):
 
     def __nonzero__(self):
         with self.lock:
-            return any(r != THREAD_STOP for r in self.queue)
+            return any(r != PLEASE_STOP for r in self.queue)
 
     def pop(self, till=None):
         """
         WAIT FOR NEXT ITEM ON THE QUEUE
-        RETURN THREAD_STOP IF QUEUE IS CLOSED
+        RETURN PLEASE_STOP IF QUEUE IS CLOSED
         RETURN None IF till IS REACHED AND QUEUE IS STILL EMPTY
 
         :param till:  A `Signal` to stop waiting and return None
-        :return:  A value, or a THREAD_STOP or None
+        :return:  A value, or a PLEASE_STOP or None
         """
         if till is not None and not isinstance(till, Signal):
             logger.error("expecting a signal")
@@ -217,7 +217,7 @@ class Queue(object):
                         break
                     return None
         (DEBUG or not self.silent) and logger.info("{name} queue closed", name=self.name, stack_depth=1)
-        return THREAD_STOP
+        return PLEASE_STOP
 
     def pop_all(self):
         """
@@ -235,12 +235,12 @@ class Queue(object):
         """
         with self.lock:
             if self.closed:
-                return THREAD_STOP
+                return PLEASE_STOP
             elif not self.queue:
                 return None
             else:
                 v = self.queue.popleft()
-                if v is THREAD_STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
+                if v is PLEASE_STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
                     self.closed.go()
                 return v
 
@@ -279,7 +279,7 @@ class PriorityQueue(Queue):
         try:
             while True:
                 value = self.pop(self.closed)
-                if value is THREAD_STOP:
+                if value is PLEASE_STOP:
                     break
                 if value is not None:
                     yield value
@@ -291,7 +291,7 @@ class PriorityQueue(Queue):
 
     def add(self, value, timeout=None, priority=0):
         with self.lock:
-            if value is THREAD_STOP:
+            if value is PLEASE_STOP:
                 # INSIDE THE lock SO THAT EXITING WILL RELEASE wait()
                 self.queue[priority].queue.append(value)
                 self.closed.go()
@@ -327,7 +327,7 @@ class PriorityQueue(Queue):
 
     def __nonzero__(self):
         with self.lock:
-            return any(any(r != THREAD_STOP for r in q.queue) for q in self.queue)
+            return any(any(r != PLEASE_STOP for r in q.queue) for q in self.queue)
 
     def highest_entry(self):
         for count, q in enumerate(self.queue):
@@ -338,11 +338,11 @@ class PriorityQueue(Queue):
     def pop(self, till=None, priority=None):
         """
         WAIT FOR NEXT ITEM ON THE QUEUE
-        RETURN THREAD_STOP IF QUEUE IS CLOSED
+        RETURN PLEASE_STOP IF QUEUE IS CLOSED
         RETURN None IF till IS REACHED AND QUEUE IS STILL EMPTY
 
         :param till:  A `Signal` to stop waiting and return None
-        :return:  A value, or a THREAD_STOP or None
+        :return:  A value, or a PLEASE_STOP or None
         """
         if till is not None and not isinstance(till, Signal):
             logger.error("expecting a signal")
@@ -361,7 +361,7 @@ class PriorityQueue(Queue):
                         break
                     return None
         (DEBUG or not self.silent) and logger.info(self.name + " queue stopped")
-        return THREAD_STOP
+        return PLEASE_STOP
 
     def pop_all(self, priority=None):
         """
@@ -396,12 +396,12 @@ class PriorityQueue(Queue):
             if not priority:
                 priority = self.highest_entry()
             if self.closed:
-                return [THREAD_STOP]
+                return [PLEASE_STOP]
             elif not self.queue:
                 return None
             else:
                 v = self.pop(priority=priority)
-                if v is THREAD_STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
+                if v is PLEASE_STOP:  # SENDING A STOP INTO THE QUEUE IS ALSO AN OPTION
                     self.closed.go()
                 return v
 
@@ -441,7 +441,7 @@ class ThreadedQueue(Queue):
         )
 
     def worker_bee(self, batch_size, period, error_target, please_stop):
-        please_stop.then(lambda: self.add(THREAD_STOP))
+        please_stop.then(lambda: self.add(PLEASE_STOP))
 
         _buffer = []
         _post_push_functions = []
@@ -470,7 +470,7 @@ class ThreadedQueue(Queue):
                     item = self.pop(till=next_push)
                     now = time()
 
-                if item is THREAD_STOP:
+                if item is PLEASE_STOP:
                     push_to_queue()
                     please_stop.go()
                     break
@@ -516,7 +516,7 @@ class ThreadedQueue(Queue):
         if _buffer:
             # ONE LAST PUSH, DO NOT HAVE TIME TO DEAL WITH ERRORS
             push_to_queue()
-        self.slow_queue.add(THREAD_STOP)
+        self.slow_queue.add(PLEASE_STOP)
 
     def add_child(self, child):
         pass
@@ -542,12 +542,12 @@ class ThreadedQueue(Queue):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.add(THREAD_STOP)
+        self.add(PLEASE_STOP)
         if isinstance(exc_val, BaseException):
             self.thread.please_stop.go()
         self.thread.join()
 
     def stop(self):
-        self.add(THREAD_STOP)
+        self.add(PLEASE_STOP)
         self.thread.join()
         return self
