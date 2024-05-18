@@ -21,7 +21,7 @@ from mo_threads.lock import Lock
 from mo_threads.processes import os_path, Process
 from mo_threads.queues import Queue
 from mo_threads.signals import Signal
-from mo_threads.threads import THREAD_STOP, Thread
+from mo_threads.threads import PLEASE_STOP, Thread
 from mo_threads.till import Till
 
 DEBUG = False
@@ -117,7 +117,7 @@ class Command(object):
                 value = source.pop(till=please_stop)
                 if value is None:
                     continue
-                elif value is THREAD_STOP:
+                elif value is PLEASE_STOP:
                     self.debug and logger.info("got thread stop")
                     return
                 elif line_count == 0 and "is not recognized as an internal or external command" in value:
@@ -135,8 +135,8 @@ class Command(object):
                     line_count += 1
                     destination.add(value)
         finally:
-            destination.add(THREAD_STOP)
-            # self.process.stderr.add(THREAD_STOP)
+            destination.add(PLEASE_STOP)
+            # self.process.stderr.add(PLEASE_STOP)
             self.stderr_thread.please_stop.go()
             self.stderr_thread.join()
             self.manager.return_process(self.process)
@@ -146,15 +146,15 @@ class Command(object):
 def _stderr_relay(source, destination, please_stop=None):
     while not please_stop:
         value = source.pop(till=please_stop)
-        if value is THREAD_STOP:
+        if value is PLEASE_STOP:
             break
         if value:
             destination.add(value)
     for value in source.pop_all():
-        if value and value is not THREAD_STOP:
+        if value and value is not PLEASE_STOP:
             destination.add(value)
 
-    destination.add(THREAD_STOP)
+    destination.add(PLEASE_STOP)
 
 
 class LifetimeManager:
@@ -216,7 +216,7 @@ class LifetimeManager:
             start_timeout = Till(seconds=START_TIMEOUT)
             while not start_timeout:
                 value = process.stdout.pop(till=start_timeout)
-                if value == THREAD_STOP:
+                if value == PLEASE_STOP:
                     process.kill_once()
                     process.join()
                     logger.error("Could not start command, stdout closed early")
