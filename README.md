@@ -1,11 +1,10 @@
 
 # More Threads!
 
-
-|Branch      | Status                                                                                                                                                                                                                                                                                                                                         |
-|------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|master      |  [![Build Status](https://github.com/klahnakoski/mo-threads/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/klahnakoski/mo-threads/actions/workflows/build.yml)                                                                                                                                                                                                     |
-|dev         | [![Build Status](https://app.travis-ci.com/klahnakoski/mo-threads.svg?branch=dev)](https://travis-ci.com/github/klahnakoski/mo-threads)  [![Coverage Status](https://coveralls.io/repos/github/klahnakoski/mo-threads/badge.svg?branch=dev)](https://coveralls.io/github/klahnakoski/mo-threads?branch=dev) ← child thread coverage is missing |
+[![PyPI Latest Release](https://img.shields.io/pypi/v/mo-threads.svg)](https://pypi.org/project/mo-threads/)
+[![Build Status](https://github.com/klahnakoski/mo-threads/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/klahnakoski/mo-threads/actions/workflows/build.yml)
+[![Coverage Status](https://coveralls.io/repos/github/klahnakoski/mo-threads/badge.svg?branch=dev)](https://coveralls.io/github/klahnakoski/mo-threads?branch=dev)
+[![Downloads](https://pepy.tech/badge/mo-threads/month)](https://pepy.tech/project/mo-threads)
 
 ## Module `threads`
 
