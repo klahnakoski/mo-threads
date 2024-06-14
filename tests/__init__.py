@@ -10,6 +10,7 @@
 
 import os
 
+from mo_dots import to_data
 from mo_logs.strings import expand_template
 
 IS_WINDOWS = os.name == "nt"
@@ -21,6 +22,17 @@ class StructuredLogger_usingList(object):
 
     def write(self, template, params):
         self.lines.append(expand_template(template, params))
+
+    def stop(self):
+        self.lines.append("logger stopped")
+
+
+class StructuredLogger_usingRaw(object):
+    def __init__(self):
+        self.lines = to_data([])
+
+    def write(self, template, params):
+        self.lines.append((template, params))
 
     def stop(self):
         self.lines.append("logger stopped")

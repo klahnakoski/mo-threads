@@ -22,7 +22,7 @@ from mo_files import File
 from mo_future import allocate_lock as _allocate_lock
 from mo_logs import logger, machine_metadata, get_stacktrace
 from mo_math import randoms
-from mo_testing.fuzzytestcase import FuzzyTestCase
+from mo_testing.fuzzytestcase import FuzzyTestCase, add_error_reporting
 from mo_times.timer import Timer
 
 import mo_threads
@@ -31,7 +31,6 @@ from mo_threads.busy_lock import BusyLock
 from mo_threads.signals import OrSignal
 from mo_threads.threads import ALL, ALL_LOCK, start_main_thread
 from tests import StructuredLogger_usingList
-from tests.utils import add_error_reporting
 
 USE_PYTHON_THREADS = False
 DEBUG_SHOW_BACKREFS = True

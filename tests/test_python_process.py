@@ -10,12 +10,11 @@
 
 
 from mo_logs import logger
-from mo_testing.fuzzytestcase import FuzzyTestCase
+from mo_testing.fuzzytestcase import FuzzyTestCase, add_error_reporting
 
 from mo_threads import python_worker, start_main_thread
 from mo_threads.python import Python
 from mo_threads.python_worker import start
-from tests.utils import add_error_reporting
 
 
 @add_error_reporting

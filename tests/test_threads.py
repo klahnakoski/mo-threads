@@ -9,17 +9,15 @@
 #
 import threading
 
+from mo_dots import is_missing
 from mo_future import start_new_thread, utcnow
 from mo_logs import logger
-from mo_testing.fuzzytestcase import FuzzyTestCase
-from mo_times import Timer
-from mo_times.dates import Date
-from mo_times.durations import SECOND
+from mo_testing.fuzzytestcase import FuzzyTestCase, assertAlmostEqual, add_error_reporting
+from mo_times import Date, SECOND, Timer
 
 from mo_threads import *
 from mo_threads import threads
-from tests import StructuredLogger_usingList
-from tests.utils import add_error_reporting
+from tests import StructuredLogger_usingList, StructuredLogger_usingRaw
 
 
 @add_error_reporting
@@ -333,6 +331,39 @@ class TestThreads(FuzzyTestCase):
         Till(seconds=1).wait()
         end = utcnow()
         self.assertGreaterEqual((end - start).total_seconds(), 1)
+
+    def test_pool(self):
+        def worker(i, please_stop):
+            return i
+
+        with ThreadPool(3) as pool:
+            threads = [
+                pool.run(i, worker, i)
+                for i in range(10)
+            ]
+
+        self.assertEqual(join_all_threads(threads), list(range(10)))
+
+    def test_logging_extras(self):
+        list_log = StructuredLogger_usingRaw()
+        old_log, logger.main_log = logger.main_log, list_log
+
+        def worker(please_stop):
+            with logger.extras(b=2):
+                logger.info("worker")
+
+        with logger.extras(a=1):
+            logger.info("test 1")
+            Thread.run("worker", worker).join()
+            logger.info("test 2")
+
+        logger.main_log = old_log
+        self.assertTrue(is_missing(list_log.lines[2].params.b))
+        assertAlmostEqual(list_log.lines, [
+            ("test 1", {"params": {"a": 1, "b": []}}),
+            ("worker", {"params": {"a": 1, "b": 2}}),
+            ("test 2", {"params": {"a": 1, "b": []}}),
+        ])
 
 
 def bad_worker(please_stop):

@@ -12,12 +12,10 @@ import sys
 from unittest import skipIf
 
 from mo_logs import logger
-from mo_testing.fuzzytestcase import FuzzyTestCase
+from mo_testing.fuzzytestcase import FuzzyTestCase, add_error_reporting
 
-from mo_threads import Process, start_main_thread, Command
-from mo_threads import Till
+from mo_threads import Process, start_main_thread, Command, Till
 from tests import IS_WINDOWS
-from tests.utils import add_error_reporting
 
 IS_TRAVIS = bool(os.environ.get("TRAVIS"))
 
