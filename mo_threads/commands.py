@@ -75,8 +75,8 @@ class Command(object):
         if debug:
             name = f"{name} (using {process.name})"
         self.name = name
-        self.stdout = Queue("stdout for " + name, max=max_stdout)
-        self.stderr = Queue("stderr for " + name, max=max_stdout)
+        self.stdout = Queue(f"stdout for {name}", max=max_stdout)
+        self.stderr = Queue(f"stderr for {name}", max=max_stdout)
         self.stderr_thread = Thread.run(f"{name} stderr", _stderr_relay, process.stderr, self.stderr).release()
         # stdout_thread IS CONSIDERED THE LIFETIME OF THE COMMAND
         self.worker_thread = Thread.run(f"{name} worker", self._worker, process.stdout, self.stdout).release()
@@ -211,7 +211,7 @@ class LifetimeManager:
 
         # WAIT FOR START
         try:
-            process.stdin.add("cd " + cmd_escape(cwd))
+            process.stdin.add(f"cd {cmd_escape(cwd)}")
             process.stdin.add(LAST_RETURN_CODE)
             start_timeout = Till(seconds=START_TIMEOUT)
             while not start_timeout:

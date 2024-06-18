@@ -333,7 +333,7 @@ class TestLocks(FuzzyTestCase):
 
         def _producer(t, please_stop=None):
             for i in range(2):
-                queue.add(str(t) + ":" + str(i))
+                queue.add(f"{t}:{i}")
                 Till(seconds=0.01).wait()
 
         consumer = Thread.run("consumer", _consumer)
