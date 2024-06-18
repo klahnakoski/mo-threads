@@ -92,26 +92,22 @@ class Queue(object):
         """
         SNEAK value TO FRONT OF THE QUEUE
         """
-        if self.closed and not self.allow_add_after_close:
-            logger.error("Do not push to closed queue")
-
         with self.lock:
             self._wait_for_queue_space(None)
-            if not self.closed:
-                self.queue.appendleft(value)
+            if self.closed and not self.allow_add_after_close:
+                logger.error("Do not push to closed queue")
+            self.queue.appendleft(value)
         return self
 
     def push_all(self, values):
         """
         SNEAK values TO FRONT OF THE QUEUE
         """
-        if self.closed and not self.allow_add_after_close:
-            logger.error("Do not push to closed queue")
-
         with self.lock:
             self._wait_for_queue_space(None)
-            if not self.closed:
-                self.queue.extendleft(values)
+            if self.closed and not self.allow_add_after_close:
+                logger.error("Do not push to closed queue")
+            self.queue.extendleft(values)
         return self
 
     def pop_message(self, till=None):

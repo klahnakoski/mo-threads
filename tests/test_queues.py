@@ -64,3 +64,60 @@ class TestQueue(TestCase):
         self.assertEqual(len(q), 0)
         drain_thread.stop().join()
 
+    def test_put_to_closed(self):
+        q = Queue("")
+        q.close()
+        with self.assertRaises(Exception):
+            q.put(1)
+
+    def test_add_to_closed(self):
+        q = Queue("")
+        q.close()
+        with self.assertRaises(Exception):
+            q.add(1)
+
+    def test_push_to_closed(self):
+        q = Queue("")
+        q.close()
+        with self.assertRaises(Exception):
+            q.push(1)
+
+    def test_push(self):
+        q = Queue("")
+        q.push(1)
+        self.assertEqual(q.pop(), 1)
+
+    def test_push_all(self):
+        q = Queue("")
+        q.push_all([1, 2])
+        self.assertEqual(q.pop(), 2)
+        self.assertEqual(q.pop(), 1)
+
+    def test_push_all_closed(self):
+        q = Queue("")
+        q.close()
+        with self.assertRaises(Exception):
+            q.push_all([1, 2])
+
+    def test_push_to_closed_max(self):
+        q = Queue("", max=1)
+        q.add(1)
+        Thread.run("drain", close_and_drain, q)
+        with self.assertRaises(Exception):
+            q.push(1)
+
+    def test_push_all_closed_max(self):
+        q = Queue("", max=1)
+        q.add(1)
+        Thread.run("drain", close_and_drain, q)
+        with self.assertRaises(Exception):
+            q.push_all([1, 2])
+
+
+def close_and_drain(q, please_stop):
+    Till(seconds=0.1).wait()
+    q.close()
+    while not please_stop:
+        result = q.pop()
+        if result is PLEASE_STOP:
+            break
