@@ -31,7 +31,7 @@ DEBUG = False
 DEFAULT_WAIT_TIME = 10 * 60  # SECONDS
 
 
-class Queue(object):
+class Queue:
     """
     SIMPLE MULTI-THREADED QUEUE
     """
@@ -65,9 +65,9 @@ class Queue(object):
     def add(self, value, timeout=None, force=False, till=None):
         """
         :param value:  ADDED TO THE QUEUE
-        :param timeout:  HOW LONG TO WAIT FOR QUEUE TO NOT BE FULL
-        :param force:  ADD TO QUEUE, EVEN IF FULL (USE ONLY WHEN CONSUMER IS RETURNING WORK TO THE QUEUE)
         :param till: A `Signal` WHEN TO GIVE UP WAITING FOR SPACE IN THE QUEUE (INSTEAD OF timeout)
+        :param timeout:  HOW MANY SECONDS TO WAIT FOR QUEUE TO HAVE SPACE
+        :param force:  ADD TO QUEUE, EVEN IF FULL (USE ONLY WHEN CONSUMER IS RETURNING WORK TO THE QUEUE)
         :return: self
         """
         till = till or Till(seconds=coalesce(timeout, DEFAULT_WAIT_TIME))
