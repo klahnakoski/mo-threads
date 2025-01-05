@@ -24,6 +24,6 @@ python310.dockerfile run -it mo-threads bash
 
 Then run tests
 
-    .venv/bin/python -m unittest discover tests -v
+    .venv/bin/python -m unittest discover . -v
 
  .venv/bin/python -m unittest tests.test_processes.TestProcesses.test_sigint_no_exit
