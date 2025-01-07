@@ -53,7 +53,7 @@ class Python(object):
             if line == '{"out":"ok"}':
                 break
             logger.info("waiting to start python: {line}", line=line)
-        self.lock = Lock("wait for response from " + name)
+        self.lock = Lock(f"wait for response from {name}")
         self.stop_error = None
         self.done = DONE
         self.response = None

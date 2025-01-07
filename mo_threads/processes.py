@@ -76,13 +76,13 @@ class Process(object):
 
         self.debug = debug or DEBUG
         self.name = f"{name} ({self.process_id})"
-        self.stopped = Signal("stopped signal for " + strings.quote(name))
-        self.please_stop = Signal("please stop for " + strings.quote(name))
+        self.stopped = Signal(f"stopped signal for {strings.quote(name)}")
+        self.please_stop = Signal(f"please stop for {strings.quote(name)}")
         self.second_last_stdin = None
         self.last_stdin = None
-        self.stdin = Queue("stdin for process " + strings.quote(name), silent=not self.debug)
-        self.stdout = Queue("stdout for process " + strings.quote(name), silent=not self.debug)
-        self.stderr = Queue("stderr for process " + strings.quote(name), silent=not self.debug)
+        self.stdin = Queue(f"stdin for process {strings.quote(name)}", silent=not self.debug)
+        self.stdout = Queue(f"stdout for process {strings.quote(name)}", silent=not self.debug)
+        self.stderr = Queue(f"stderr for process {strings.quote(name)}", silent=not self.debug)
         self.timeout = timeout
         self.monitor_period = 0.5
 

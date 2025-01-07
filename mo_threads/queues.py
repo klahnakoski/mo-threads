@@ -15,7 +15,7 @@
 import types
 from collections import deque
 from copy import copy
-from datetime import datetime
+from queue import Empty, Full
 from time import time
 
 from mo_dots import Null, coalesce
@@ -28,18 +28,12 @@ from mo_threads.till import Till
 
 DEBUG = False
 
-# MAX_DATETIME = datetime(2286, 11, 20, 17, 46, 39)
 DEFAULT_WAIT_TIME = 10 * 60  # SECONDS
 
-datetime.strptime("2012-01-01", "%Y-%m-%d")  # http://bugs.python.org/issue7980
 
-
-class Queue(object):
+class Queue:
     """
     SIMPLE MULTI-THREADED QUEUE
-
-    (processes.Queue REQUIRES SERIALIZATION, WHICH
-    IS DIFFICULT TO USE JUST BETWEEN THREADS)
     """
 
     def __init__(self, name, max=None, silent=False, unique=False, allow_add_after_close=False):
@@ -53,10 +47,8 @@ class Queue(object):
         self.silent = silent
         self.allow_add_after_close = allow_add_after_close
         self.unique = unique
-        self.closed = Signal(
-            "queue is closed signal for " + name
-        )  # INDICATE THE PRODUCER IS DONE GENERATING ITEMS TO QUEUE
-        self.lock = Lock("lock for queue " + name)
+        self.closed = Signal(f"{name} is closed")
+        self.lock = Lock(f"lock for queue {name}")
         self.queue = deque()
 
     def __iter__(self):
@@ -70,28 +62,24 @@ class Queue(object):
         except Exception as cause:
             logger.warning("Tell me about what happened here", cause)
 
-    def add(self, value, timeout=None, force=False):
+    def add(self, value, timeout=None, force=False, till=None):
         """
-        :param value:  ADDED THE THE QUEUE
-        :param timeout:  HOW LONG TO WAIT FOR QUEUE TO NOT BE FULL
+        :param value:  ADDED TO THE QUEUE
+        :param till: A `Signal` WHEN TO GIVE UP WAITING FOR SPACE IN THE QUEUE (INSTEAD OF timeout)
+        :param timeout:  HOW MANY SECONDS TO WAIT FOR QUEUE TO HAVE SPACE
         :param force:  ADD TO QUEUE, EVEN IF FULL (USE ONLY WHEN CONSUMER IS RETURNING WORK TO THE QUEUE)
         :return: self
         """
+        till = till or Till(seconds=coalesce(timeout, DEFAULT_WAIT_TIME))
         with self.lock:
             if value is PLEASE_STOP:
                 # INSIDE THE lock SO THAT EXITING WILL RELEASE wait()
-                self.queue.append(value)
                 self.closed.go()
                 return
 
             if not force:
-                self._wait_for_queue_space(timeout=timeout)
-            if self.closed and not self.allow_add_after_close:
-                logger.error("Do not add to closed queue")
-            if self.unique:
-                if value not in self.queue:
-                    self.queue.append(value)
-            else:
+                self._wait_for_queue_space(till)
+            if not self.unique or value not in self.queue:
                 self.queue.append(value)
         return self
 
@@ -99,26 +87,18 @@ class Queue(object):
         """
         SNEAK value TO FRONT OF THE QUEUE
         """
-        if self.closed and not self.allow_add_after_close:
-            logger.error("Do not push to closed queue")
-
         with self.lock:
-            self._wait_for_queue_space()
-            if not self.closed:
-                self.queue.appendleft(value)
+            self._wait_for_queue_space(None)
+            self.queue.appendleft(value)
         return self
 
     def push_all(self, values):
         """
         SNEAK values TO FRONT OF THE QUEUE
         """
-        if self.closed and not self.allow_add_after_close:
-            logger.error("Do not push to closed queue")
-
         with self.lock:
-            self._wait_for_queue_space()
-            if not self.closed:
-                self.queue.extendleft(values)
+            self._wait_for_queue_space(None)
+            self.queue.extendleft(values)
         return self
 
     def pop_message(self, till=None):
@@ -130,53 +110,43 @@ class Queue(object):
         return Null, self.pop(till=till)
 
     def extend(self, values):
-        if self.closed and not self.allow_add_after_close:
-            logger.error("Do not push to closed queue")
-
         with self.lock:
             # ONCE THE queue IS BELOW LIMIT, ALLOW ADDING MORE
-            self._wait_for_queue_space()
-            if not self.closed:
-                if self.unique:
-                    for v in values:
-                        if v is PLEASE_STOP:
-                            self.closed.go()
-                            continue
-                        if v not in self.queue:
-                            self.queue.append(v)
-                else:
-                    for v in values:
-                        if v is PLEASE_STOP:
-                            self.closed.go()
-                            continue
+            self._wait_for_queue_space(None)
+            if self.unique:
+                for v in values:
+                    if v is PLEASE_STOP:
+                        self.closed.go()
+                        continue
+                    if v not in self.queue:
                         self.queue.append(v)
+            else:
+                for v in values:
+                    if v is PLEASE_STOP:
+                        self.closed.go()
+                        continue
+                    self.queue.append(v)
         return self
 
-    def _wait_for_queue_space(self, timeout=None):
+    def _wait_for_queue_space(self, till):
         """
         EXPECT THE self.lock TO BE HAD, WAITS FOR self.queue TO HAVE A LITTLE SPACE
 
         :param timeout:  IN SECONDS
         """
-        if len(self.queue) < self.max:
-            return
-
-        wait_time = 5
-
         (DEBUG and len(self.queue) > 1 * 1000 * 1000) and logger.warning("Queue {name} has over a million items")
 
         start = time()
-        stop_waiting = Till(till=start + coalesce(timeout, DEFAULT_WAIT_TIME))
 
         while not self.closed and len(self.queue) >= self.max:
-            if stop_waiting:
+            if till:
                 logger.error(THREAD_TIMEOUT, name=self.name)
 
             if self.silent:
-                self.lock.wait(stop_waiting)
+                self.lock.wait(till)
             else:
-                self.lock.wait(Till(seconds=wait_time))
-                if not stop_waiting and len(self.queue) >= self.max:
+                self.lock.wait(Till(seconds=5))
+                if not till and len(self.queue) >= self.max:
                     now = time()
                     logger.alert(
                         "Queue with name {name|quote} is full with ({num} items),"
@@ -185,6 +155,8 @@ class Queue(object):
                         num=len(self.queue),
                         wait_time=now - start,
                     )
+        if self.closed and not self.allow_add_after_close:
+            logger.error("Do not add to closed queue")
 
     def __len__(self):
         with self.lock:
@@ -203,9 +175,6 @@ class Queue(object):
         :param till:  A `Signal` to stop waiting and return None
         :return:  A value, or a PLEASE_STOP or None
         """
-        if till is not None and not isinstance(till, Signal):
-            logger.error("expecting a signal")
-
         with self.lock:
             while True:
                 if self.queue:
@@ -256,6 +225,67 @@ class Queue(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    # python queue.Queue
+    def qsize(self):
+        with self.lock:
+            return len(self.queue)
+
+    def empty(self):
+        with self.lock:
+            return not bool(self.queue)
+
+    def full(self):
+        with self.lock:
+            return len(self.queue) >= self.max
+
+    def put(self, item, block=True, timeout=None):
+        if block:
+            try:
+                self.add(item, timeout=timeout, force=not block)
+                return
+            except Exception as cause:
+                if THREAD_TIMEOUT in cause:
+                    raise Full()
+                raise
+        self.put_nowait(item)
+
+    def put_nowait(self, item):
+        self.add(item, force=True)
+
+    def get(self, block=True, timeout=None):
+        if block:
+            if timeout is None:
+                return self.pop()
+            else:
+                till = Till(seconds=timeout)
+                value = self.pop(till)
+                if value is None:
+                    raise Empty()
+                return value
+        return self.get_nowait()
+
+    def get_nowait(self):
+        value = self.pop(True)
+        if value is None:
+            raise Empty()
+        return value
+
+    def task_done(self):
+        pass
+
+    def join(self, till=None):
+        """
+        WAIT FOR ALL ITEMS TO BE PROCESSED
+        DIFFERS FROM PYTHON queue.Queue IN THAT IT DOES NOT WAIT FOR task_done()
+        """
+        self.closed.wait(till)
+        with self.lock:
+            while not till:
+                if not self.queue:
+                    break
+                self.lock.wait(till)
+        return self
+
 
 class PriorityQueue(Queue):
     """
@@ -289,7 +319,8 @@ class PriorityQueue(Queue):
         if not self.silent:
             logger.info("queue iterator is done")
 
-    def add(self, value, timeout=None, priority=0):
+    def add(self, value, timeout=None, priority=0, till=None):
+        till = till or Till(seconds=coalesce(timeout, DEFAULT_WAIT_TIME))
         with self.lock:
             if value is PLEASE_STOP:
                 # INSIDE THE lock SO THAT EXITING WILL RELEASE wait()
@@ -297,15 +328,12 @@ class PriorityQueue(Queue):
                 self.closed.go()
                 return
 
-            self.queue[priority]._wait_for_queue_space(timeout=timeout)
-            if self.closed and not self.queue[priority].allow_add_after_close:
-                logger.error("Do not add to closed queue")
-            else:
-                if self.unique:
-                    if value not in self.queue[priority].queue:
-                        self.queue[priority].queue.append(value)
-                else:
+            self.queue[priority]._wait_for_queue_space(till)
+            if self.unique:
+                if value not in self.queue[priority].queue:
                     self.queue[priority].queue.append(value)
+            else:
+                self.queue[priority].queue.append(value)
         return self
 
     def push(self, value, priority=0):
@@ -314,11 +342,9 @@ class PriorityQueue(Queue):
         """
         if self.closed and not self.queue[priority].allow_add_after_close:
             logger.error("Do not push to closed queue")
-
         with self.lock:
-            self.queue[priority]._wait_for_queue_space()
-            if not self.closed:
-                self.queue[priority].queue.appendleft(value)
+            self.queue[priority]._wait_for_queue_space(None)
+            self.queue[priority].queue.appendleft(value)
         return self
 
     def __len__(self):
@@ -521,19 +547,19 @@ class ThreadedQueue(Queue):
     def add_child(self, child):
         pass
 
-    def add(self, value, timeout=None):
+    def add(self, value, timeout=None, till=None):
+        till = till or Till(seconds=coalesce(timeout, DEFAULT_WAIT_TIME))
         with self.lock:
-            self._wait_for_queue_space(timeout=timeout)
-            if not self.closed:
-                self.queue.append(value)
+            self._wait_for_queue_space(till)
+            self.queue.append(value)
         return self
 
-    def extend(self, values):
+    def extend(self, values, till=None):
+        till = till or Till(seconds=DEFAULT_WAIT_TIME)
         with self.lock:
             # ONCE THE queue IS BELOW LIMIT, ALLOW ADDING MORE
-            self._wait_for_queue_space()
-            if not self.closed:
-                self.queue.extend(values)
+            self._wait_for_queue_space(till)
+            self.queue.extend(values)
             if not self.silent:
                 logger.info("{name} has {num} items", name=self.name, num=len(self.queue))
         return self

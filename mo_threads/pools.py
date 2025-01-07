@@ -1,6 +1,6 @@
 from mo_threads.queues import Queue
 from mo_threads.threads import Thread
-from mo_threads.threads import join_all_threads, PLEASE_STOP, current_thread
+from mo_threads.threads import join_all_threads, PLEASE_STOP
 
 
 class ThreadPool:
@@ -13,7 +13,7 @@ class ThreadPool:
 
     def __enter__(self):
         self.workers = [
-            Thread.run(f"{self.name}-{i}", worker, self)
+            Thread.run(f"{self.name}-worker-{i}", worker, self)
             for i in range(self.num_threads)
         ]
         return self
@@ -29,15 +29,11 @@ class ThreadPool:
 
 
 def worker(pool, please_stop):
-    this = current_thread()
-    this_name = this.name
     while not please_stop:
         thread = pool.queue.pop(till=please_stop)
         if thread is PLEASE_STOP:
             break
-        this.threading_thread.name = thread.name
         try:
             thread.start().join(till=please_stop)
-        except Exception as cause:
+        except Exception:
             pass
-        this.threading_thread.name = this_name

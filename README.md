@@ -1,31 +1,25 @@
 
 # More Threads!
 
-
-|Branch      | Status                                                                                                                                                                                                                                                                                                                                         |
-|------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|master      |  [![Build Status](https://github.com/klahnakoski/mo-threads/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/klahnakoski/mo-threads/actions/workflows/build.yml)                                                                                                                                                                                                     |
-|dev         | [![Build Status](https://app.travis-ci.com/klahnakoski/mo-threads.svg?branch=dev)](https://travis-ci.com/github/klahnakoski/mo-threads)  [![Coverage Status](https://coveralls.io/repos/github/klahnakoski/mo-threads/badge.svg?branch=dev)](https://coveralls.io/github/klahnakoski/mo-threads?branch=dev) ← child thread coverage is missing |
+[![PyPI Latest Release](https://img.shields.io/pypi/v/mo-threads.svg)](https://pypi.org/project/mo-threads/)
+[![Build Status](https://github.com/klahnakoski/mo-threads/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/klahnakoski/mo-threads/actions/workflows/build.yml)
+[![Coverage Status](https://coveralls.io/repos/github/klahnakoski/mo-threads/badge.svg?branch=dev)](https://coveralls.io/github/klahnakoski/mo-threads?branch=dev)
+[![Downloads](https://static.pepy.tech/badge/mo-threads/month)](https://pepy.tech/project/mo-threads)
 
 ## Module `threads`
 
 The main benefits over Python's threading library is:
 
-1. **Multi-threaded queues do not use serialization** - Serialization is 
-great in the general case, where you may also be communicating between 
-processes, but it is a needless overhead for single-process multi-threading. 
-It is left to the programmer to ensure the messages put on the queue are 
-not changed, which is not ominous demand.
-2. **Shutdown order is deterministic and explicit** - Python's threading 
+1. **Shutdown order is deterministic and explicit** - Python's threading 
 library is missing strict conventions for controlled and orderly shutdown. 
 Each thread can shutdown on its own terms, but is expected to do so expediently.
     * All threads are required to accept a `please_stop` signal; are 
     expected to test it in a timely manner; and expected to exit when signalled.
     * All threads have a parent - The parent is responsible for ensuring their children get the `please_stop` signal, and are dead, before stopping themselves. This responsibility is baked into the thread spawning process, 
   so you need not deal with it unless you want.
-3. Uses [**Signals**](#signal-class) to simplify logical 
+2. Uses [**Signals**](#signal-class) to simplify logical 
 dependencies among multiple threads, events, and timeouts.
-4. **Logging and Profiling is Integrated** - Logging and exception handling 
+3. **Logging and Profiling is Integrated** - Logging and exception handling 
 is seamlessly integrated: This means logs are centrally handled, and thread 
 safe. Parent threads have access to uncaught child thread exceptions, and 
 the cProfiler properly aggregates results from the multiple threads.

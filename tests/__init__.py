@@ -27,7 +27,7 @@ class StructuredLogger_usingList(object):
         self.lines.append("logger stopped")
 
 
-class StructuredLogger_usingRaw(object):
+class StructuredLogger_usingRaw:
     def __init__(self):
         self.lines = to_data([])
 
