@@ -15,8 +15,9 @@
     ],
     "description": "More Threads! Simpler and faster threading.",
     "extras_require": {"tests": [
-        "mo-testing>=7.587.24110",  "jx-python>=4.586.24095",           "psutil>=6.1.1",
-                "objgraph>=3.6.2",   "mo-files>=6.585.24095",    "mo-json>=6.584.24095"
+        "mo-testing>=8.667.25032",  "jx-python>=4.626.24125",           "psutil>=6.1.1",
+                "objgraph>=3.6.2",   "mo-files>=6.647.24166",    "mo-json>=6.667.25032",
+                       "filelock"
     ]},
     "include_package_data": true,
     "install_requires": [
@@ -309,6 +310,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "6.667.25032",
+    "version": "6.668.25032",
     "zip_safe": false
 }
