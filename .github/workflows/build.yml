@@ -62,7 +62,6 @@ jobs:
       env:
         CI: true
       run: |
-        export TEST_QUEUE_SPEED_LOCK_FILE=/tmp/test_queue_speed_lock_file.lock
         python -m unittest discover . -v
 
   coverage:
