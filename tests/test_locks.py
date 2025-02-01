@@ -98,7 +98,10 @@ class TestLocks(FuzzyTestCase):
         lock_file = File(lock_file_name)
         self.assertEqual(lock_file.os_path, lock_file.rel_path)
         if not lock_file_name or lock_file.os_path != lock_file.rel_path:
-            logger.error("expecting env var TEST_QUEUE_SPEED_LOCK_FILE to be absolute path to file")
+            logger.error(
+                "expecting env var TEST_QUEUE_SPEED_LOCK_FILE={lock_file_name} to be absolute path to file",
+                lock_file_name=lock_file_name,
+            )
         with FileLock(lock_file.os_path, timeout=-1):
             self._test_queue_speed(test=True)
 
