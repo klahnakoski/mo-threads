@@ -20,8 +20,8 @@
     ]},
     "include_package_data": true,
     "install_requires": [
-         "mo-dots==10.659.25005", "mo-future==7.584.24095",   "mo-logs==8.665.25029",
-          "mo-math==7.659.25005",  "mo-times==5.665.25029"
+         "mo-dots==10.659.25005", "mo-future==7.584.24095",   "mo-logs==8.666.25032",
+          "mo-math==7.659.25005",  "mo-times==5.666.25032"
     ],
     "license": "MPL 2.0",
     "long_description": {
