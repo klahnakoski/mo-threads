@@ -2,6 +2,7 @@
 # pip install --no-deps -r tests/requirements.lock
 certifi==2024.2.2
 charset-normalizer==3.3.2
+filelock==3.16.1
 hjson==3.1.0
 idna==3.6
 jx-python==4.626.24125
