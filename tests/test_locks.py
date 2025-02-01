@@ -97,6 +97,7 @@ class TestLocks(FuzzyTestCase):
         lock_file_name = os.environ.get("TEST_QUEUE_SPEED_LOCK_FILE")
         lock_file = File(lock_file_name)
         if not lock_file_name or lock_file.os_path != lock_file.rel_path:
+            logger.info("{env}", env=os.environ)
             logger.error(
                 "expecting env var TEST_QUEUE_SPEED_LOCK_FILE={lock_file_name} to be absolute path to file",
                 lock_file_name=lock_file_name,
