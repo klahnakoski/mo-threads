@@ -17,6 +17,7 @@ from unittest import skipIf, skip
 
 import objgraph
 import psutil
+from filelock import FileLock
 from mo_collections.queue import Queue
 from mo_files import File
 from mo_future import allocate_lock as _allocate_lock
@@ -92,7 +93,19 @@ class TestLocks(FuzzyTestCase):
             self._test_queue_speed()
             self._test_queue_speed()
             Till(seconds=1).wait()
-        self._test_queue_speed(test=True)
+
+        lock_file_name = os.environ.get("TEST_QUEUE_SPEED_LOCK_FILE")
+        lock_file = File(lock_file_name)
+        if not lock_file_name or lock_file.os_path != lock_file.rel_path:
+            logger.warning(
+                "ENV VARS= {env}\n"
+                "expecting env var TEST_QUEUE_SPEED_LOCK_FILE={lock_file_name} to be absolute path to file",
+                lock_file_name=lock_file_name,
+                env=os.environ
+            )
+            return
+        with FileLock(lock_file.os_path, timeout=-1):
+            self._test_queue_speed(test=True)
 
     def _test_queue_speed(self, test=False):
         SCALE = 1000 * 10
