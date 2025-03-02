@@ -46,7 +46,7 @@ def debug_warning(stacktrace):
     return warning
 
 
-class Signal(object):
+class Signal:
     """
     SINGLE-USE THREAD SAFE SIGNAL (aka EVENT)
 
@@ -235,7 +235,7 @@ class Signal(object):
         return output
 
 
-class AndSignals(object):
+class AndSignals:
     __slots__ = ["signal", "remaining", "locker"]
 
     def __init__(self, signal, count):
@@ -272,7 +272,7 @@ def or_signal(*dependencies):
     return output
 
 
-class OrSignal(object):
+class OrSignal:
     """
     A SELF-REFERENTIAL CLUSTER OF SIGNALING METHODS TO IMPLEMENT __or__()
     MANAGE SELF-REMOVAL UPON NOT NEEDING THE signal OBJECT ANY LONGER

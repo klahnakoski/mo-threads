@@ -20,7 +20,7 @@ _get = dict.get
 _set = dict.setdefault
 
 
-class BusyLock(object):
+class BusyLock:
     """
     ONLY USE IF HOLDING THE LOCK FOR A SHORT TIME
     """

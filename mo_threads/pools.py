@@ -4,7 +4,6 @@ from mo_threads.threads import join_all_threads, PLEASE_STOP
 
 
 class ThreadPool:
-
     def __init__(self, num_threads, name=None):
         self.name = name or "Pool"
         self.num_threads = num_threads
@@ -12,10 +11,7 @@ class ThreadPool:
         self.queue = Queue(f"todo list for {name}")
 
     def __enter__(self):
-        self.workers = [
-            Thread.run(f"{self.name}-worker-{i}", worker, self)
-            for i in range(self.num_threads)
-        ]
+        self.workers = [Thread.run(f"{self.name}-worker-{i}", worker, self) for i in range(self.num_threads)]
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

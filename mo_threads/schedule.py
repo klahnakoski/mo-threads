@@ -22,7 +22,7 @@ JOBS_WAITING_TIME = 30
 schedules = []
 
 
-class Schedule(object):
+class Schedule:
     @override
     def __init__(
         self,
