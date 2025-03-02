@@ -21,7 +21,7 @@ from mo_threads.signals import Signal
 DEBUG = False
 
 
-class Lock(object):
+class Lock:
     """
     A NON-RE-ENTRANT LOCK WITH wait()
     """

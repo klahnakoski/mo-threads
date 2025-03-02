@@ -20,7 +20,7 @@ from mo_threads import Lock, Process, Signal, PLEASE_STOP, Thread, DONE, python_
 DEBUG = False
 
 
-class Python(object):
+class Python:
     def __init__(self, name, config, parent_thread=None):
         python_exe = sys.executable
         config = to_data(config)

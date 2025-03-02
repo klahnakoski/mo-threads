@@ -17,7 +17,7 @@ from mo_threads import Till, Thread, MAIN_THREAD
 from mo_threads.signals import Signal
 
 
-class Repeat(object):
+class Repeat:
     def __init__(self, message="ping", every="second", start=None, until=None):
         if is_text(message):
             self.message = show_message(message)

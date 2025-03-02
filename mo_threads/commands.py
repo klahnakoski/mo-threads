@@ -36,7 +36,7 @@ lifetime_manager_locker = Lock("cmd lock")
 lifetime_manager = None
 
 
-class Command(object):
+class Command:
     """
     FASTER Process CLASS - OPENS A COMMAND_LINE APP (CMD on windows) AND KEEPS IT OPEN FOR MULTIPLE COMMANDS
     EACH WORKING DIRECTORY WILL HAVE ITS OWN PROCESS, MULTIPLE PROCESSES WILL OPEN FOR THE SAME DIR IF MULTIPLE

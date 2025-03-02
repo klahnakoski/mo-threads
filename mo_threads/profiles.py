@@ -29,7 +29,7 @@ FILENAME = "profile.tab"
 cprofiler_stats = None
 
 
-class CProfiler(object):
+class CProfiler:
     """
     cProfiler CONTEXT MANAGER WRAPPER
 

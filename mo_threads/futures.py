@@ -10,7 +10,7 @@
 from mo_threads.signals import Signal
 
 
-class Future(object):
+class Future:
     """
     REPRESENT A VALUE THAT MAY NOT BE READY YET
     """

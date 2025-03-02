@@ -36,7 +36,7 @@ class Status:
     last_read: float
 
 
-class Process(object):
+class Process:
     def __init__(
         self,
         name,
@@ -173,9 +173,7 @@ class Process(object):
         if self.returncode is None:
             self.kill()
             on_error(
-                "{process} TIMEOUT\n{stderr}",
-                process=self.name,
-                stderr=list(self.stderr),
+                "{process} TIMEOUT\n{stderr}", process=self.name, stderr=list(self.stderr),
             )
         if self.returncode != 0:
             on_error(
