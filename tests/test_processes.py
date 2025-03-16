@@ -14,7 +14,7 @@ from unittest import skipIf
 from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase, add_error_reporting
 
-from mo_threads import Process, start_main_thread, Command, Till
+from mo_threads import Process, start_main_thread, Command, Till, threads
 from tests import IS_WINDOWS
 
 IS_TRAVIS = bool(os.environ.get("TRAVIS"))
@@ -104,3 +104,8 @@ class TestProcesses(FuzzyTestCase):
 
     def test_command_shutdown(self):
         Command("test", [sys.executable, "-c", "print('test')"]).join()
+
+    def test_failed_process_removed_from_main_thread(self):
+        p = Process("run simple_test", [sys.executable, "-u", "tests/programs/fail_test.py"], debug=True)
+        p.join(raise_on_error=False)
+        self.assertNotIn(p, threads.MAIN_THREAD.children)

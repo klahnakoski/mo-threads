@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from time import time as unix_now
 
 from mo_dots import Null
-from mo_future import is_windows, utcnow
+from mo_future import is_windows
 from mo_logs import logger, strings
 from mo_logs.exceptions import Except
 from mo_times import Timer, Date
@@ -170,6 +170,7 @@ class Process:
     def join(self, till=None, raise_on_error=True):
         on_error = logger.error if raise_on_error else logger.warning
         self.stopped.wait(till=till)  # TRIGGERED BY _monitor THREAD WHEN DONE (self.children is None)
+        self.parent_thread.remove_child(self)
         if self.returncode is None:
             self.kill()
             on_error(
