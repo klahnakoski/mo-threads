@@ -1,4 +1,4 @@
-# Tests pass with python 3.8 on 2025-03-02 and with these versions
+# Tests pass with python 3.8 on 2025-03-16 and with these versions
 # pip install --no-deps -r tests/requirements.lock
 certifi==2024.2.2
 charset-normalizer==3.3.2
@@ -8,7 +8,7 @@ idna==3.6
 jx-python==4.673.25037
 mo-collections==5.672.25036
 mo-dots==10.678.25061
-mo-files==6.672.25036
+mo-files==6.679.25061
 mo-future==7.678.25061
 mo-imports==7.678.25061
 mo-json==6.679.25061
