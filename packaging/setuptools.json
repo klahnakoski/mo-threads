@@ -11,18 +11,20 @@
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
-        "Programming Language :: Python :: 3.13"
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
+        "Programming Language :: Python :: 3.15"
     ],
     "description": "More Threads! Simpler and faster threading.",
     "extras_require": {"tests": [
         "mo-testing>=8.674.25037",  "jx-python>=4.673.25037",           "psutil>=7.0.0",
-                "objgraph>=3.6.2",   "mo-files>=6.679.25061",    "mo-json>=6.679.25061",
+                "objgraph>=3.6.2",   "mo-files>=6.681.25075",    "mo-json>=6.682.25104",
                "filelock>=3.16.1"
     ]},
     "include_package_data": true,
     "install_requires": [
-         "mo-dots==10.678.25061", "mo-future==7.678.25061",   "mo-logs==8.678.25061",
-          "mo-math==7.678.25061",  "mo-times==5.682.25104"
+         "mo-dots==10.685.25166", "mo-future==7.685.25166",   "mo-logs==8.685.25166",
+          "mo-math==7.685.25166",  "mo-times==5.685.25166"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -88,11 +90,11 @@
             "",
             "#### Simple work loop",
             "",
-            "For threaded functions that perform small chunks of work in some loop; the chunks are small enough that they will complete soon enough. Simply check the `please_stop` signal at the start of each loop:",
+            "For threaded functions that perform small blocks of work in some loop; the blocks are small enough that they will complete soon enough. Simply check the `please_stop` signal at the start of each loop:",
             "",
             "    def worker(p1, p2, please_stop):",
             "        while not please_stop:",
-            "            do_some_small_chunk_of_work(p1)",
+            "            do_some_small_block_of_work(p1)",
             "            ",
             "#### One-time work",
             "            ",
@@ -111,7 +113,7 @@
             "        data = source.pop(till=please_stop)",
             "        if please_stop:  # did pop() return because of please_stop?",
             "            return",
-            "        chunk_of_work(data)",
+            "        block_of_work(data)",
             "```",
             "",
             "#### Combining signals",
@@ -125,7 +127,7 @@
             "        (next_event | please_stop).wait()",
             "        if please_stop:  # is wait done because of please_stop?",
             "            return",
-            "        chunk_of_work()",
+            "        block_of_work()",
             "```",
             "",
             "## Spawning threads",
@@ -310,6 +312,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "6.682.25104",
+    "version": "6.698.25331",
     "zip_safe": false
 }
