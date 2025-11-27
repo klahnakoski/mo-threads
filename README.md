@@ -59,11 +59,11 @@ All threaded functions must accept a `please_stop` parameter, which is a `Signal
 
 #### Simple work loop
 
-For threaded functions that perform small chunks of work in some loop; the chunks are small enough that they will complete soon enough. Simply check the `please_stop` signal at the start of each loop:
+For threaded functions that perform small blocks of work in some loop; the blocks are small enough that they will complete soon enough. Simply check the `please_stop` signal at the start of each loop:
 
     def worker(p1, p2, please_stop):
         while not please_stop:
-            do_some_small_chunk_of_work(p1)
+            do_some_small_block_of_work(p1)
             
 #### One-time work
             
@@ -82,7 +82,7 @@ def worker(source, please_stop):
         data = source.pop(till=please_stop)
         if please_stop:  # did pop() return because of please_stop?
             return
-        chunk_of_work(data)
+        block_of_work(data)
 ```
 
 #### Combining signals
@@ -96,7 +96,7 @@ def worker(please_stop):
         (next_event | please_stop).wait()
         if please_stop:  # is wait done because of please_stop?
             return
-        chunk_of_work()
+        block_of_work()
 ```
 
 ## Spawning threads
