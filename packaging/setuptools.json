@@ -17,14 +17,14 @@
     ],
     "description": "More Threads! Simpler and faster threading.",
     "extras_require": {"tests": [
-        "mo-testing>=8.674.25037",  "jx-python>=4.673.25037",           "psutil>=7.0.0",
-                "objgraph>=3.6.2",   "mo-files>=6.681.25075",    "mo-json>=6.682.25104",
+        "mo-testing>=8.685.25166",  "jx-python>=4.673.25037",           "psutil>=7.1.3",
+                "objgraph>=3.6.2",   "mo-files>=6.690.25168",    "mo-json>=6.686.25166",
                "filelock>=3.16.1"
     ]},
     "include_package_data": true,
     "install_requires": [
-         "mo-dots==10.685.25166", "mo-future==7.685.25166",   "mo-logs==8.685.25166",
-          "mo-math==7.685.25166",  "mo-times==5.685.25166"
+         "mo-dots==10.685.25166", "mo-future==7.685.25166",   "mo-logs==8.703.26061",
+          "mo-math==7.685.25166",  "mo-times==5.703.26061"
     ],
     "license": "MPL 2.0",
     "long_description": {
@@ -312,6 +312,6 @@
     "name": "mo-threads",
     "packages": ["mo_threads"],
     "url": "https://github.com/klahnakoski/mo-threads",
-    "version": "6.698.25331",
+    "version": "6.704.26062",
     "zip_safe": false
 }
