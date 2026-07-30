@@ -1,8 +1,8 @@
 # mo_threads — known defects
 
 Found while modernising `mo-deploy` on 2026-07-30. All three concern the `Command`
-shell pool in `commands.py`. Item 1 is already written and verified in mo-deploy's
-vendored copy and only needs to land here; items 2 and 3 are untouched.
+shell pool. Item 1 is fixed and landed here; item 2 is fixed in mo-deploy's vendored
+copy and awaits an svn publish; item 3 is measured but undecided.
 
 ---
 
@@ -151,38 +151,104 @@ Published to SVN as r2915 (from mo-deploy, 2026-07-30) and arrived here on the 2
 
 ---
 
-## 2. A deliberate shutdown is reported as `TIMEOUT` / `FAIL` (NOT FIXED)
+## 2. A deliberate shutdown is reported as `TIMEOUT` / `FAIL` (FIXED in mo-deploy's vendor copy — awaiting publish, see Coordination below)
 
-`processes.py:170-186`:
+`_monitor` breaks out of its loop on `please_stop` **without killing the service**, so after
+an intentional stop `self.service.returncode` is `None` by design. `join()` read that `None`
+as "it hung":
 
 ```python
-def join(self, till=None, raise_on_error=True):
-    on_error = logger.error if raise_on_error else logger.warning
-    self.stopped.wait(till=till)
-    self.parent_thread.remove_child(self)
-    if self.returncode is None:
-        self.kill()
-        on_error("{process} TIMEOUT\n{stderr}", ...)
-    if self.returncode != 0:
-        on_error("{process} FAIL: returncode={code|quote}\n{stderr}", ...)
+if self.returncode is None:
+    self.kill()
+    on_error("{process} TIMEOUT\n{stderr}", ...)   # <- fires on a normal shutdown
+if self.returncode != 0:
+    on_error("{process} FAIL: ...", ...)           # <- and then again, since kill()
+                                                   #    leaves returncode unpolled
 ```
 
-The `TIMEOUT` branch does not return, so one process can report *both* `TIMEOUT` and
-`FAIL`. More importantly, at `stop_main_thread()` a pooled idle shell is **killed** rather
-than allowed to exit, so `returncode is None` — and a teardown that went exactly as
-intended is indistinguishable from a command that genuinely hung.
+`Thread.stop()` calls `c.stop()` on every child *before* `join_all_threads`, so at
+`stop_main_thread()` every pooled shell takes this path. Measured in mo-deploy: a script
+making only read-only `Module.local()` calls, every one succeeding, ended with 8 lines
+matching `TIMEOUT` / `At least one thread failed` / `Problem while stopping "MainThread"`.
+After the fix: 0.
 
-Measured in mo-deploy: a script making only read-only `Module.local()` calls, every one
-succeeding, still ends with 8 lines matching `TIMEOUT` / `At least one thread failed` /
-`Problem while stopping "MainThread"`.
+### The trap — do not use `please_stop` as the discriminator
 
-Needs a flag (or a distinct path) so an intentional stop is quiet. Note item 1 does **not**
-help here — `release_shells` only covers directories a caller explicitly releases, and the
-noisy shells are the long-lived ones (in mo-deploy, each managed repo's own directory),
-which stay pooled until shutdown kills them.
+The obvious fix is `if not self.please_stop: on_error(...)`. **It is wrong, and it fails
+silently in the dangerous direction: it mutes genuine hangs.** `please_stop` is set in *both*
+cases by the time `join()` runs — the monitor `Thread` is constructed with
+`please_stop=self.please_stop`, i.e. it shares the Process's own signal, and that signal ends
+up raised when the monitor ends however it ended. Verified by experiment: with `please_stop`
+as the test, a process that genuinely stopped responding reported nothing at all.
 
-Related, probably the same teardown path: stray `stdout for {name} queue closed` lines
-appear during test runs (`processes.py:260-280`).
+Hence `stop_requested`, a plain bool set only by `stop()` — the one thing that unambiguously
+means "someone asked for this".
+
+```diff
+--- a/mo_threads/processes.py
++++ b/mo_threads/processes.py
+@@ -78,6 +78,10 @@ class Process:
+         self.name = f"{name} ({self.process_id})"
+         self.stopped = Signal(f"stopped signal for {strings.quote(name)}")
+         self.please_stop = Signal(f"please stop for {strings.quote(name)}")
++        # SET ONLY BY stop().  please_stop CANNOT ANSWER "DID SOMEONE ASK FOR
++        # THIS?" -- THE monitor THREAD SHARES THAT SIGNAL AND RAISES IT WHEN IT
++        # ENDS, SO IT IS SET AFTER A HANG TOO
++        self.stop_requested = False
+         self.second_last_stdin = None
+         self.last_stdin = None
+         self.stdin = Queue(f"stdin for process {strings.quote(name)}", silent=not self.debug)
+@@ -164,6 +168,7 @@ class Process:
+         pass
+ 
+     def stop(self):
++        self.stop_requested = True
+         self.please_stop.go()
+         return self
+ 
+@@ -172,10 +177,18 @@ class Process:
+         self.stopped.wait(till=till)  # TRIGGERED BY _monitor THREAD WHEN DONE (self.children is None)
+         self.parent_thread.remove_child(self)
+         if self.returncode is None:
++            # _monitor LEAVES THE SERVICE RUNNING WHEN IT IS ASKED TO STOP (IT
++            # BREAKS ON please_stop WITHOUT KILLING), SO A MISSING returncode
++            # AFTER A REQUESTED STOP IS THE EXPECTED OUTCOME, NOT A HANG.  ONLY
++            # AN UNASKED-FOR ONE MEANS THE PROCESS STOPPED RESPONDING.
+             self.kill()
+-            on_error(
+-                "{process} TIMEOUT\n{stderr}", process=self.name, stderr=list(self.stderr),
+-            )
++            if not self.stop_requested:
++                on_error(
++                    "{process} TIMEOUT\n{stderr}", process=self.name, stderr=list(self.stderr),
++                )
++            # kill() LEAVES returncode UNSET UNTIL POLLED; FALLING THROUGH WOULD
++            # REPORT THE SAME PROCESS A SECOND TIME AS A FAILURE
++            return self
+         if self.returncode != 0:
+             on_error(
+                 "{process} FAIL: returncode={code|quote}\n{stderr}",
+```
+
+**REQUIRED — the pair matters more than either test alone:**
+- `stop()` then `join(raise_on_error=True)` must **not** raise;
+- a process that stops responding **without** anyone calling `stop()` (short `timeout` and
+  `startup_timeout`, a long `sleep`) must still raise, with `TIMEOUT` in the message.
+
+Confirmed discriminating in mo-deploy (`tests/test_integration.py::TestProcessShutdown`): the
+pre-fix `join` fails the first, and the `please_stop` version fails the second. A single test
+would have let the over-broad fix through.
+
+Still open, probably the same teardown path: stray `stdout for {name} queue closed` lines
+during test runs (`processes.py:260-280`).
+
+### Coordination
+
+Lives only in `mo-deploy/vendor/mo_threads/processes.py`, committed to mo-deploy's git as
+`5e8c987`, **not yet `svn commit`ed** — publishing is Kyle's call. Confirmed at the time of
+writing that this repo's `commands.py` is byte-identical to mo-deploy's vendored copy and
+`processes.py` differs *only* by the diff above, so it will land here cleanly on the next
+`svn-sync` once mo-deploy publishes. Do not apply it by hand in the meantime.
 
 ---
 
