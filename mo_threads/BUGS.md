@@ -139,17 +139,15 @@ copy byte-for-byte, so it applies cleanly:
 Equivalent tests exist in mo-deploy at `tests/test_integration.py::TestShellRelease`, but
 they belong here — mo-deploy only tests the three it depends on.
 
-### Coordination — read before editing `commands.py`
+### Coordination — do NOT apply the patch by hand
 
-The fix currently lives **only** in `mo-deploy/vendor/mo_threads/commands.py`, committed to
-mo-deploy's git (`257cc71`) but **not yet `svn commit`ed**. So right now:
+**Already published to SVN as r2915** (from mo-deploy, 2026-07-30). The diff above is
+recorded for review, not for applying.
 
-- this repo's `dev` still has the unpatched file;
-- mo-deploy's vendored copy has the patch.
-
-Whoever moves next should pick one direction — either apply the patch here and let it reach
-mo-deploy on its next vendor refresh, or `svn commit` from mo-deploy and pull it in here —
-**not both**, or the two edits collide on the sync.
+This repo's git `dev` does not have it yet — it arrives on the next `svn-sync` here, which
+will land it in `mo_threads/commands.py` as an inbound change. Applying the patch manually
+first would collide with that update. Sync, then confirm `release_shells` is present, then
+write the tests below.
 
 ---
 
