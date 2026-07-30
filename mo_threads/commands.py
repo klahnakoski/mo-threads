@@ -157,6 +157,20 @@ def _stderr_relay(source, destination, please_stop=None):
     destination.add(PLEASE_STOP)
 
 
+def release_shells(cwd):
+    """
+    STOP ANY IDLE POOLED SHELL SITTING IN cwd, SO cwd CAN BE DELETED
+
+    RETURNS THE NUMBER STOPPED.  SAFE TO CALL WHEN NONE EXIST, AND SAFE TO USE
+    cwd AGAIN AFTERWARD -- A NEW SHELL IS SIMPLY OPENED.
+    """
+    with lifetime_manager_locker:
+        manager = lifetime_manager
+    if not manager:
+        return 0
+    return manager.stop_processes_in(cwd)
+
+
 class LifetimeManager:
     def __init__(self):
         global lifetime_manager
@@ -251,6 +265,40 @@ class LifetimeManager:
             else:
                 logger.error("process not found")
 
+    def stop_processes_in(self, cwd):
+        """
+        SHUT DOWN IDLE SHELLS SITTING IN cwd, SO THE DIRECTORY CAN BE DELETED
+
+        A POOLED SHELL KEEPS cwd AS ITS WORKING DIRECTORY FOR AVAIL_TIMEOUT,
+        AND WINDOWS WILL NOT LET ANYONE REMOVE A DIRECTORY A PROCESS IS SITTING
+        IN.  CALL THIS WHEN DONE WITH A TEMPORARY DIRECTORY.
+
+        ONLY IDLE SHELLS ARE TAKEN; AN inuse SHELL IS STILL RUNNING SOMEONE'S
+        COMMAND, AND WILL BE RETURNED TO THE POOL WHEN IT FINISHES.
+        """
+        cwd = os_path(cwd)
+        with self.locker:
+            doomed = [p for p in self.avail_processes if p[0][0] == cwd]
+            if doomed:
+                self.avail_processes[:] = [p for p in self.avail_processes if p[0][0] != cwd]
+        DEBUG and logger.info("stop {num} processes in {cwd}", num=len(doomed), cwd=cwd)
+        self._exit_processes(doomed)
+        return len(doomed)
+
+    def _exit_processes(self, processes):
+        for _, process, _ in processes:
+            try:
+                if not process.stopped:
+                    process.stdin.add("exit")
+            except Exception:
+                pass
+
+        for _, process, _ in processes:
+            try:
+                process.join(raise_on_error=True)
+            except Exception:
+                pass
+
     def _stop_stale_processes(self, too_old):
         DEBUG and logger.info("stop stale processes")
         with self.locker:
@@ -263,18 +311,7 @@ class LifetimeManager:
                     fresh.append((key, process, last_used))
             self.avail_processes[:] = fresh
 
-        for _, process, _ in stale:
-            try:
-                if not process.stopped:
-                    process.stdin.add("exit")
-            except Exception:
-                pass
-
-        for _, process, _ in stale:
-            try:
-                process.join(raise_on_error=True)
-            except Exception:
-                pass
+        self._exit_processes(stale)
 
         if DEBUG and stale:
             for key, process, last_used in stale:
