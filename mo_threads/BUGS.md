@@ -6,7 +6,13 @@ vendored copy and only needs to land here; items 2 and 3 are untouched.
 
 ---
 
-## 1. A pooled shell holds its `cwd`, so the directory cannot be deleted (FIXED in mo-deploy's vendor copy — needs to land here, with tests)
+## 1. A pooled shell holds its `cwd`, so the directory cannot be deleted (FIXED — landed via svn-sync 2026-07-30, tests in `tests/test_processes.py::TestShellRelease`)
+
+> `release_shells` treats the symptom: callers must reach into another thread's pool to get
+> their own temp dir back. The defect it is working around is item 3 — `AVAIL_TIMEOUT` keeps
+> a shell (and its `cwd`) alive for an hour after the command finished. Fix that and this API
+> becomes unnecessary.
+
 
 `Command` pools one shell per `(cwd, env, debug, shell)`. When a command finishes,
 `Command._worker` calls `return_process` (`commands.py:142`), which stamps
@@ -125,29 +131,23 @@ copy byte-for-byte, so it applies cleanly:
              for key, process, last_used in stale:
 ```
 
-**REQUIRED — `mo_threads` has no test for any of this:**
+**DONE — `tests/test_processes.py::TestShellRelease` covers all four:**
 - a `TempDirectory` used as a `Command` cwd is undeletable *before* `release_shells` and
-  deletable *after* (this is the assertion that fails if the fix is reverted — the other
-  two below pass either way);
+  deletable *after* (verified this is the assertion that fails when `release_shells` is
+  stubbed to a no-op — the other three pass either way);
 - the same `cwd` still works afterward: a second `Command` opens a fresh shell and returns
   `returncode == 0`;
 - `release_shells` on a directory with nothing pooled returns `0` and does not raise;
-- an `inuse` shell is **not** killed — start a long-running command, call `release_shells`
-  on its `cwd` from another thread, and assert the command still completes. This is the
-  case with no coverage anywhere and the one most likely to be broken by a refactor.
+- an `inuse` shell is **not** killed — a long-running command has `release_shells` called on
+  its `cwd` from another thread, which returns `0`, and the command still completes.
 
-Equivalent tests exist in mo-deploy at `tests/test_integration.py::TestShellRelease`, but
-they belong here — mo-deploy only tests the three it depends on.
+mo-deploy keeps its own copy at `tests/test_integration.py::TestShellRelease` for the three
+it depends on.
 
-### Coordination — do NOT apply the patch by hand
+### Coordination — done
 
-**Already published to SVN as r2915** (from mo-deploy, 2026-07-30). The diff above is
-recorded for review, not for applying.
-
-This repo's git `dev` does not have it yet — it arrives on the next `svn-sync` here, which
-will land it in `mo_threads/commands.py` as an inbound change. Applying the patch manually
-first would collide with that update. Sync, then confirm `release_shells` is present, then
-write the tests below.
+Published to SVN as r2915 (from mo-deploy, 2026-07-30) and arrived here on the 2026-07-30
+`svn-sync`. The diff above is the record of what landed.
 
 ---
 
@@ -190,6 +190,17 @@ appear during test runs (`processes.py:260-280`).
 
 The pool exists because opening a shell was expensive on older Windows. That premise is
 years old and worth re-measuring on Windows 11 before either of the above is built out.
+
+Measured 2026-07-30, Windows 11, `echo hi` x10 in the repo dir:
+
+| | per command |
+|---|---|
+| pooled shell (reused) | 2 ms |
+| new shell each time (`release_shells` between) | 38 ms |
+| plain `subprocess.run(shell=True)` | 16 ms |
+
+So the pool is still worth ~14 ms/command against the no-pool floor — real, but only for
+callers issuing thousands of commands. It is not obviously worth an hour of held `cwd`.
 
 If spawning a shell is now cheap, the better move is to delete the pool rather than keep
 tuning it — which would dissolve items 1 and 2 outright, along with `AVAIL_TIMEOUT`,

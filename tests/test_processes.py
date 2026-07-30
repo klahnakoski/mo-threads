@@ -11,10 +11,12 @@ import os
 import sys
 from unittest import skipIf
 
+from mo_files import TempDirectory
 from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase, add_error_reporting
 
-from mo_threads import Process, start_main_thread, Command, Till, threads
+from mo_threads import Process, start_main_thread, Command, Till, threads, Thread
+from mo_threads.commands import release_shells
 from tests import IS_WINDOWS
 
 IS_TRAVIS = bool(os.environ.get("TRAVIS"))
@@ -109,3 +111,60 @@ class TestProcesses(FuzzyTestCase):
         p = Process("run simple_test", [sys.executable, "-u", "tests/programs/fail_test.py"], debug=True)
         p.join(raise_on_error=False)
         self.assertNotIn(p, threads.MAIN_THREAD.children)
+
+
+@add_error_reporting
+class TestShellRelease(FuzzyTestCase):
+    """
+    Command POOLS A SHELL PER cwd, AND KEEPS IT FOR AVAIL_TIMEOUT (ONE HOUR).
+    ON WINDOWS THAT SHELL MAKES ITS cwd UNDELETABLE UNTIL release_shells()
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        start_main_thread()
+        logger.start(trace=True)
+
+    def test_release_frees_the_directory(self):
+        d = TempDirectory()
+        Command("probe", [sys.executable, "-c", "print('test')"], cwd=d).join()
+
+        if IS_WINDOWS:
+            # THE POOLED SHELL IS STILL SITTING IN d
+            self.assertRaises(OSError, os.rmdir, d.os_path)
+
+        self.assertEqual(release_shells(d), 1)
+        os.rmdir(d.os_path)
+        self.assertFalse(os.path.exists(d.os_path))
+
+    def test_cwd_still_works_after_release(self):
+        # RELEASING IS NOT DESTRUCTIVE; THE NEXT Command JUST OPENS A NEW SHELL
+        with TempDirectory() as d:
+            Command("first", [sys.executable, "-c", "print('test')"], cwd=d).join()
+            release_shells(d)
+            second = Command("second", [sys.executable, "-c", "print('test')"], cwd=d).join()
+            self.assertEqual(second.returncode, 0)
+            release_shells(d)
+
+    def test_release_is_a_no_op_when_no_shell_is_pooled(self):
+        with TempDirectory() as d:
+            self.assertEqual(release_shells(d), 0)
+
+    def test_inuse_shell_is_not_released(self):
+        # A SHELL RUNNING SOMEONE'S COMMAND IS LEFT ALONE
+        with TempDirectory() as d:
+            slow = Command(
+                "slow", [sys.executable, "-c", "import time;time.sleep(2);print('done')"], cwd=d, timeout=30,
+            )
+            result = []
+
+            def release(please_stop=None):
+                result.append(release_shells(d))
+
+            Thread.run("release shells", release).join()
+            self.assertEqual(result, [0])
+
+            slow.join()
+            self.assertEqual(slow.returncode, 0)
+            self.assertIn("done", slow.stdout.pop_all())
+            release_shells(d)
