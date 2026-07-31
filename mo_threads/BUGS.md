@@ -18,21 +18,28 @@ Deleted: `LifetimeManager`, `lifetime_manager`, `lifetime_manager_locker`, `AVAI
 "in use" state). `release_shells(cwd)` remains as a no-op returning `0` so mo-deploy keeps
 importing — its calls can be deleted whenever mo-deploy next syncs.
 
-**The cost is real and was accepted knowingly.** Measured 2026-07-31, Windows 11,
-`echo hi` x20:
+**The cost is much smaller than the serial number suggests.** Measured 2026-07-31,
+Windows 11:
 
 | | per command |
 |---|---|
 | pooled shell (reused, before) | 2 ms |
-| own shell (now) | 35 ms |
-| plain `subprocess.run(shell=True)` | 14 ms |
+| own shell, 100 in parallel (now) | **7-9 ms** |
+| own shell, one at a time (now) | 35 ms |
+| plain `subprocess.run(shell=True)`, serial | 14 ms |
 
-Broken down, the 35 ms is: 4 ms `Popen`, **28 ms for cmd.exe to boot to its first prompt**,
-1 ms to run the command, 6 ms teardown. The dominant term is cmd.exe itself, so there is no
-cheap win left in `commands.py` — folding the startup handshake into the worker thread would
-only overlap that 28 ms with the caller's next work, not remove it. If a caller issuing
-thousands of commands ever needs the 33 ms back, pooling belongs in that caller, where it can
-scope a shell's lifetime to work it actually controls.
+Serially the 35 ms breaks down as: 4 ms `Popen`, **28 ms for cmd.exe to boot to its first
+prompt**, 1 ms to run the command, 6 ms teardown. That 28 ms is almost all *waiting* on
+cmd.exe, not CPU, so it overlaps: 100 shells opened, used and closed at once finish in
+0.7-0.9 s wall clock, 7-9 ms each, stable across runs and leaking no `cmd.exe`
+(`tests/test_processes.py::TestShellLifetime::test_many_shells_in_parallel`). Against the
+2 ms pooled figure that is a 5-7 ms penalty for a concurrent caller, not 33 ms.
+
+There is no cheap win left in `commands.py` for the serial case — folding the startup
+handshake into the worker thread would only overlap that 28 ms with the caller's next work,
+not remove it. A caller that issues thousands of commands one after another and cannot run
+them concurrently should pool in its own code, where it can scope a shell's lifetime to work
+it actually controls.
 
 `Command.stop()` still shuts the shell down, but a shell busy with a command cannot read
 `exit` until that command finishes, so `join()` after `stop()` blocks until then (or until
@@ -169,9 +176,11 @@ above landed here first.
 
 ## 3. Is the shell pool still worth its cost? (ANSWERED — no; removed 2026-07-31, see item 0)
 
-Measured 2026-07-30 on Windows 11, the pool bought 14 ms/command against the no-pool floor —
-real, but only for callers issuing thousands of commands, and not worth an hour of held
-`cwd`. Kyle's call: delete it. See item 0 for what went and what it costs.
+Measured 2026-07-30 on Windows 11, the pool looked like it bought 14 ms/command against the
+no-pool floor — real, but only for callers issuing thousands of commands, and not worth an
+hour of held `cwd`. Kyle's call: delete it. The follow-up parallel measurement (item 0) shows
+that estimate was pessimistic: the saving is 5-7 ms/command once shells are opened
+concurrently, because the cost is cmd.exe boot *latency*, which overlaps.
 
 ## 4. A killed shell orphans its child process (OPEN — pre-existing, now easier to hit)
 

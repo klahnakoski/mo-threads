@@ -9,13 +9,14 @@
 #
 import os
 import sys
+from time import time as unix_now
 from unittest import skipIf
 
 from mo_files import TempDirectory
 from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase, add_error_reporting
 
-from mo_threads import Process, start_main_thread, Command, Till, threads
+from mo_threads import Process, start_main_thread, Command, Till, threads, Thread, join_all_threads
 from mo_threads.commands import release_shells
 from tests import IS_WINDOWS
 
@@ -165,3 +166,34 @@ class TestShellLifetime(FuzzyTestCase):
         with TempDirectory() as d:
             Command("probe", [sys.executable, "-c", "print('test')"], cwd=d).join()
             self.assertEqual(release_shells(d), 0)
+
+    def test_many_shells_in_parallel(self):
+        """
+        WITHOUT A POOL, EVERY Command PAYS FOR ITS OWN SHELL.  SERIALLY THAT IS ~35ms EACH,
+        ALMOST ALL OF IT cmd.exe BOOTING -- WHICH IS WAIT, NOT WORK, SO IT SHOULD OVERLAP.
+        OPEN 100 SHELLS AT ONCE TO SEE WHAT THE REAL COST IS
+        """
+        num = 100
+        results = [None] * num
+
+        def say_hi(i, please_stop=None):
+            c = Command(f"hi {i}", ["echo", "hi"], timeout=60).join()
+            results[i] = (c.returncode, c.stdout.pop_all())
+
+        start = unix_now()
+        workers = [Thread.run(f"say hi {i}", say_hi, i) for i in range(num)]
+        join_all_threads(workers)
+        duration = unix_now() - start
+
+        logger.alert(
+            "{num} shells open+hi+close in parallel: {duration} seconds total, {each} ms each",
+            num=num,
+            duration=round(duration, 2),
+            each=round(duration / num * 1000, 1),
+        )
+
+        for i, result in enumerate(results):
+            self.assertNotEqual(result, None, f"command {i} did not finish")
+            returncode, lines = result
+            self.assertEqual(returncode, 0)
+            self.assertIn("hi", lines)
