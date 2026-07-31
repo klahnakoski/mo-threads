@@ -78,6 +78,10 @@ class Process:
         self.name = f"{name} ({self.process_id})"
         self.stopped = Signal(f"stopped signal for {strings.quote(name)}")
         self.please_stop = Signal(f"please stop for {strings.quote(name)}")
+        # SET ONLY BY stop().  please_stop CANNOT ANSWER "DID SOMEONE ASK FOR
+        # THIS?" -- THE monitor THREAD SHARES THAT SIGNAL AND RAISES IT WHEN IT
+        # ENDS, SO IT IS SET AFTER A HANG TOO
+        self.stop_requested = False
         self.second_last_stdin = None
         self.last_stdin = None
         self.stdin = Queue(f"stdin for process {strings.quote(name)}", silent=not self.debug)
@@ -164,6 +168,7 @@ class Process:
         pass
 
     def stop(self):
+        self.stop_requested = True
         self.please_stop.go()
         return self
 
@@ -172,10 +177,18 @@ class Process:
         self.stopped.wait(till=till)  # TRIGGERED BY _monitor THREAD WHEN DONE (self.children is None)
         self.parent_thread.remove_child(self)
         if self.returncode is None:
+            # _monitor LEAVES THE SERVICE RUNNING WHEN IT IS ASKED TO STOP (IT
+            # BREAKS ON please_stop WITHOUT KILLING), SO A MISSING returncode
+            # AFTER A REQUESTED STOP IS THE EXPECTED OUTCOME, NOT A HANG.  ONLY
+            # AN UNASKED-FOR ONE MEANS THE PROCESS STOPPED RESPONDING.
             self.kill()
-            on_error(
-                "{process} TIMEOUT\n{stderr}", process=self.name, stderr=list(self.stderr),
-            )
+            if not self.stop_requested:
+                on_error(
+                    "{process} TIMEOUT\n{stderr}", process=self.name, stderr=list(self.stderr),
+                )
+            # kill() LEAVES returncode UNSET UNTIL POLLED; FALLING THROUGH WOULD
+            # REPORT THE SAME PROCESS A SECOND TIME AS A FAILURE
+            return self
         if self.returncode != 0:
             on_error(
                 "{process} FAIL: returncode={code|quote}\n{stderr}",
