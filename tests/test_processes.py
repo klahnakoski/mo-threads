@@ -115,6 +115,44 @@ class TestProcesses(FuzzyTestCase):
 
 
 @add_error_reporting
+class TestProcessShutdown(FuzzyTestCase):
+    """
+    A DELIBERATE STOP MUST BE QUIET, A REAL HANG MUST STILL SHOUT
+
+    _monitor BREAKS ON please_stop WITHOUT KILLING THE SERVICE, SO returncode IS
+    None AFTER AN INTENTIONAL STOP -- WHICH join() USED TO REPORT AS A TIMEOUT.
+    THE PAIR OF TESTS MATTERS MORE THAN EITHER ALONE: please_stop CANNOT TELL THE
+    TWO CASES APART (THE ENDING monitor THREAD RAISES IT EITHER WAY), SO A FIX
+    WRITTEN AGAINST please_stop PASSES THE FIRST AND MUTES THE SECOND
+    """
+
+    SLEEP = [sys.executable, "-c", "import time; time.sleep(60)"]
+
+    @classmethod
+    def setUpClass(cls):
+        start_main_thread()
+        logger.start(trace=True)
+
+    def test_requested_stop_is_not_an_error(self):
+        process = Process("deliberate", self.SLEEP, timeout=30, startup_timeout=30)
+        process.stop()
+        process.join(raise_on_error=True)  # MUST NOT RAISE
+
+    def test_unrequested_hang_is_still_an_error(self):
+        # NOBODY ASKED THIS ONE TO STOP; IT JUST STOPPED RESPONDING
+        process = Process("real-hang", self.SLEEP, timeout=1, startup_timeout=1)
+        self.assertRaises("TIMEOUT", process.join, raise_on_error=True)
+
+    def test_requested_stop_is_not_reported_as_a_failure(self):
+        # kill() LEAVES returncode UNSET UNTIL POLLED, SO FALLING THROUGH TO THE
+        # returncode != 0 CHECK WOULD REPORT THE SAME STOP A SECOND TIME
+        process = Process("deliberate", self.SLEEP, timeout=30, startup_timeout=30)
+        process.stop()
+        self.assertIs(process.join(raise_on_error=True), process)
+        self.assertTrue(process.stop_requested)
+
+
+@add_error_reporting
 class TestShellLifetime(FuzzyTestCase):
     """
     A Command OWNS ITS SHELL, AND SHUTS IT DOWN BEFORE join() RETURNS.

@@ -67,7 +67,7 @@ it: `TestShellLifetime` asserts the `cwd` is deletable straight after `join()`, 
 
 ---
 
-## 2. A deliberate shutdown is reported as `TIMEOUT` / `FAIL` (FIXED in mo-deploy's vendor copy — awaiting publish, see Coordination below)
+## 2. A deliberate shutdown is reported as `TIMEOUT` / `FAIL` (FIXED — landed via svn-sync 2026-07-31, tests in `tests/test_processes.py::TestProcessShutdown`)
 
 `_monitor` breaks out of its loop on `please_stop` **without killing the service**, so after
 an intentional stop `self.service.returncode` is `None` by design. `join()` read that `None`
@@ -151,26 +151,26 @@ means "someone asked for this".
                  "{process} FAIL: returncode={code|quote}\n{stderr}",
 ```
 
-**REQUIRED — the pair matters more than either test alone:**
-- `stop()` then `join(raise_on_error=True)` must **not** raise;
+**DONE — the pair matters more than either test alone, and both halves were re-verified here
+by mutating `processes.py` and re-running `tests/test_processes.py::TestProcessShutdown`:**
+- `stop()` then `join(raise_on_error=True)` must **not** raise — reverting to the pre-fix
+  `join` (report `TIMEOUT` unconditionally) fails this, and `..._not_reported_as_a_failure`;
 - a process that stops responding **without** anyone calling `stop()` (short `timeout` and
-  `startup_timeout`, a long `sleep`) must still raise, with `TIMEOUT` in the message.
+  `startup_timeout`, a long `sleep`) must still raise, with `TIMEOUT` in the message —
+  swapping `stop_requested` for `please_stop` fails *only* this one.
 
-Confirmed discriminating in mo-deploy (`tests/test_integration.py::TestProcessShutdown`): the
-pre-fix `join` fails the first, and the `please_stop` version fails the second. A single test
-would have let the over-broad fix through.
+So a single test would have let the over-broad fix through, in the direction that mutes real
+hangs. Keep both.
 
 Still open, probably the same teardown path: stray `stdout for {name} queue closed` lines
 during test runs (`processes.py:260-280`).
 
-### Coordination
+### Coordination — done
 
-Lives only in `mo-deploy/vendor/mo_threads/processes.py`, committed to mo-deploy's git as
-`5e8c987`, **not yet `svn commit`ed** — publishing is Kyle's call. `processes.py` here differs
-from mo-deploy's vendored copy *only* by the diff above, so it will land cleanly on the next
-`svn-sync` once mo-deploy publishes. Do not apply it by hand in the meantime. Note that
-`commands.py` is **no longer** byte-identical to mo-deploy's vendored copy — the pool removal
-above landed here first.
+Published from mo-deploy (git `5e8c987`) and arrived here on the 2026-07-31 `svn-sync`; the
+diff above is the record of what landed. Note that `commands.py` is **no longer**
+byte-identical to mo-deploy's vendored copy — the pool removal (item 0) landed here first, and
+mo-deploy picks it up when it next re-vendors.
 
 ---
 
