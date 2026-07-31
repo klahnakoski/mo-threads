@@ -6,75 +6,79 @@
 #
 # Contact: Kyle Lahnakoski (kyle@lahnakoski.com)
 #
-import json
 import os
 from shlex import quote
-from time import time as unix_now
 
-from mo_dots import Data, from_data, to_data
 from mo_future import is_windows
 from mo_logs import logger
-from mo_times import Date, SECOND
 
 from mo_threads import threads
-from mo_threads.lock import Lock
 from mo_threads.processes import os_path, Process
 from mo_threads.queues import Queue
-from mo_threads.signals import Signal
 from mo_threads.threads import PLEASE_STOP, Thread
 from mo_threads.till import Till
 
 DEBUG = False
 
-STALE_MAX_AGE = 60
-INUSE_TIMEOUT = 5
-AVAIL_TIMEOUT = 60 * 60
+COMMAND_TIMEOUT = 5
 START_TIMEOUT = 60
 END_OF_COMMAND_MARKER = "END-OF-COMMAND-MARKER"
-
-lifetime_manager_locker = Lock("cmd lock")
-lifetime_manager = None
 
 
 class Command:
     """
-    FASTER Process CLASS - OPENS A COMMAND_LINE APP (CMD on windows) AND KEEPS IT OPEN FOR MULTIPLE COMMANDS
-    EACH WORKING DIRECTORY WILL HAVE ITS OWN PROCESS, MULTIPLE PROCESSES WILL OPEN FOR THE SAME DIR IF MULTIPLE
-    THREADS ARE REQUESTING Commands
+    OPEN A COMMAND_LINE APP (CMD on windows), RUN ONE COMMAND, THEN SHUT IT DOWN
+    THE SHELL IS GONE BY THE TIME join() RETURNS, SO cwd IS FREE TO BE DELETED
     """
 
     def __init__(
         self, name, params, *, cwd=None, env=None, debug=False, shell=True, timeout=None, max_stdout=1024, bufsize=-1,
     ):
-        global lifetime_manager
-
-        cwd = os_path(cwd)
-        env_ = Data(**(env or {}))
+        cwd = os_path(cwd or os.getcwd())
         command = " ".join(cmd_escape(p) for p in params)
         self.debug = debug = debug or DEBUG
         self.debug and logger.info("command: {command}", command=command)
 
-        self.params = params
-        self.key = (cwd, env_, debug, shell)
-        self.timeout = timeout or INUSE_TIMEOUT
-        self.returncode = None
-        with lifetime_manager_locker:
-            if not lifetime_manager:
-                lifetime_manager = LifetimeManager()
-            self.manager = lifetime_manager
-        self.process = process = self.manager.get_or_create_process(
-            params=params,
-            bufsize=bufsize,
-            cwd=cwd,
-            debug=debug,
-            env=env_,
-            name=name,
-            shell=shell,
-            timeout=self.timeout,
-        )
-        if debug:
-            name = f"{name} (using {process.name})"
         self.name = name
+        self.params = params
+        self.timeout = timeout or COMMAND_TIMEOUT
+        self.returncode = None
+        self.process = process = Process(
+            name=f"shell {name}",
+            params=[cmd()],
+            cwd=cwd,
+            env=env,
+            debug=debug,
+            shell=shell,
+            bufsize=bufsize,
+            timeout=START_TIMEOUT,
+            # THE SHELL OUTLIVES THE THREAD THAT ASKED FOR IT, IT IS STOPPED BY _worker
+            parent_thread=threads.MAIN_THREAD,
+        )
+        set_prompt(process.stdin)
+
+        # WAIT FOR START, AND CONSUME THE SHELL BANNER, SO ONLY COMMAND OUTPUT IS RETURNED
+        process.stdin.add(LAST_RETURN_CODE)
+        start_timeout = Till(seconds=START_TIMEOUT)
+        while not start_timeout:
+            value = process.stdout.pop(till=start_timeout)
+            if value is PLEASE_STOP:
+                process.kill_once()
+                process.join()
+                logger.error("Could not start command, stdout closed early")
+            if value and value.startswith(END_OF_COMMAND_MARKER):
+                break
+        process.stdout.pop(till=start_timeout)  # GET THE ERROR LEVEL
+        if start_timeout:
+            process.kill_once()
+            process.join()
+            logger.error(
+                "Command line did not start within {timeout} seconds: ({command})",
+                timeout=START_TIMEOUT,
+                command=params,
+            )
+        process.timeout = self.timeout
+
         self.stdout = Queue(f"stdout for {name}", max=max_stdout)
         self.stderr = Queue(f"stderr for {name}", max=max_stdout)
         self.stderr_thread = Thread.run(f"{name} stderr", _stderr_relay, process.stderr, self.stderr).release()
@@ -86,7 +90,11 @@ class Command:
 
     def stop(self):
         """
-        PROCESS MAY STILL BE RUNNING, BUT WE ARE DONE WITH IT
+        WE ARE DONE WITH THIS COMMAND
+
+        THE SHELL IS STILL CLOSED DOWN, SO join() CAN STILL BLOCK: A SHELL BUSY
+        WITH A COMMAND WILL NOT READ "exit" UNTIL THAT COMMAND IS DONE (OR UNTIL
+        timeout DECIDES IT IS UNRESPONSIVE)
         """
         self.worker_thread.please_stop.go()
 
@@ -139,7 +147,7 @@ class Command:
             # self.process.stderr.add(PLEASE_STOP)
             self.stderr_thread.please_stop.go()
             self.stderr_thread.join()
-            self.manager.return_process(self.process)
+            _stop_shell(self.process)
             self.debug and logger.info("command worker done")
 
 
@@ -157,230 +165,27 @@ def _stderr_relay(source, destination, please_stop=None):
     destination.add(PLEASE_STOP)
 
 
+def _stop_shell(process):
+    """
+    ASK THE SHELL TO EXIT, AND WAIT FOR IT TO BE GONE
+    """
+    try:
+        if not process.stopped:
+            process.stdin.add("exit")
+    except Exception:
+        pass
+    try:
+        process.join(raise_on_error=True)
+    except Exception:
+        pass
+
+
 def release_shells(cwd):
     """
-    STOP ANY IDLE POOLED SHELL SITTING IN cwd, SO cwd CAN BE DELETED
-
-    RETURNS THE NUMBER STOPPED.  SAFE TO CALL WHEN NONE EXIST, AND SAFE TO USE
-    cwd AGAIN AFTERWARD -- A NEW SHELL IS SIMPLY OPENED.
+    DEPRECATED - SHELLS ARE NO LONGER POOLED, SO THERE IS NOTHING TO RELEASE;
+    A Command CLOSES ITS SHELL BEFORE join() RETURNS
     """
-    with lifetime_manager_locker:
-        manager = lifetime_manager
-    if not manager:
-        return 0
-    return manager.stop_processes_in(cwd)
-
-
-class LifetimeManager:
-    def __init__(self):
-        global lifetime_manager
-        DEBUG and logger.info("new manager")
-        self.locker = Lock()
-        self.avail_processes = []
-        self.inuse_processes = []
-        self.wakeup = Signal()
-        self.worker_thread = Thread.run("lifetime manager", self._worker, parent_thread=threads.MAIN_THREAD).release()
-
-    def get_or_create_process(self, *, params, bufsize, cwd, debug, env, name, shell, timeout):
-        now = unix_now()
-        cwd = os_path(cwd or os.getcwd())
-        env = to_data(env)
-        process_key = (cwd, env, debug, shell)
-        with self.locker:
-            for i, (key, process, last_used) in enumerate(self.avail_processes):
-                if process_key != key or process.stopped:
-                    continue
-                del self.avail_processes[i]
-                process.stdout_status.last_read = now
-                process.timeout = timeout
-                self.inuse_processes.append((key, process, now))
-                if DEBUG:
-                    from mo_json import value2json
-
-                    logger.info(
-                        "Reuse process {process} for {command} (key={key})",
-                        process=process.name,
-                        command=name,
-                        key=value2json(key),
-                    )
-                return process
-
-        process = Process(
-            name=f"shell {cwd}",
-            params=[cmd()],
-            cwd=cwd,
-            env=env,
-            debug=debug,
-            shell=shell,
-            bufsize=bufsize,
-            timeout=START_TIMEOUT,
-            parent_thread=self.worker_thread,
-        )
-        with self.locker:
-            self.inuse_processes.append((process_key, process, unix_now()))
-
-        set_prompt(process.stdin)
-
-        DEBUG and logger.info("New process {process} for {command}", process=process.name, command=name)
-
-        # WAIT FOR START
-        try:
-            process.stdin.add(f"cd {cmd_escape(cwd)}")
-            process.stdin.add(LAST_RETURN_CODE)
-            start_timeout = Till(seconds=START_TIMEOUT)
-            while not start_timeout:
-                value = process.stdout.pop(till=start_timeout)
-                if value == PLEASE_STOP:
-                    process.kill_once()
-                    process.join()
-                    logger.error("Could not start command, stdout closed early")
-                if value and value.startswith(END_OF_COMMAND_MARKER):
-                    break
-            process.stdout.pop(till=start_timeout)  # GET THE ERROR LEVEL
-            if start_timeout:
-                process.kill_once()
-                process.join()
-                logger.error(
-                    "Command line did not start within {timeout} seconds: ({command})",
-                    timeout=START_TIMEOUT,
-                    command=params,
-                )
-
-            process.timeout = timeout
-            return process
-        except Exception as cause:
-            self.return_process(process)
-            raise cause
-
-    def return_process(self, process):
-        with self.locker:
-            for i, (key, p, last_used) in enumerate(self.inuse_processes):
-                if p is process:
-                    DEBUG and logger.info("return process {process}", process=process.name)
-                    del self.inuse_processes[i]
-                    process.timeout = AVAIL_TIMEOUT
-                    self.avail_processes.append((key, process, unix_now()))
-                    self.wakeup.go()
-                    break
-            else:
-                logger.error("process not found")
-
-    def stop_processes_in(self, cwd):
-        """
-        SHUT DOWN IDLE SHELLS SITTING IN cwd, SO THE DIRECTORY CAN BE DELETED
-
-        A POOLED SHELL KEEPS cwd AS ITS WORKING DIRECTORY FOR AVAIL_TIMEOUT,
-        AND WINDOWS WILL NOT LET ANYONE REMOVE A DIRECTORY A PROCESS IS SITTING
-        IN.  CALL THIS WHEN DONE WITH A TEMPORARY DIRECTORY.
-
-        ONLY IDLE SHELLS ARE TAKEN; AN inuse SHELL IS STILL RUNNING SOMEONE'S
-        COMMAND, AND WILL BE RETURNED TO THE POOL WHEN IT FINISHES.
-        """
-        cwd = os_path(cwd)
-        with self.locker:
-            doomed = [p for p in self.avail_processes if p[0][0] == cwd]
-            if doomed:
-                self.avail_processes[:] = [p for p in self.avail_processes if p[0][0] != cwd]
-        DEBUG and logger.info("stop {num} processes in {cwd}", num=len(doomed), cwd=cwd)
-        self._exit_processes(doomed)
-        return len(doomed)
-
-    def _exit_processes(self, processes):
-        for _, process, _ in processes:
-            try:
-                if not process.stopped:
-                    process.stdin.add("exit")
-            except Exception:
-                pass
-
-        for _, process, _ in processes:
-            try:
-                process.join(raise_on_error=True)
-            except Exception:
-                pass
-
-    def _stop_stale_processes(self, too_old):
-        DEBUG and logger.info("stop stale processes")
-        with self.locker:
-            stale = []
-            fresh = []
-            for key, process, last_used in self.avail_processes:
-                if process.stopped or too_old > last_used:
-                    stale.append((key, process, last_used))
-                else:
-                    fresh.append((key, process, last_used))
-            self.avail_processes[:] = fresh
-
-        self._exit_processes(stale)
-
-        if DEBUG and stale:
-            for key, process, last_used in stale:
-                logger.info(
-                    "removed stale process {process} (key={key})",
-                    process=process.name,
-                    key=json.dumps(key, default=from_data),
-                )
-            for key, process, last_used in list(self.avail_processes):
-                logger.info(
-                    "remaining process {process} (age={age})",
-                    process=process.name,
-                    age=(Date.now() - Date(last_used)).floor(SECOND),
-                )
-            for key, process, last_used in list(self.inuse_processes):
-                logger.info(
-                    "inuse process {process} (age={age})",
-                    process=process.name,
-                    age=(Date.now() - Date(last_used)).floor(SECOND),
-                )
-
-    def _worker(self, please_stop):
-        """
-        REMOVE COMMANDS THAT HAVE NOT BEEN USED IN A WHILE
-        """
-        global lifetime_manager
-        wakeup = self.wakeup
-        while not please_stop:
-            please_stop.wait(till=(wakeup | Till(seconds=10)))
-            if please_stop:
-                DEBUG and logger.info("got please_stop")
-                break
-            elif wakeup:
-                DEBUG and logger.info("got wakeup")
-            else:
-                DEBUG and logger.info("time for next review")
-
-            too_old = unix_now() - STALE_MAX_AGE
-            self._stop_stale_processes(too_old)
-            with lifetime_manager_locker:
-                with self.locker:
-                    if not self.inuse_processes and not self.avail_processes:
-                        DEBUG and logger.info("lifetime manager to shutdown")
-                        lifetime_manager = None
-                        break
-                    wakeup = self.wakeup = Signal()
-
-        # wait for inuse to finish
-        DEBUG and logger.info("got {num} inuse processes to stop", num=len(self.inuse_processes))
-        while True:
-            with self.locker:
-                if not self.inuse_processes:
-                    break
-                if DEBUG:
-                    _, process, _ = self.inuse_processes[0]
-                wakeup = self.wakeup = Signal()
-            DEBUG and logger.info("wait on process {name} to stop", name=process.name)
-            wakeup.wait()
-
-        with self.locker:
-            avail_processes = list(self.avail_processes)
-        DEBUG and logger.info("exit {num} available processes", num=len(avail_processes))
-        for _, process, _ in avail_processes:
-            if not process.stopped:
-                process.stdin.add("exit")
-        for _, process, _ in avail_processes:
-            process.stopped.wait()
-        self._stop_stale_processes(unix_now())
-        DEBUG and logger.info("lifetime manager done")
+    return 0
 
 
 if is_windows:

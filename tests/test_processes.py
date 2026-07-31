@@ -15,7 +15,7 @@ from mo_files import TempDirectory
 from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase, add_error_reporting
 
-from mo_threads import Process, start_main_thread, Command, Till, threads, Thread
+from mo_threads import Process, start_main_thread, Command, Till, threads
 from mo_threads.commands import release_shells
 from tests import IS_WINDOWS
 
@@ -114,10 +114,10 @@ class TestProcesses(FuzzyTestCase):
 
 
 @add_error_reporting
-class TestShellRelease(FuzzyTestCase):
+class TestShellLifetime(FuzzyTestCase):
     """
-    Command POOLS A SHELL PER cwd, AND KEEPS IT FOR AVAIL_TIMEOUT (ONE HOUR).
-    ON WINDOWS THAT SHELL MAKES ITS cwd UNDELETABLE UNTIL release_shells()
+    A Command OWNS ITS SHELL, AND SHUTS IT DOWN BEFORE join() RETURNS.
+    NO SHELL IS LEFT SITTING IN cwd, WHICH ON WINDOWS WOULD MAKE cwd UNDELETABLE
     """
 
     @classmethod
@@ -125,46 +125,43 @@ class TestShellRelease(FuzzyTestCase):
         start_main_thread()
         logger.start(trace=True)
 
-    def test_release_frees_the_directory(self):
+    def test_cwd_is_free_after_join(self):
         d = TempDirectory()
         Command("probe", [sys.executable, "-c", "print('test')"], cwd=d).join()
 
-        if IS_WINDOWS:
-            # THE POOLED SHELL IS STILL SITTING IN d
-            self.assertRaises(OSError, os.rmdir, d.os_path)
-
-        self.assertEqual(release_shells(d), 1)
         os.rmdir(d.os_path)
         self.assertFalse(os.path.exists(d.os_path))
 
-    def test_cwd_still_works_after_release(self):
-        # RELEASING IS NOT DESTRUCTIVE; THE NEXT Command JUST OPENS A NEW SHELL
+    def test_cwd_is_free_after_stop(self):
+        # A COMMAND WE GAVE UP ON MUST NOT LEAVE ITS SHELL BEHIND EITHER
+        # (join() STILL WAITS FOR THE RUNNING COMMAND; THE SHELL CAN NOT READ "exit" UNTIL THEN)
+        d = TempDirectory()
+        slow = Command("slow", [sys.executable, "-c", "import time;time.sleep(3)"], cwd=d, timeout=30)
+        slow.stop()
+        slow.join()
+
+        os.rmdir(d.os_path)
+        self.assertFalse(os.path.exists(d.os_path))
+
+    def test_cwd_can_be_used_again(self):
         with TempDirectory() as d:
-            Command("first", [sys.executable, "-c", "print('test')"], cwd=d).join()
-            release_shells(d)
+            first = Command("first", [sys.executable, "-c", "print('test')"], cwd=d).join()
+            self.assertEqual(first.returncode, 0)
             second = Command("second", [sys.executable, "-c", "print('test')"], cwd=d).join()
             self.assertEqual(second.returncode, 0)
-            release_shells(d)
 
-    def test_release_is_a_no_op_when_no_shell_is_pooled(self):
+    def test_concurrent_commands_in_same_cwd(self):
+        # EACH COMMAND GETS ITS OWN SHELL, THERE IS NOTHING TO CONTEND FOR
         with TempDirectory() as d:
+            commands = [
+                Command(f"echo {i}", [sys.executable, "-c", f"print({i})"], cwd=d, timeout=30) for i in range(5)
+            ]
+            for i, c in enumerate(commands):
+                c.join()
+                self.assertEqual(c.returncode, 0)
+                self.assertIn(str(i), c.stdout.pop_all())
+
+    def test_release_shells_is_a_no_op(self):
+        with TempDirectory() as d:
+            Command("probe", [sys.executable, "-c", "print('test')"], cwd=d).join()
             self.assertEqual(release_shells(d), 0)
-
-    def test_inuse_shell_is_not_released(self):
-        # A SHELL RUNNING SOMEONE'S COMMAND IS LEFT ALONE
-        with TempDirectory() as d:
-            slow = Command(
-                "slow", [sys.executable, "-c", "import time;time.sleep(2);print('done')"], cwd=d, timeout=30,
-            )
-            result = []
-
-            def release(please_stop=None):
-                result.append(release_shells(d))
-
-            Thread.run("release shells", release).join()
-            self.assertEqual(result, [0])
-
-            slow.join()
-            self.assertEqual(slow.returncode, 0)
-            self.assertIn("done", slow.stdout.pop_all())
-            release_shells(d)

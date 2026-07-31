@@ -1,153 +1,62 @@
 # mo_threads — known defects
 
-Found while modernising `mo-deploy` on 2026-07-30. All three concern the `Command`
-shell pool. Item 1 is fixed and landed here; item 2 is fixed in mo-deploy's vendored
-copy and awaits an svn publish; item 3 is measured but undecided.
+Found while modernising `mo-deploy` on 2026-07-30. Items 1 and 3 concerned the `Command`
+shell pool, which was removed on 2026-07-31 — both are closed by that removal. Item 2 is
+fixed in mo-deploy's vendored copy and awaits an svn publish.
 
 ---
 
-## 1. A pooled shell holds its `cwd`, so the directory cannot be deleted (FIXED — landed via svn-sync 2026-07-30, tests in `tests/test_processes.py::TestShellRelease`)
+## 0. The `Command` shell pool is gone (2026-07-31)
 
-> `release_shells` treats the symptom: callers must reach into another thread's pool to get
-> their own temp dir back. The defect it is working around is item 3 — `AVAIL_TIMEOUT` keeps
-> a shell (and its `cwd`) alive for an hour after the command finished. Fix that and this API
-> becomes unnecessary.
+`Command` used to keep a shell per `(cwd, env, debug, shell)` in a `LifetimeManager`, hand it
+out to the next matching `Command`, and park it for `AVAIL_TIMEOUT` (one hour) in between.
+Now each `Command` opens its own shell and shuts it down in `_worker`'s `finally`, so by the
+time `join()` returns the shell is gone and its `cwd` is free.
 
+Deleted: `LifetimeManager`, `lifetime_manager`, `lifetime_manager_locker`, `AVAIL_TIMEOUT`,
+`STALE_MAX_AGE`, and `INUSE_TIMEOUT` (renamed `COMMAND_TIMEOUT`, since there is no longer an
+"in use" state). `release_shells(cwd)` remains as a no-op returning `0` so mo-deploy keeps
+importing — its calls can be deleted whenever mo-deploy next syncs.
 
-`Command` pools one shell per `(cwd, env, debug, shell)`. When a command finishes,
-`Command._worker` calls `return_process` (`commands.py:142`), which stamps
-`AVAIL_TIMEOUT` (one hour) on the process and parks it in `avail_processes`. That shell
-keeps `cwd` as its working directory the whole time, and **Windows will not let anyone
-remove a directory a live process is sitting in**.
+**The cost is real and was accepted knowingly.** Measured 2026-07-31, Windows 11,
+`echo hi` x20:
 
-Measured: a `mo_files.TempDirectory` used as a `Command` cwd still existed 12s after its
-`with` block exited, while an otherwise identical unused one was gone.
+| | per command |
+|---|---|
+| pooled shell (reused, before) | 2 ms |
+| own shell (now) | 35 ms |
+| plain `subprocess.run(shell=True)` | 14 ms |
 
-This is not cosmetic for callers that run commands in temp dirs. `mo-deploy`'s
-`Module.run_tests` allocates two per python version per module — a virtualenv and a git
-worktree — and uses both as `cwd`. Every one of them survived the deploy.
+Broken down, the 35 ms is: 4 ms `Popen`, **28 ms for cmd.exe to boot to its first prompt**,
+1 ms to run the command, 6 ms teardown. The dominant term is cmd.exe itself, so there is no
+cheap win left in `commands.py` — folding the startup handshake into the worker thread would
+only overlap that 28 ms with the caller's next work, not remove it. If a caller issuing
+thousands of commands ever needs the 33 ms back, pooling belongs in that caller, where it can
+scope a shell's lifetime to work it actually controls.
 
-It got *louder* once `mo_files.delete_daemon`'s inverted guard was fixed (that daemon
-previously returned without ever calling `file.delete()`, so the leak was silent). It now
-genuinely retries every 10s and, from the second attempt on, logs
-`problem deleting file {file}` — so each held directory becomes a warning every ten
-seconds for the rest of the process's life.
+`Command.stop()` still shuts the shell down, but a shell busy with a command cannot read
+`exit` until that command finishes, so `join()` after `stop()` blocks until then (or until
+`timeout` has the monitor kill the shell). Covered by
+`tests/test_processes.py::TestShellLifetime`.
 
-### The fix
+---
 
-Add `release_shells(cwd)`, backed by `LifetimeManager.stop_processes_in()`. Only
-`avail_processes` are evicted — an `inuse` shell is still running someone's command and
-returns to the pool normally when it finishes. The exit-then-join teardown is factored
-out of `_stop_stale_processes` into `_exit_processes` so both paths shut shells down the
-same way rather than duplicating that discipline.
+## 1. A pooled shell holds its `cwd`, so the directory cannot be deleted (CLOSED — no pool, no held `cwd`)
 
-This patch is against `dev` as of `mo_threads/commands.py` matching mo-deploy's vendored
-copy byte-for-byte, so it applies cleanly:
+`Command._worker` used to call `return_process`, stamping `AVAIL_TIMEOUT` (one hour) on the
+shell and parking it in `avail_processes` with `cwd` still as its working directory —
+and **Windows will not let anyone remove a directory a live process is sitting in**.
 
-```diff
---- a/mo_threads/commands.py
-+++ b/mo_threads/commands.py
-@@ -157,6 +157,20 @@ def _stderr_relay(source, destination, please_stop=None):
-     destination.add(PLEASE_STOP)
- 
- 
-+def release_shells(cwd):
-+    """
-+    STOP ANY IDLE POOLED SHELL SITTING IN cwd, SO cwd CAN BE DELETED
-+
-+    RETURNS THE NUMBER STOPPED.  SAFE TO CALL WHEN NONE EXIST, AND SAFE TO USE
-+    cwd AGAIN AFTERWARD -- A NEW SHELL IS SIMPLY OPENED.
-+    """
-+    with lifetime_manager_locker:
-+        manager = lifetime_manager
-+    if not manager:
-+        return 0
-+    return manager.stop_processes_in(cwd)
-+
-+
- class LifetimeManager:
-     def __init__(self):
-         global lifetime_manager
-@@ -251,6 +265,40 @@ class LifetimeManager:
-             else:
-                 logger.error("process not found")
- 
-+    def stop_processes_in(self, cwd):
-+        """
-+        SHUT DOWN IDLE SHELLS SITTING IN cwd, SO THE DIRECTORY CAN BE DELETED
-+
-+        A POOLED SHELL KEEPS cwd AS ITS WORKING DIRECTORY FOR AVAIL_TIMEOUT,
-+        AND WINDOWS WILL NOT LET ANYONE REMOVE A DIRECTORY A PROCESS IS SITTING
-+        IN.  CALL THIS WHEN DONE WITH A TEMPORARY DIRECTORY.
-+
-+        ONLY IDLE SHELLS ARE TAKEN; AN inuse SHELL IS STILL RUNNING SOMEONE'S
-+        COMMAND, AND WILL BE RETURNED TO THE POOL WHEN IT FINISHES.
-+        """
-+        cwd = os_path(cwd)
-+        with self.locker:
-+            doomed = [p for p in self.avail_processes if p[0][0] == cwd]
-+            if doomed:
-+                self.avail_processes[:] = [p for p in self.avail_processes if p[0][0] != cwd]
-+        DEBUG and logger.info("stop {num} processes in {cwd}", num=len(doomed), cwd=cwd)
-+        self._exit_processes(doomed)
-+        return len(doomed)
-+
-+    def _exit_processes(self, processes):
-+        for _, process, _ in processes:
-+            try:
-+                if not process.stopped:
-+                    process.stdin.add("exit")
-+            except Exception:
-+                pass
-+
-+        for _, process, _ in processes:
-+            try:
-+                process.join(raise_on_error=True)
-+            except Exception:
-+                pass
-+
-     def _stop_stale_processes(self, too_old):
-         DEBUG and logger.info("stop stale processes")
-         with self.locker:
-@@ -263,18 +311,7 @@ class LifetimeManager:
-                     fresh.append((key, process, last_used))
-             self.avail_processes[:] = fresh
- 
--        for _, process, _ in stale:
--            try:
--                if not process.stopped:
--                    process.stdin.add("exit")
--            except Exception:
--                pass
--
--        for _, process, _ in stale:
--            try:
--                process.join(raise_on_error=True)
--            except Exception:
--                pass
-+        self._exit_processes(stale)
- 
-         if DEBUG and stale:
-             for key, process, last_used in stale:
-```
+Measured at the time: a `mo_files.TempDirectory` used as a `Command` cwd still existed 12s
+after its `with` block exited, while an otherwise identical unused one was gone.
+`mo-deploy`'s `Module.run_tests` allocates two per python version per module — a virtualenv
+and a git worktree — and every one of them survived the deploy.
 
-**DONE — `tests/test_processes.py::TestShellRelease` covers all four:**
-- a `TempDirectory` used as a `Command` cwd is undeletable *before* `release_shells` and
-  deletable *after* (verified this is the assertion that fails when `release_shells` is
-  stubbed to a no-op — the other three pass either way);
-- the same `cwd` still works afterward: a second `Command` opens a fresh shell and returns
-  `returncode == 0`;
-- `release_shells` on a directory with nothing pooled returns `0` and does not raise;
-- an `inuse` shell is **not** killed — a long-running command has `release_shells` called on
-  its `cwd` from another thread, which returns `0`, and the command still completes.
-
-mo-deploy keeps its own copy at `tests/test_integration.py::TestShellRelease` for the three
-it depends on.
-
-### Coordination — done
-
-Published to SVN as r2915 (from mo-deploy, 2026-07-30) and arrived here on the 2026-07-30
-`svn-sync`. The diff above is the record of what landed.
+`release_shells(cwd)` (svn r2915, 2026-07-30) was the workaround: it evicted idle shells
+sitting in `cwd` so callers could get their own temp dirs back. Removing the pool removes the
+defect it worked around, so `release_shells` is now a no-op. The regression tests moved with
+it: `TestShellLifetime` asserts the `cwd` is deletable straight after `join()`, after
+`stop()`, and that a second `Command` in the same `cwd` still works.
 
 ---
 
@@ -167,10 +76,15 @@ if self.returncode != 0:
 ```
 
 `Thread.stop()` calls `c.stop()` on every child *before* `join_all_threads`, so at
-`stop_main_thread()` every pooled shell takes this path. Measured in mo-deploy: a script
+`stop_main_thread()` every shell still alive takes this path. Measured in mo-deploy: a script
 making only read-only `Module.local()` calls, every one succeeding, ended with 8 lines
 matching `TIMEOUT` / `At least one thread failed` / `Problem while stopping "MainThread"`.
 After the fix: 0.
+
+Removing the pool makes this much rarer here — shells no longer sit around waiting to be
+caught by shutdown — but it does not fix it: any `Process` that is `stop()`ed rather than
+allowed to finish still reports a phantom `TIMEOUT`. `commands._stop_shell` swallows the
+error, so `Command` no longer surfaces it either way; direct `Process` users still do.
 
 ### The trap — do not use `please_stop` as the discriminator
 
@@ -245,33 +159,27 @@ during test runs (`processes.py:260-280`).
 ### Coordination
 
 Lives only in `mo-deploy/vendor/mo_threads/processes.py`, committed to mo-deploy's git as
-`5e8c987`, **not yet `svn commit`ed** — publishing is Kyle's call. Confirmed at the time of
-writing that this repo's `commands.py` is byte-identical to mo-deploy's vendored copy and
-`processes.py` differs *only* by the diff above, so it will land here cleanly on the next
-`svn-sync` once mo-deploy publishes. Do not apply it by hand in the meantime.
+`5e8c987`, **not yet `svn commit`ed** — publishing is Kyle's call. `processes.py` here differs
+from mo-deploy's vendored copy *only* by the diff above, so it will land cleanly on the next
+`svn-sync` once mo-deploy publishes. Do not apply it by hand in the meantime. Note that
+`commands.py` is **no longer** byte-identical to mo-deploy's vendored copy — the pool removal
+above landed here first.
 
 ---
 
-## 3. Is the shell pool still worth its cost? (QUESTION — answer this before doing 1 or 2)
+## 3. Is the shell pool still worth its cost? (ANSWERED — no; removed 2026-07-31, see item 0)
 
-The pool exists because opening a shell was expensive on older Windows. That premise is
-years old and worth re-measuring on Windows 11 before either of the above is built out.
+Measured 2026-07-30 on Windows 11, the pool bought 14 ms/command against the no-pool floor —
+real, but only for callers issuing thousands of commands, and not worth an hour of held
+`cwd`. Kyle's call: delete it. See item 0 for what went and what it costs.
 
-Measured 2026-07-30, Windows 11, `echo hi` x10 in the repo dir:
+## 4. A killed shell orphans its child process (OPEN — pre-existing, now easier to hit)
 
-| | per command |
-|---|---|
-| pooled shell (reused) | 2 ms |
-| new shell each time (`release_shells` between) | 38 ms |
-| plain `subprocess.run(shell=True)` | 16 ms |
+`Process.kill()` calls `service.kill()`, which on Windows terminates only `cmd.exe`. Anything
+that shell had launched keeps running with the pipes and the working directory it inherited.
+`_monitor` kills a shell that has produced no output for `timeout` seconds (`COMMAND_TIMEOUT`
+is 5s), so a quiet long-running command leaves an orphan that still holds `cwd` — the same
+undeletable-directory symptom as item 1, by a different route.
 
-So the pool is still worth ~14 ms/command against the no-pool floor — real, but only for
-callers issuing thousands of commands. It is not obviously worth an hour of held `cwd`.
-
-If spawning a shell is now cheap, the better move is to delete the pool rather than keep
-tuning it — which would dissolve items 1 and 2 outright, along with `AVAIL_TIMEOUT`,
-`INUSE_TIMEOUT`, `STALE_MAX_AGE` and the whole `LifetimeManager` lifetime dance.
-
-If it is still expensive, `AVAIL_TIMEOUT = 60 * 60` (`commands.py:31`) deserves a second
-look regardless — an hour is a long time to hold a working directory hostage on the chance
-someone runs another command in it.
+Killing the tree needs `taskkill /T /F /PID` on Windows (or a process group on POSIX). Not
+attempted; no caller has reported it yet.
