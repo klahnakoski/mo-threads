@@ -9,12 +9,15 @@
 #
 import os
 import sys
+from time import time as unix_now
 from unittest import skipIf
 
+from mo_files import TempDirectory
 from mo_logs import logger
 from mo_testing.fuzzytestcase import FuzzyTestCase, add_error_reporting
 
-from mo_threads import Process, start_main_thread, Command, Till, threads
+from mo_threads import Process, start_main_thread, Command, Till, threads, Thread, join_all_threads
+from mo_threads.commands import release_shells
 from tests import IS_WINDOWS
 
 IS_TRAVIS = bool(os.environ.get("TRAVIS"))
@@ -109,3 +112,88 @@ class TestProcesses(FuzzyTestCase):
         p = Process("run simple_test", [sys.executable, "-u", "tests/programs/fail_test.py"], debug=True)
         p.join(raise_on_error=False)
         self.assertNotIn(p, threads.MAIN_THREAD.children)
+
+
+@add_error_reporting
+class TestShellLifetime(FuzzyTestCase):
+    """
+    A Command OWNS ITS SHELL, AND SHUTS IT DOWN BEFORE join() RETURNS.
+    NO SHELL IS LEFT SITTING IN cwd, WHICH ON WINDOWS WOULD MAKE cwd UNDELETABLE
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        start_main_thread()
+        logger.start(trace=True)
+
+    def test_cwd_is_free_after_join(self):
+        d = TempDirectory()
+        Command("probe", [sys.executable, "-c", "print('test')"], cwd=d).join()
+
+        os.rmdir(d.os_path)
+        self.assertFalse(os.path.exists(d.os_path))
+
+    def test_cwd_is_free_after_stop(self):
+        # A COMMAND WE GAVE UP ON MUST NOT LEAVE ITS SHELL BEHIND EITHER
+        # (join() STILL WAITS FOR THE RUNNING COMMAND; THE SHELL CAN NOT READ "exit" UNTIL THEN)
+        d = TempDirectory()
+        slow = Command("slow", [sys.executable, "-c", "import time;time.sleep(3)"], cwd=d, timeout=30)
+        slow.stop()
+        slow.join()
+
+        os.rmdir(d.os_path)
+        self.assertFalse(os.path.exists(d.os_path))
+
+    def test_cwd_can_be_used_again(self):
+        with TempDirectory() as d:
+            first = Command("first", [sys.executable, "-c", "print('test')"], cwd=d).join()
+            self.assertEqual(first.returncode, 0)
+            second = Command("second", [sys.executable, "-c", "print('test')"], cwd=d).join()
+            self.assertEqual(second.returncode, 0)
+
+    def test_concurrent_commands_in_same_cwd(self):
+        # EACH COMMAND GETS ITS OWN SHELL, THERE IS NOTHING TO CONTEND FOR
+        with TempDirectory() as d:
+            commands = [
+                Command(f"echo {i}", [sys.executable, "-c", f"print({i})"], cwd=d, timeout=30) for i in range(5)
+            ]
+            for i, c in enumerate(commands):
+                c.join()
+                self.assertEqual(c.returncode, 0)
+                self.assertIn(str(i), c.stdout.pop_all())
+
+    def test_release_shells_is_a_no_op(self):
+        with TempDirectory() as d:
+            Command("probe", [sys.executable, "-c", "print('test')"], cwd=d).join()
+            self.assertEqual(release_shells(d), 0)
+
+    def test_many_shells_in_parallel(self):
+        """
+        WITHOUT A POOL, EVERY Command PAYS FOR ITS OWN SHELL.  SERIALLY THAT IS ~35ms EACH,
+        ALMOST ALL OF IT cmd.exe BOOTING -- WHICH IS WAIT, NOT WORK, SO IT SHOULD OVERLAP.
+        OPEN 100 SHELLS AT ONCE TO SEE WHAT THE REAL COST IS
+        """
+        num = 100
+        results = [None] * num
+
+        def say_hi(i, please_stop=None):
+            c = Command(f"hi {i}", ["echo", "hi"], timeout=60).join()
+            results[i] = (c.returncode, c.stdout.pop_all())
+
+        start = unix_now()
+        workers = [Thread.run(f"say hi {i}", say_hi, i) for i in range(num)]
+        join_all_threads(workers)
+        duration = unix_now() - start
+
+        logger.alert(
+            "{num} shells open+hi+close in parallel: {duration} seconds total, {each} ms each",
+            num=num,
+            duration=round(duration, 2),
+            each=round(duration / num * 1000, 1),
+        )
+
+        for i, result in enumerate(results):
+            self.assertNotEqual(result, None, f"command {i} did not finish")
+            returncode, lines = result
+            self.assertEqual(returncode, 0)
+            self.assertIn("hi", lines)
